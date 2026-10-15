@@ -1,0 +1,261 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=2.0cm]{geometry}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setCJKmainfont{Noto Serif CJK KR}
+\setCJKsansfont{Noto Sans CJK KR}
+\setCJKmonofont{Noto Sans Mono CJK KR}
+\xeCJKsetup{CJKspace=true}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs,tabularx,longtable,array}
+\usepackage{enumitem}
+\usepackage[table]{xcolor}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=green!40!black,urlcolor=blue!60!black]{hyperref}
+\linespread{1.15}
+\setlength{\parskip}{3pt}
+\setlist{itemsep=1pt,topsep=2pt}
+
+\newcommand{\cmd}[1]{\textsf{\small #1}}
+\newcommand{\key}[1]{\texttt{\small #1}}
+\newtcolorbox{note}[1]{colback=gray!5,colframe=blue!45!black,boxrule=0.5pt,arc=2pt,left=6pt,right=6pt,top=3pt,bottom=3pt,title={\small\bfseries #1},coltitle=white,colbacktitle=blue!45!black}
+\newtcolorbox{caveat}{colback=yellow!7,colframe=orange!70!black,boxrule=0.5pt,arc=2pt,left=6pt,right=6pt,top=3pt,bottom=3pt,title={\small\bfseries 한계와 주의},coltitle=white,colbacktitle=orange!70!black}
+
+\title{\textbf{온톨로지 정형화 (PDF $\to$ JSON) 작업 기록}\\[3pt]\large DLR 온톨로지 사양 v3.00 + FAA JO 7110.65BB $\to$ \texttt{configs/ontology.json}}
+\author{Team 6 \quad (XAI616 Knowledge-Based Systems)}
+\date{2026-10-15 \quad 생성 코드: \texttt{src/kb/build\_ontology.py} \quad 출력: \texttt{configs/ontology.json} (v1.0)}
+
+\begin{document}
+\sloppy
+\maketitle
+
+\begin{note}{요약}
+\begin{itemize}[leftmargin=12pt]
+\item 문서(PDF) 3개를 근거로, 파이프라인이 읽는 온톨로지 파일 \texttt{configs/ontology.json}을 \textbf{코드로 생성}했다.
+\item 원칙: \textbf{우리가 정한 것(설계)}과 \textbf{문서가 말하는 것(근거)}을 분리하고, 근거로 적은 내용은 \textbf{빌드할 때 PDF 원문과 자동 대조}한다. 하나라도 원문에 없으면 빌드가 실패한다.
+\item 결과: 명령 종류 20개 모두 검증 통과. 18개는 DLR 공식 명령에 대응되고, 2개(\cmd{MONITOR}, \cmd{REQUEST})는 미국 확장이다.
+\item 파이프라인이 실제로 쓰는 값(복창 필수 목록, 대체 규칙 등)은 이전 v0.1과 동일하다. 근거 정보만 추가됐다.
+\end{itemize}
+\end{note}
+
+\tableofcontents
+
+%==========================================================
+\section{입력 자료}
+%==========================================================
+세 파일은 \texttt{data/ontology/}에 둔다. 저장소에는 올리지 않는다(\texttt{.gitignore}). DLR 문서에는 재배포 제한 문구가 있고, FAA 파일은 9\,MB이기 때문이다. 대신 출력 JSON의 \key{generated.inputs}에 각 파일의 MD5를 기록해 어떤 판으로 만들었는지 남긴다.
+
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.0cm}@{}}
+\toprule
+파일 & 가져오는 내용 & 출처\\\midrule
+\texttt{OntologyATCCommands\allowbreak Description\_v20250704.pdf} (52쪽) & 지시(Instruction)의 구성 요소(2장), JSON 교환 키 정의(5.1장) & DLR-IB-FL-BS-2025-107 v3.00, \url{https://elib.dlr.de/214852}\\
+\texttt{OntologyATCCommands\allowbreak Table\_v20250704.pdf} (2쪽) & 1쪽: 명령 약 90종의 Type (Main/Sub), 값, 단위, 한정어, 조건. 2쪽: 값 형식(매개변수) & 위와 같은 elib 기록의 첨부\\
+\texttt{FAA규정.pdf} (732쪽) & 명령별 표준 문구(phraseology)와 조항, 복창 규정(§2-4-3) & FAA Order JO 7110.65BB (2025-02-20 시행)\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+%==========================================================
+\section{전체 흐름}
+%==========================================================
+\begin{center}
+\begin{tikzpicture}[
+  box/.style={draw,rounded corners=2pt,align=center,font=\small,minimum height=8mm,inner sep=4pt},
+  doc/.style={box,fill=gray!10},
+  stp/.style={box,fill=blue!6},
+  outb/.style={box,fill=green!8,thick},
+  >={Stealth[length=2mm]}]
+\node[doc] (d1) {DLR Description};
+\node[doc,below=4mm of d1] (d2) {DLR Table};
+\node[doc,below=4mm of d2] (d3) {FAA JO 7110.65BB};
+\node[stp,right=10mm of d1] (p1) {JSON 키 확인};
+\node[stp,right=10mm of d2] (p2) {명령 행·매개변수\\파싱};
+\node[stp,right=10mm of d3] (p3) {조항 분할·\\표준 문구 탐색};
+\node[box,fill=orange!10,above=6mm of p1] (cur) {설계값 (코드 안에 명시)\\20개 종류, 매핑, 상태·대체 규칙};
+\node[stp,right=12mm of p2,minimum height=2.6cm,text width=2.4cm] (v) {\textbf{검증}\\원문에 없으면\\빌드 실패};
+\node[outb,right=10mm of v] (o) {\texttt{configs/}\\\texttt{ontology.json}};
+\draw[->] (d1)--(p1); \draw[->] (d2)--(p2); \draw[->] (d3)--(p3);
+\draw[->] (p1)--(v); \draw[->] (p2)--(v); \draw[->] (p3)--(v);
+\draw[->] (cur) -| (v);
+\draw[->] (v)--(o);
+\end{tikzpicture}
+\end{center}
+
+\noindent 모든 PDF는 \texttt{pdftotext -layout}(poppler)으로 텍스트로 바꾼다. \texttt{-layout}은 표의 열 위치를 공백으로 보존하므로, 글자의 \textbf{가로 위치}로 어느 칸인지 판단할 수 있다.
+
+%==========================================================
+\section{단계별 방법}
+%==========================================================
+\subsection{① 설계값 정의 (사람이 정함)}
+코드 맨 위 \key{COMMAND\_TYPES}에 20개 종류를 적는다. 종류마다 적는 항목은 다음과 같다.
+\begin{itemize}[leftmargin=14pt]
+\item \key{dlr}: 대응하는 DLR 표의 (Type Main, Type Sub). 예: \cmd{CLEARED\_FOR\_TAKEOFF} $\to$ (\texttt{CLEARED}, \texttt{TAKEOFF}). Sub 칸이 비어 있으면 \texttt{None}, 아무 Sub나 허용하면 \texttt{*}.
+\item \key{faa}: (조항 번호, 그 조항에 있어야 할 표준 문구의 정규식). 예: \cmd{HOLD\_SHORT} $\to$ (3-7-2, \texttt{READ BACK HOLD INSTRUCTIONS}).
+\item \key{faa\_readback}: FAA 복창 등급(\S\ref{sec:levels}). \key{icao\_readback}: ICAO 기준 복창 여부.
+\item KG용 설계값: \key{state}(유효 구간을 가지는지), \key{targets}, 대체 규칙, 최대 유효시간, 오탐 방지 키워드(\key{lexical\_cues}). 이 값들은 규정이 아니라 설계값이라고 JSON의 \key{scope\_notes}에 밝힌다.
+\end{itemize}
+
+\subsection{② DLR 명령 표 파싱 (Table 1쪽)}
+\begin{enumerate}[leftmargin=14pt]
+\item 머리글 줄에서 각 열 제목(\texttt{Type (Main)}, \texttt{Type (Sub)}, \texttt{Value(s)}, \texttt{Unit}, \texttt{Qualifier(s)}, \texttt{Condition(s)})의 시작 위치를 잰다.
+\item 각 줄을 ``공백 2칸 이상''으로 나눈 조각으로 자르고, 조각의 시작 위치로 열을 정한다. 줄마다 1--2글자씩 밀리는 경우가 있어 3글자 여유를 둔다.
+\item \texttt{Taxi types}처럼 ``types''로 끝나는 한 조각 줄은 \textbf{분류(category)}로 기록한다.
+\item Main 칸이 빈 줄은 칸 안에서 \textbf{줄바꿈된 글자}다. 표가 여러 줄 칸을 세로 가운데 정렬하므로 다음 행에 합친다. 예: \texttt{4-digit-squawk-value,} 줄이 아래의 \cmd{SQUAWK} 행 값으로 합쳐진다.
+\item 결과: 명령 행 126개.
+\end{enumerate}
+
+\subsection{③ DLR 매개변수 표 파싱 (Table 2쪽)}
+표의 값 칸에는 \texttt{runway}, \texttt{TX-Point}, \texttt{Dir-Qualifier}처럼 \textbf{매개변수 이름}이 들어 있고, 실제 형식은 2쪽에 있다. 2쪽을 같은 방식으로 파싱해 매개변수 60개를 얻는다. 명령 행에서 쓰인 이름만 찾아 붙인다.
+\begin{itemize}[leftmargin=14pt]
+\item 대문자 단어(\texttt{LEFT}, \texttt{EXPEDITE})는 직접 값이므로 찾지 않는다.
+\item 표 자체의 오타(\texttt{Alt-Qualfier})는 유사도 0.85 이상이면 같은 이름으로 본다.
+\end{itemize}
+
+\subsection{④ FAA 조항 분할과 표준 문구 탐색}
+\begin{enumerate}[leftmargin=14pt]
+\item \texttt{3−7−2. TAXI AND GROUND MOVEMENT OPERATIONS}처럼 ``번호. 제목'' 형태의 줄을 조항 시작으로 본다. 원문은 하이픈 대신 \texttt{−}(U+2212)를 쓴다.
+\item 목차 줄(점선 \texttt{. . .})과 색인에 반복되는 제목은 버리고, \textbf{본문의 첫 등장}만 쓴다. 결과는 675개 조항이다.
+\item 각 종류의 (조항, 문구)에 대해, \textbf{그 조항 본문 안에} 문구가 있는지 찾는다. 있으면 앞뒤 60자를 인용(\key{quote})으로 저장한다. 다른 조항에만 있으면 그 조항 번호를 오류 메시지로 알려 준다.
+\end{enumerate}
+
+\subsection{⑤ 검증 규칙 (하나라도 실패하면 생성 중단)}
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
+\toprule
+검증 & 내용\\\midrule
+DLR JSON 키 & \key{csgn}, \key{type}, \key{sndT}, \key{valu}, \key{vare}, \key{qual}, \key{unit}, \key{speaker}, \key{reas}, \key{cond}가 Description 원문에 정의되어 있는가\\
+DLR 명령 & 매핑한 (Main, Sub) 행이 표에 실제로 있는가\\
+FAA 조항 & 조항 번호가 실제 본문 제목으로 있는가, 그 본문에 표준 문구가 있는가\\
+FAA 복창 등급 & 각 등급의 근거 문장이 §2-4-3 본문에 있는가\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{⑥ 출력 조립}
+검증을 통과한 정보와 설계값을 합쳐 JSON으로 저장한다. 파이프라인 코드(M4, M6, M7, E3)가 읽는 키는 이름과 의미를 그대로 유지한다.
+
+%==========================================================
+\section{FAA 복창 등급}\label{sec:levels}
+%==========================================================
+FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK)을 읽어 보면, 복창 요구의 강도가 지시마다 다르다. 그래서 ``복창 필수 여부''를 한 비트가 아니라 \textbf{등급}으로 기록했다.
+
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{4.3cm}@{}}
+\toprule
+등급 & 원문 근거 (§2-4-3) & 해당 종류\\\midrule
+\key{acknowledge} & ``Ensure pilots acknowledge all Air Traffic Clearances and ATC Instructions'' (모든 지시는 응답 필요) & 전체\\
+\key{mandatory} & ``Ensure the read back of hold short instructions'' & \cmd{HOLD\_SHORT}\\
+\key{runway\_assignment} & ``Initial read back of a taxi, departure or landing clearance should include the runway assignment'' & \cmd{TAXI\_VIA}, \cmd{CLEARED\_FOR\_TAKEOFF}, \cmd{CLEARED\_TO\_LAND}\\
+\key{numbers} & ``pilots should read back the `numbers'\,'' & \cmd{CONTACT}, \cmd{MONITOR}, \cmd{CLIMB}, \cmd{DESCEND}, \cmd{HEADING}, \cmd{SQUAWK}\\
+\key{design} & 규정에 명시 없음. 활주로 진입이나 이동 정지를 허가하는 지시라서 우리가 필수로 정함 & \cmd{CROSS\_RUNWAY}, \cmd{LINE\_UP\_AND\_WAIT}, \cmd{HOLD\_POSITION}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+\noindent \key{readback\_required.FAA}는 등급이 있는 13개 종류이고, v0.1과 같은 목록이다. ICAO 목록은 입력 파일에 ICAO 문서가 없어서 \textbf{검증하지 못했다}고 \key{readback\_basis.ICAO}에 명시했다.
+
+%==========================================================
+\section{매핑 결과 (20개 종류)}
+%==========================================================
+\begin{center}\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{2.6cm}@{}}
+\toprule
+우리 종류 & DLR (Main Sub) & FAA 조항 (검증된 표준 문구) & FAA 복창 등급\\\midrule\endhead
+\cmd{TAXI\_VIA} & TAXI Preposition (VIA/TO) & 3-7-2 ``taxi clearance/route must include the specific route'' & runway\_assignment\\
+\cmd{HOLD\_SHORT} & HOLD\_SHORT & 3-7-2 ``READ BACK HOLD INSTRUCTIONS'', 2-4-3 & mandatory\\
+\cmd{CROSS\_RUNWAY} & CROSS & 3-7-2 ``CROSS (runway)'' & design\\
+\cmd{HOLD\_POSITION} & HOLD\_POSITION & 3-7-2 ``HOLD POSITION'' & design\\
+\cmd{GIVE\_WAY} & GIVE\_WAY & \textit{없음} (표준 문구 없음, 신호등 설명에만 등장) & --\\
+\cmd{FOLLOW} & FOLLOW & 3-7-2 ``FOLLOW (traffic)'' & --\\
+\cmd{CONTACT} & CONTACT, CONTACT\_FREQUENCY & 2-1-17 ``CONTACT (facility name \ldots)'' & numbers\\
+\cmd{MONITOR} & \textit{없음 (미국 확장)} & 2-1-17 예문 ``Monitor Tower'', ``Monitor Ground'' & numbers\\
+\cmd{LINE\_UP\_AND\_WAIT} & LINEUP & 3-9-4 ``LINE UP AND WAIT'' & design\\
+\cmd{CLEARED\_\allowbreak FOR\_\allowbreak TAKEOFF} & CLEARED TAKEOFF & 3-9-10 ``CLEARED FOR TAKEOFF'' & runway\_assignment\\
+\cmd{CLEARED\_TO\_LAND} & CLEARED LANDING & 3-10-5 ``CLEARED TO LAND'' & runway\_assignment\\
+\cmd{TURN} & TURN & 3-10-9 ``TURN LEFT/RIGHT (taxiway/runway)'' & --\\
+\cmd{CLIMB} & CLIMB & 4-3-2 ``CLIMB AND MAINTAIN'' & numbers\\
+\cmd{DESCEND} & DESCEND & 4-5-7 ``CLIMB/DESCEND AND MAINTAIN'' & numbers\\
+\cmd{HEADING} & HEADING (2개 행) & 5-6-2 ``TURN LEFT/RIGHT HEADING'' & numbers\\
+\cmd{SQUAWK} & SQUAWK & 5-2-1 ``SQUAWK (code)'' & numbers\\
+\cmd{TRAFFIC\_INFO} & INFORMATION TRAFFIC & 2-1-21 ``TRAFFIC, (number) O'CLOCK'' & --\\
+\cmd{WAKE\_ADVISORY} & CAUTION WAKE\_TURBULENCE & 2-1-20 ``CAUTION WAKE TURBULENCE'' & --\\
+\cmd{ACK} & AFFIRM (일부만 대응) & 2-4-3 ``Wilco,'' ``Roger,'' & --\\
+\cmd{REQUEST} & \textit{명령 아님}: Speaker=PILOT, Reason=REQUEST & -- & --\\
+\bottomrule
+\end{longtable}
+\end{center}
+
+%==========================================================
+\section{출력 JSON 구조}
+%==========================================================
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X l@{}}
+\toprule
+키 & 내용 & 비고\\\midrule
+\key{generated} & 생성 코드, 날짜, 입력 파일 MD5 & 신규\\
+\key{sources}, \key{scope\_notes} & 출처 문장, 범위와 설계값 표시 & 갱신\\
+\key{dlr\_instruction\_schema} & DLR 요소 $\to$ JSON 키 $\to$ 우리 M4 필드 대응 & 신규\\
+\key{command\_types.*.dlr} & DLR 표 행(분류, 값, 한정어, 조건)과 매개변수 형식 & 신규\\
+\key{command\_types.*.faa} & 조항 번호, 제목, 원문 인용 & 신규\\
+\key{command\_types.*.readback} & \{FAA: 등급, ICAO: 참/거짓\} & 신규\\
+\key{readback\_basis} & FAA 등급별 근거 인용, ICAO 미검증 표시 & 신규\\
+\key{state}, \key{targets}, \key{description} & KG 상태 의미 & 동일\\
+\key{readback\_required}, \key{region\_rules} & 복창 판정에 쓰는 목록 & 동일\\
+\key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types} & 시간 의미론 설계값 & 동일\\
+\key{lexical\_cues} & LLM 추출 오탐 방지 키워드 & 동일\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\noindent 예시 (\cmd{HOLD\_SHORT}, 일부 생략):
+{\footnotesize
+\begin{verbatim}
+"HOLD_SHORT": {
+  "state": true, "targets": ["Runway", "Taxiway"],
+  "dlr": [{"category": "Ground hold types", "main": "HOLD_SHORT",
+           "value": "runway/TX-Point/Alphabet-Letter",
+           "parameters": {"runway": "runway_without_none + \"none\"",
+                          "TX-Point": "Name of defined Taxi-Point ... such as A (alfa), B1, HP_05R"}}],
+  "faa": [{"section": "3-7-2", "title": "TAXI AND GROUND MOVEMENT OPERATIONS",
+           "quote": "... PHRASEOLOGY- READ BACK HOLD INSTRUCTIONS ..."},
+          {"section": "2-4-3", "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+           "quote": "... b. Ensure the read back of hold short instructions ..."}],
+  "readback": {"FAA": "mandatory", "ICAO": true}
+}
+\end{verbatim}
+}
+
+%==========================================================
+\section{호환성 확인}
+%==========================================================
+생성 결과를 v0.1과 비교했다. \key{readback\_required}, \key{region\_rules}, \key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types}, \key{lexical\_cues}, \key{advisory\_types}, \key{non\_instruction\_types}, \key{entity\_types}, \key{relation\_types}와 20개 종류의 \key{state}·\key{targets}·\key{description}이 \textbf{모두 동일}하다. 따라서 기존 KG 결과(\texttt{results/katl\_all})는 다시 만들 필요가 없다.
+
+%==========================================================
+\section{재현 방법}
+%==========================================================
+{\small
+\begin{verbatim}
+# data/ontology/ 에 PDF 3개를 둔 뒤
+python src/kb/build_ontology.py                 # configs/ontology.json 생성
+python src/kb/build_ontology.py --out /tmp/o.json   # 다른 경로로 시험 생성
+\end{verbatim}
+}
+\noindent 매핑을 바꾸려면 코드의 \key{COMMAND\_TYPES}만 고치고 다시 실행한다. 원문에 없는 근거를 적으면 어떤 항목이 왜 실패했는지 출력하고 멈춘다.
+
+%==========================================================
+\section{한계}
+%==========================================================
+\begin{caveat}
+\begin{itemize}[leftmargin=12pt]
+\item \textbf{매개변수 표 줄바꿈:} DLR 표 2쪽에서 여러 줄로 나뉜 칸 일부가 잘려 들어온다(예: \texttt{altitude}는 ``or none''만, \texttt{4-digit-squawk-value}는 빈 값). 1쪽 명령 행은 정확하다.
+\item \textbf{조건·단위 미추출:} DLR의 Condition(UNTIL/WHEN/IF/AFTER)과 Unit은 표에서 옮겨 적기만 했고, M4 추출에서는 아직 쓰지 않는다.
+\item \textbf{ICAO 미검증:} ICAO 복창 목록은 Doc 4444를 입력으로 넣지 않아 자동 검증 대상이 아니다.
+\item \textbf{매핑은 사람이 정함:} 우리 종류와 DLR 행의 대응(예: \cmd{TAXI\_VIA} $\to$ TAXI VIA/TO)은 사람이 판단했다. 코드는 그 행이 존재하는지만 확인한다.
+\item \textbf{문구 위치 검증:} FAA 표준 문구가 해당 조항에 ``있다''는 것만 확인한다. 그 조항이 그 지시의 유일한 근거라는 뜻은 아니다.
+\end{itemize}
+\end{caveat}
+
+\end{document}
