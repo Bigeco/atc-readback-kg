@@ -6,7 +6,11 @@ const S = {
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const hhmmss = (ep) => new Date(ep * 1000).toISOString().slice(11, 19);
-const api = async (path) => { const r = await fetch(path); if (!r.ok) throw new Error(await r.text()); return r.json(); };
+const STATIC = Boolean(window.ATC_STATIC);
+const api = async (path) => {
+  if (STATIC) return window.staticApi(path);
+  const r = await fetch(path); if (!r.ok) throw new Error(await r.text()); return r.json();
+};
 const shortType = (t) => ({ TAXI_VIA: "TAXI", HOLD_SHORT: "HOLD SHORT", CROSS_RUNWAY: "CROSS", MONITOR: "MONITOR", CONTACT: "CONTACT",
   GIVE_WAY: "GIVE WAY", FOLLOW: "FOLLOW", HOLD_POSITION: "HOLD POS", LINE_UP_AND_WAIT: "LUAW", CLEARED_FOR_TAKEOFF: "CTO", CLEARED_TO_LAND: "CTL" }[t] || t);
 
@@ -29,7 +33,9 @@ function playClip(file, start, end) {
   const go = () => { player.currentTime = Math.max(0, start - 0.3); stopAt = end + 0.4; player.play(); };
   if (player.readyState >= 1) go(); else player.addEventListener("loadedmetadata", go, { once: true });
 }
-const playBtn = (tx) => `<button class="play-btn" title="원음 재생" onclick='playClip(${JSON.stringify(tx.file)}, ${tx.offset_start}, ${tx.offset_end}); event.stopPropagation();'>▶</button>`;
+const playBtn = (tx) => STATIC
+  ? `<button class="play-btn off" title="공개 사이트에서는 원음을 제공하지 않습니다 (LiveATC 약관). 로컬 서버 모드에서 재생됩니다." disabled>▶</button>`
+  : `<button class="play-btn" title="원음 재생" onclick='playClip(${JSON.stringify(tx.file)}, ${tx.offset_start}, ${tx.offset_end}); event.stopPropagation();'>▶</button>`;
 
 // ------------------------------------------------------------------ header + scrubber
 function renderKpis(sm) {
@@ -291,7 +297,8 @@ window.addEventListener("resize", drawHistogram);
   const data = await api("/api/summary");
   S.summary = data.summary; S.hist = data.histogram;
   const sm = data.summary;
-  $("#run-label").textContent = `${sm.airport} · ${data.run_name} · ${hhmmss(S.hist.start).slice(0, 5)}–${hhmmss(S.hist.end).slice(0, 5)}Z · ${sm.extractor}${sm.llm_model ? " / " + sm.llm_model.split("/").pop() : ""}`;
+  if (STATIC) document.body.classList.add("static-mode");
+  $("#run-label").textContent = `${STATIC ? "static demo · " : ""}${sm.airport} · ${data.run_name} · ${hhmmss(S.hist.start).slice(0, 5)}–${hhmmss(S.hist.end).slice(0, 5)}Z · ${sm.extractor}${sm.llm_model ? " / " + sm.llm_model.split("/").pop() : ""}`;
   renderKpis(sm);
   $("#time").max = Math.round(S.hist.end - S.hist.start);
   const busiest = S.hist.tx.indexOf(Math.max(...S.hist.tx));

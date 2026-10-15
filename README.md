@@ -55,6 +55,9 @@ RUN_NAME=katl_gnd PORT=8800 bash scripts/run_demo.sh   # http://127.0.0.1:8800
 
 To view the demo from a laptop when it runs on a remote server: `ssh -L 8800:127.0.0.1:8800 <server>`.
 
+**Static demo (GitHub Pages)**: https://bigeco.github.io/atc-readback-kg/ — served from the `gh-pages` branch.
+Rebuild and publish with `RUN_NAME=katl_gnd PUBLISH=1 bash scripts/export_site.sh`. The static site has no audio (LiveATC terms); playback works only in the local server mode.
+
 Useful switches
 - `build_kg.py --extractor rule` runs a GPU-free baseline. `--stt-from <run>` reuses another run's ASR output. `--reuse-extraction` skips M4.
 - `run_asr.py --language auto --segment-lang` enables language identification for RQ4 (non-English segments become `UNSUPPORTED_LANG`).
