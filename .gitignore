@@ -19,3 +19,6 @@ docs/problem_definition/stt_sample/*.txt
 # Local environments
 .venv/
 .ipynb_checkpoints/
+
+# reference documents (DLR copyright notice; FAA PDF is large) - not redistributed
+data/ontology/*.pdf

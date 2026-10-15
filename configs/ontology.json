@@ -1,10 +1,76 @@
 {
-  "version": "0.1",
+  "version": "1.0",
+  "generated": {
+    "by": "src/kb/build_ontology.py",
+    "date": "2026-10-15",
+    "inputs": {
+      "data/ontology/OntologyATCCommandsDescription_v20250704.pdf": "bf25cd79008ff0060963109c89ec0554",
+      "data/ontology/OntologyATCCommandsTable_v20250704.pdf": "9511123029c3fc434f33c6104850f3f2",
+      "data/ontology/FAA규정.pdf": "dd08ae36748a9d9a49b36ed7f28791a2"
+    }
+  },
   "sources": [
-    "Command structure (callsign + type/value/unit/qualifier) follows the European SESAR PJ.16-04 ATC command ontology as published in Helmke et al. 2018 (DASC). Conditions are not modeled. No official machine-readable release exists; this file is our own US-ground adaptation.",
-    "Transfer to US ground control is supported by Helmke, Clarke et al. 2025 (DASC): European-ontology command-type loss of 2.6% absolute on US ground transmissions.",
-    "US lexical/semantic adaptations follow the MITRE-DLR comparison (Chen et al. 2023) and FAA JO 7110.65 phraseology and readback rules.",
+    "Structure and command names: Helmke, Kleinert, Ohneiser. Ontology for Air Traffic Control Command Annotation - Description, v3.00, DLR-IB-FL-BS-2025-107, 2025-07-04, with OntologyATCCommandsTable_v20250704 (https://elib.dlr.de/214852). Each command type lists the matching table rows under 'dlr'.",
+    "US phraseology and read-back rules: FAA Order JO 7110.65BB (effective 2025-02-20). Each command type lists verified sections under 'faa'; read-back levels are quoted under 'readback_basis.FAA'.",
+    "Transfer of the European ontology to US ground control: Helmke, Clarke et al. 2025 (DASC), command-type loss 2.6% absolute (4.6% with all attributes) on US ground transmissions.",
     "Static classes (Airport, Runway, Taxiway, Facility) follow the NASA ATM Ontology (Keller 2017); hold-short points correspond to AIXM 5.1 TaxiHoldingPosition."
+  ],
+  "scope_notes": [
+    "Subset of DLR v3.00 for US ground/tower audio plus two US-only types (MONITOR, ACK).",
+    "DLR Condition (UNTIL/WHEN/IF/AFTER) and Unit are not extracted.",
+    "supersedes / max_validity_sec are KG design values, not regulation."
+  ],
+  "dlr_instruction_schema": [
+    {
+      "element": "Callsign",
+      "json_key": "csgn",
+      "ours": "callsign"
+    },
+    {
+      "element": "Type (Main)",
+      "json_key": "type",
+      "ours": "type"
+    },
+    {
+      "element": "Type (Sub)",
+      "json_key": "sndT",
+      "ours": "type"
+    },
+    {
+      "element": "Value(s)",
+      "json_key": "valu",
+      "ours": "target | value"
+    },
+    {
+      "element": "Value(s) beyond the first",
+      "json_key": "vare",
+      "ours": "route"
+    },
+    {
+      "element": "Unit",
+      "json_key": "unit",
+      "ours": null
+    },
+    {
+      "element": "Qualifier",
+      "json_key": "qual",
+      "ours": "qualifier"
+    },
+    {
+      "element": "Speaker",
+      "json_key": "speaker",
+      "ours": "speaker"
+    },
+    {
+      "element": "Reason",
+      "json_key": "reas",
+      "ours": "type=REQUEST"
+    },
+    {
+      "element": "Condition",
+      "json_key": "cond",
+      "ours": null
+    }
   ],
   "entity_types": [
     "Airport",
@@ -69,7 +135,34 @@
         "Ramp",
         "Taxiway"
       ],
-      "description": "taxi instruction with a route (VIA) and optional destination"
+      "description": "taxi instruction with a route (VIA) and optional destination",
+      "dlr": [
+        {
+          "category": "Taxi types",
+          "main": "TAXI",
+          "sub": "Preposition",
+          "value": "TX-Point(s)",
+          "qualifier": "STRAIGHT, EXPEDITE, APTR_COLOR, GND_DIRECTION(only for VIA)",
+          "condition": "Pushback-Conditional-Keywords (applicable only for TAXI VIA)",
+          "parameters": {
+            "Preposition": "VIA, TO",
+            "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY",
+            "GND_DIRECTION": "LEFT, RIGHT, STRAIGHT, NORTH, EAST, SOUTH, WEST, etc",
+            "Pushback-Conditional-Keywords": "WHEN/UNTIL ABEAM xxx"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-7-2",
+          "title": "TAXI AND GROUND MOVEMENT OPERATIONS",
+          "quote": "movement area in concise and easy to understand terms. The taxi clearance/route must include the specific route to follow. When a taxi clearance to a runway is issued to a"
+        }
+      ],
+      "readback": {
+        "FAA": "runway_assignment",
+        "ICAO": true
+      }
     },
     "HOLD_SHORT": {
       "state": true,
@@ -77,111 +170,530 @@
         "Runway",
         "Taxiway"
       ],
-      "description": "hold short of a runway or taxiway"
+      "description": "hold short of a runway or taxiway",
+      "dlr": [
+        {
+          "category": "Ground hold types",
+          "main": "HOLD_SHORT",
+          "value": "runway/TX-Point/Alphabet-Letter",
+          "parameters": {
+            "runway": "runway_without_none + \"none\"",
+            "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY",
+            "Alphabet-Letter(s)": "A;B;C;D;E;F;G;H;I;J;K;L;M;N;O;P;Q;R;S;T;U;V;W;X;Y;Z"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-7-2",
+          "title": "TAXI AND GROUND MOVEMENT OPERATIONS",
+          "quote": "not received from the pilot/vehicle operator. PHRASEOLOGY− READ BACK HOLD INSTRUCTIONS. EXAMPLE− 1. “American Four Ninety Two, Runway Three Six Le"
+        },
+        {
+          "section": "2-4-3",
+          "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+          "quote": ": a. Ensure that items read back are correct. b. Ensure the read back of hold short instructions, whether a part of taxi instructions or a LAHSO clearance."
+        }
+      ],
+      "readback": {
+        "FAA": "mandatory",
+        "ICAO": true
+      }
     },
     "CROSS_RUNWAY": {
       "state": true,
       "targets": [
         "Runway"
       ],
-      "description": "runway crossing clearance"
+      "description": "runway crossing clearance",
+      "dlr": [
+        {
+          "category": "Movement progress rules types",
+          "main": "CROSS",
+          "value": "runway, TX-Point",
+          "qualifier": "EXPEDITE",
+          "parameters": {
+            "runway": "runway_without_none + \"none\"",
+            "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-7-2",
+          "title": "TAXI AND GROUND MOVEMENT OPERATIONS",
+          "quote": "e taxi route. PHRASEOLOGY− HOLD POSITION. HOLD FOR (reason) CROSS (runway), at (runway/taxiway) or TAXI/CONTINUE TAXIING/PROCEED VIA ("
+        }
+      ],
+      "readback": {
+        "FAA": "design",
+        "ICAO": true
+      }
     },
     "HOLD_POSITION": {
       "state": true,
       "targets": [],
-      "description": "hold position"
+      "description": "hold position",
+      "dlr": [
+        {
+          "category": "Ground hold types",
+          "main": "HOLD_POSITION",
+          "parameters": {}
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-7-2",
+          "title": "TAXI AND GROUND MOVEMENT OPERATIONS",
+          "quote": "ss all taxiways that intersect the taxi route. PHRASEOLOGY− HOLD POSITION. HOLD FOR (reason) CROSS (runway), at (runway/taxiway) or T"
+        }
+      ],
+      "readback": {
+        "FAA": "design",
+        "ICAO": true
+      }
     },
     "GIVE_WAY": {
       "state": false,
       "targets": [],
-      "description": "give way to traffic"
+      "description": "give way to traffic",
+      "dlr": [
+        {
+          "category": "Movement progress rules types",
+          "main": "GIVE_WAY",
+          "value": "Gnd-Acft",
+          "qualifier": "LEFT / RIGHT / STRAIGHT",
+          "condition": "GiveWay-Conditional-Keywords",
+          "parameters": {
+            "Gnd-Acft": "Callsign, Callsign part (lufthansa), aircraft type (airbus), vehicle type (BUS), MARSHALLER, taxipoint, or taxiway",
+            "GiveWay-Conditional-Keywords": "WHEN AT TX-Point"
+          }
+        }
+      ],
+      "faa": [],
+      "readback": {
+        "FAA": null,
+        "ICAO": false
+      },
+      "note": "No GIVE WAY phraseology in JO 7110.65 (only the light-gun signal); kept because it occurs in US ground audio."
     },
     "FOLLOW": {
       "state": false,
       "targets": [],
-      "description": "follow or pass behind traffic"
+      "description": "follow or pass behind traffic",
+      "dlr": [
+        {
+          "category": "Taxi types",
+          "main": "FOLLOW",
+          "value": "Gnd-Acft(s)",
+          "parameters": {
+            "Gnd-Acft": "Callsign, Callsign part (lufthansa), aircraft type (airbus), vehicle type (BUS), MARSHALLER, taxipoint, or taxiway"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-7-2",
+          "title": "TAXI AND GROUND MOVEMENT OPERATIONS",
+          "quote": "unway/taxiway). or VIA (route), HOLD SHORT OF (location) or FOLLOW (traffic) (restrictions as necessary) or BEHIND (traffic). EXAMPLE− “"
+        }
+      ],
+      "readback": {
+        "FAA": null,
+        "ICAO": false
+      }
     },
     "CONTACT": {
       "state": true,
       "targets": [
         "Facility"
       ],
-      "description": "frequency change, contact"
+      "description": "frequency change, contact",
+      "dlr": [
+        {
+          "category": "Frequency changing and squawk types",
+          "main": "CONTACT",
+          "value": "ATSU/none/ME",
+          "condition": "Contact-Conditional-keywords",
+          "parameters": {
+            "Contact-Conditional-keywords": "WHEN AIRBORNE, WHEN REACHING ALTITUDE xxxx/xx ft/FL"
+          }
+        },
+        {
+          "category": "Frequency changing and squawk types",
+          "main": "CONTACT_FREQUENCY",
+          "sub": "ME",
+          "value": "Frequency",
+          "condition": "Contact-Conditional-keywords",
+          "parameters": {
+            "Frequency": "(zeros are added if necessary at the end)",
+            "Contact-Conditional-keywords": "WHEN AIRBORNE, WHEN REACHING ALTITUDE xxxx/xx ft/FL"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "2-1-17",
+          "title": "RADIO COMMUNICATIONS",
+          "quote": "cy until the time, fix, or altitude specified. PHRASEOLOGY− CONTACT (facility name or location name and terminal function), (frequency). If re"
+        }
+      ],
+      "readback": {
+        "FAA": "numbers",
+        "ICAO": true
+      }
     },
     "MONITOR": {
       "state": true,
       "targets": [
         "Facility"
       ],
-      "description": "frequency change, monitor"
+      "description": "frequency change, monitor",
+      "dlr": null,
+      "faa": [
+        {
+          "section": "2-1-17",
+          "title": "RADIO COMMUNICATIONS",
+          "quote": "to monitor the receiving controller’s frequency. EXAMPLE− “Monitor Tower.” “Monitor Ground.” “Monitor Ground Point Seven.” “Monitor"
+        }
+      ],
+      "readback": {
+        "FAA": "numbers",
+        "ICAO": false
+      },
+      "note": "US extension: no DLR type; JO 7110.65 2-1-17 examples (\"Monitor Tower\", \"Monitor Ground\")."
     },
     "LINE_UP_AND_WAIT": {
       "state": true,
       "targets": [
         "Runway"
       ],
-      "description": "line up and wait"
+      "description": "line up and wait",
+      "dlr": [
+        {
+          "category": "Taxi types",
+          "main": "LINEUP",
+          "value": "runway",
+          "parameters": {
+            "runway": "runway_without_none + \"none\""
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-9-4",
+          "title": "LINE UP AND WAIT (LUAW)",
+          "quote": "ircraft for an imminent departure. Authorize an aircraft to line up and wait, except as restricted in subparagraph g, when takeoff clear"
+        }
+      ],
+      "readback": {
+        "FAA": "design",
+        "ICAO": true
+      }
     },
     "CLEARED_FOR_TAKEOFF": {
       "state": true,
       "targets": [
         "Runway"
       ],
-      "description": "takeoff clearance"
+      "description": "takeoff clearance",
+      "dlr": [
+        {
+          "category": "Cleared types",
+          "main": "CLEARED",
+          "sub": "TAKEOFF",
+          "value": "runway",
+          "parameters": {
+            "runway": "runway_without_none + \"none\""
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-9-10",
+          "title": "TAKEOFF CLEARANCE",
+          "quote": "paration 2/20/25 JO 7110.65BB PHRASEOLOGY− RUNWAY (number), CLEARED FOR TAKEOFF. EXAMPLE− “RUNWAY TWO SEVEN, CLEARED FOR TAKEOFF.” NOTE− Tu"
+        }
+      ],
+      "readback": {
+        "FAA": "runway_assignment",
+        "ICAO": true
+      }
     },
     "CLEARED_TO_LAND": {
       "state": true,
       "targets": [
         "Runway"
       ],
-      "description": "landing clearance"
+      "description": "landing clearance",
+      "dlr": [
+        {
+          "category": "Cleared types",
+          "main": "CLEARED",
+          "sub": "LANDING",
+          "value": "runway",
+          "parameters": {
+            "runway": "runway_without_none + \"none\""
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-10-5",
+          "title": "LANDING CLEARANCE",
+          "quote": "owed by the landing clearance. PHRASEOLOGY− RUNWAY (number) CLEARED TO LAND. Or CHANGE TO RUNWAY (number, RUNWAY (number) CLEARED TO LA"
+        }
+      ],
+      "readback": {
+        "FAA": "runway_assignment",
+        "ICAO": true
+      }
     },
     "TURN": {
       "state": false,
       "targets": [
         "Taxiway"
       ],
-      "description": "turn left/right"
+      "description": "turn left/right",
+      "dlr": [
+        {
+          "category": "Direction changing types",
+          "main": "TURN",
+          "qualifier": "Dir-Qualifier",
+          "parameters": {
+            "Dir-Qualifier": "LEFT, RIGHT, none"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "3-10-9",
+          "title": "RUNWAY EXITING",
+          "quote": "f a runway or taxiway if required for traffic. PHRASEOLOGY− TURN LEFT/RIGHT (taxiway/runway), or IF ABLE, TURN LEFT/RIGHT (taxiway/runw"
+        }
+      ],
+      "readback": {
+        "FAA": null,
+        "ICAO": false
+      }
     },
     "CLIMB": {
       "state": false,
       "targets": [],
-      "description": "climb"
+      "description": "climb",
+      "dlr": [
+        {
+          "category": "Vertical types",
+          "main": "CLIMB",
+          "sub": "BETWEEN (multiple values)",
+          "value": "flight level / altitude / CA",
+          "unit": "FL/ft/none",
+          "qualifier": "Alt-Qualifier",
+          "condition": "climbDescend-condition-keywords",
+          "parameters": {
+            "altitude": "or none",
+            "Alt-Qualfier": "ABOVE, OR_ABOVE, BELOW, OR_BELOW",
+            "climbDescend-condition-keywords": "UNTIL REACHING waypoint"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "4-3-2",
+          "title": "DEPARTURE CLEARANCES",
+          "quote": "time designated in the clearance has expired. PHRASEOLOGY− CLIMB AND MAINTAIN (the altitude as near as possible to the pilot’s requested"
+        }
+      ],
+      "readback": {
+        "FAA": "numbers",
+        "ICAO": true
+      }
     },
     "DESCEND": {
       "state": false,
       "targets": [],
-      "description": "descend"
+      "description": "descend",
+      "dlr": [
+        {
+          "category": "Vertical types",
+          "main": "DESCEND",
+          "sub": "BETWEEN (multiple values)",
+          "value": "flight level / altitude / CA",
+          "unit": "FL/ft/none",
+          "qualifier": "Alt-Qualifier",
+          "condition": "climbDescend-condition-keywords",
+          "parameters": {
+            "altitude": "or none",
+            "Alt-Qualfier": "ABOVE, OR_ABOVE, BELOW, OR_BELOW",
+            "climbDescend-condition-keywords": "UNTIL REACHING waypoint"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "4-5-7",
+          "title": "ALTITUDE INFORMATION",
+          "quote": "JO 7110.65, Para 2−4−17, Numbers Usage. PHRASEOLOGY− CLIMB/DESCEND AND MAINTAIN (altitude). If required, AFTER PASSING (fix, waypoint), or"
+        }
+      ],
+      "readback": {
+        "FAA": "numbers",
+        "ICAO": true
+      }
     },
     "HEADING": {
       "state": false,
       "targets": [],
-      "description": "heading"
+      "description": "heading",
+      "dlr": [
+        {
+          "category": "Direction changing types",
+          "main": "HEADING",
+          "value": "Head-Value-3",
+          "qualifier": "Dir-Qualifier",
+          "condition": "Heading-Conditional-keywords",
+          "parameters": {
+            "Head-Value-3": "Heading with 3 digits or SOUTH, EAST, WEST, NORTH",
+            "Dir-Qualifier": "LEFT, RIGHT, none",
+            "Heading-Conditional-keywords": "WHEN PASSING waypoint, WHEN ALTITUDE 123, WHEN AIRBORNE"
+          }
+        },
+        {
+          "category": "Direction changing types",
+          "main": "HEADING",
+          "value": "RUNWAY_DIR",
+          "qualifier": "CROSS",
+          "condition": "Heading-Conditional-keywords",
+          "parameters": {
+            "Heading-Conditional-keywords": "WHEN PASSING waypoint, WHEN ALTITUDE 123, WHEN AIRBORNE"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "5-6-2",
+          "title": "METHODS",
+          "quote": "ropriate, and magnetic heading to be flown, or PHRASEOLOGY− TURN LEFT/RIGHT HEADING (degrees). FLY HEADING (degrees). FLY PRESENT HEADING. DEPA"
+        }
+      ],
+      "readback": {
+        "FAA": "numbers",
+        "ICAO": true
+      }
     },
     "SQUAWK": {
       "state": false,
       "targets": [],
-      "description": "transponder code"
+      "description": "transponder code",
+      "dlr": [
+        {
+          "category": "Frequency changing and squawk types",
+          "main": "SQUAWK",
+          "value": "4-digit-squawk-value, spec-squawk-values",
+          "parameters": {
+            "4-digit-squawk-value": "",
+            "spec-squawk-values": "mayday, com-loss, hijacking, ident"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "5-2-1",
+          "title": "ASSIGNMENT CRITERIA",
+          "quote": "on that aircraft. PHRASEOLOGY− SQUAWK THREE/ALFA (code), or SQUAWK (code). REFERENCE− FAA Order JO 7110.65, Para 5−3−3, Beacon/ADS−B"
+        }
+      ],
+      "readback": {
+        "FAA": "numbers",
+        "ICAO": true
+      }
     },
     "TRAFFIC_INFO": {
       "state": false,
       "targets": [],
-      "description": "traffic information (advisory)"
+      "description": "traffic information (advisory)",
+      "dlr": [
+        {
+          "category": "Informamtion types",
+          "main": "INFORMATION",
+          "sub": "TRAFFIC",
+          "value": "Gnd-Acft-none",
+          "parameters": {
+            "Gnd-Acft-none": "Gnd-Acft or none"
+          }
+        }
+      ],
+      "faa": [
+        {
+          "section": "2-1-21",
+          "title": "TRAFFIC ADVISORIES",
+          "quote": "5, Para 2−4−21, Description of Aircraft Types. PHRASEOLOGY− TRAFFIC, (number) O’CLOCK, or when appropriate, (direction) (number) MILES, (directio"
+        }
+      ],
+      "readback": {
+        "FAA": null,
+        "ICAO": false
+      }
     },
     "WAKE_ADVISORY": {
       "state": false,
       "targets": [],
-      "description": "wake turbulence advisory"
+      "description": "wake turbulence advisory",
+      "dlr": [
+        {
+          "category": "Miscellaneous types",
+          "main": "CAUTION",
+          "sub": "WAKE_TURBULENCE",
+          "parameters": {}
+        }
+      ],
+      "faa": [
+        {
+          "section": "2-1-20",
+          "title": "WAKE TURBULENCE CAUTIONARY ADVISORIES",
+          "quote": "urbulence. General 2−1−13 JO 7110.65BB 2/20/25 PHRASEOLOGY− CAUTION WAKE TURBULENCE (traffic information). REFERENCE− FAA Order JO 7110.65, Par"
+        }
+      ],
+      "readback": {
+        "FAA": null,
+        "ICAO": false
+      }
     },
     "ACK": {
       "state": false,
       "targets": [],
-      "description": "roger / wilco / copy"
+      "description": "roger / wilco / copy",
+      "dlr": [
+        {
+          "category": "Miscellaneous types",
+          "main": "AFFIRM",
+          "parameters": {}
+        }
+      ],
+      "faa": [
+        {
+          "section": "2-4-3",
+          "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+          "quote": "ances, control instructions, or other information by using “Wilco,” “Roger,” “Affirmative,” or other words or remarks with their aircr"
+        }
+      ],
+      "readback": {
+        "FAA": null,
+        "ICAO": false
+      },
+      "note": "DLR models AFFIRM/NEGATIVE only; roger/wilco/copy have no DLR type."
     },
     "REQUEST": {
       "state": false,
       "targets": [],
-      "description": "pilot request (ready to taxi, request ...)"
+      "description": "pilot request (ready to taxi, request ...)",
+      "dlr": null,
+      "faa": [],
+      "readback": {
+        "FAA": null,
+        "ICAO": false
+      },
+      "note": "DLR encodes this as Speaker=PILOT with Reason=REQUEST (JSON reas=REQ), not as a command type."
     }
   },
   "advisory_types": [
@@ -222,6 +734,32 @@
       "HEADING",
       "SQUAWK"
     ]
+  },
+  "readback_basis": {
+    "FAA": {
+      "acknowledge": {
+        "section": "2-4-3",
+        "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+        "quote": "Ensure pilots acknowledge all Air Traffic Clearances and ATC Instructions. When a pilot reads back an Air Traffi"
+      },
+      "mandatory": {
+        "section": "2-4-3",
+        "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+        "quote": "Instruction: a. Ensure that items read back are correct. b. Ensure the read back of hold short instructions, whether a part of taxi instructions or a LAHSO clearance."
+      },
+      "runway_assignment": {
+        "section": "2-4-3",
+        "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+        "quote": "k unless they are specifically stated by the controller. c. Initial read back of a taxi, departure or landing clearance should include the runway assignment, including left, right, center, etc. if applicable. 2. Unti"
+      },
+      "numbers": {
+        "section": "2-4-3",
+        "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+        "quote": "ead Back guidance for pilots in the AIM states: a. Although pilots should read back the “numbers,” unless otherwise required by procedure or controller requ"
+      },
+      "design": "Not stated in JO 7110.65; required here because the instruction authorizes runway entry or a stop on the movement area."
+    },
+    "ICAO": "ICAO Doc 4444 PANS-ATM, read-back requirements (runway, level, heading, SSR code, frequency). Not among data/ontology inputs; not verified by this script."
   },
   "region_rules": {
     "US": "FAA",
@@ -298,6 +836,5 @@
     "SQUAWK": "squawk",
     "TRAFFIC_INFO": "traffic|o'?clock|from\\s+your|company",
     "WAKE_ADVISORY": "wake|heavy\\s+departed|caution"
-  },
-  "_lexical_cues_note": "An extracted concept is kept only if its cue matches the transcript (guards against LLM hallucination, C13)."
+  }
 }
