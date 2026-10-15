@@ -153,7 +153,7 @@ LLM 기반 추출·복창 감시 & 명령 구조화 추출 \cite{mekerishvili202
 \node[add] (a1) at (8.6,-1.25) {지시--복창 교차 확인};
 \node[add] (a2) at (8.6,-2.0) {유효 구간·무효화};
 \node[draw,thick,rounded corners=3pt,minimum width=2.6cm,minimum height=1.1cm,align=center,fill=white] (ev) at (14.3,-1.75) {\textbf{품질 입증}\\{\footnotesize 역량 질문·근거 감사}\\{\footnotesize ·주입 오류}};
-\node[draw,thick,rounded corners=3pt,fill=res,minimum width=4.6cm,minimum height=0.9cm,align=center] (o) at (5.75,2.0) {\textbf{정적 자원}: SESAR/MITRE 온톨로지, NASA atmonto,\\KATL 레이아웃, FAA 콜사인 표, FAA 복창 규정};
+\node[draw,thick,rounded corners=3pt,fill=res,minimum width=4.6cm,minimum height=0.9cm,align=center] (o) at (5.75,2.0) {\textbf{정적 자원}: SESAR 명령 구조(미국용 수정), NASA atmonto,\\KATL 레이아웃, FAA 콜사인 표, FAA 복창 규정};
 \draw[a] (s)--(e); \draw[a] (e)--(d); \draw[a] (d)--(c); \draw[a] (c)--(t); \draw[a] (t)--(q);
 \draw[a] (q)--(ev);
 \draw[a,dashed,violet] (o.south) -- (d.north);
@@ -253,6 +253,7 @@ UTC & 역할(추정) & 전사\\\midrule
 \item ATCO2·UWB-ATCC는 유럽 데이터이고 \cite{atco2,uwbatcc}, ATCOSIM은 \textbf{관제사 음성만 있어서 복창이 없다} \cite{atcosim}. Airbus는 비공개이고 \cite{airbusatc}, LDC ATC0는 유료·1990년대 데이터다 \cite{atc0}.
 \item 공개 수신 음성은 ATC 음성 연구의 표준 원천이다 \cite{atco2,zuluaga2021}.
 \item 30분 연속 녹음이라 지시$\to$복창$\to$이관이 끊기지 않고, 파일명에서 공항·시설·UTC 시각을 얻는다.
+\item \textbf{데이터셋 구성:} HF LiveATC는 미국·캐나다·유럽 공항이 섞여 있다. 내용이 있는 파일 20,742개 중 미국 117개 피드가 10,029개(48\%), 캐나다 31.5\%, 유럽 9개국 19.2\%다. 이 프로젝트는 그중 미국 KATL만 쓴다.
 \item \textbf{한계와 보완:} KATL에는 Tower 피드가 없고, \cmd{Gnd-All}은 48개 파일 중 11개만 음성이다. 착륙 허가 시나리오가 필요하면 TartanAviation KAGC(Tower + ADS-B)를 보조로 쓴다 \cite{tartan2025}. LiveATC 약관상 비상업 용도이고 재배포는 금지다 \cite{hfliveatc}.
 \end{itemize}
 
@@ -261,11 +262,20 @@ UTC & 역할(추정) & 전사\\\midrule
 %==========================================================
 \begin{keybox}{슬라이드 요점}
 \begin{itemize}[leftmargin=12pt]
-\item 스키마는 LLM이 유도하지 않고 \textbf{사전 고정}한다. 기존 표준 온톨로지(SESAR PJ.16-04 명령 체계 \cite{helmke2018}, MITRE--DLR 비교 \cite{chen2023}, NASA atmonto \cite{keller2017})를 재사용한다.
+\item 스키마는 LLM이 유도하지 않고 \textbf{사전 고정}한다. SESAR PJ.16-04 명령 온톨로지 논문 \cite{helmke2018}에 공개된 구조(콜사인 + 종류·값·단위·한정어)를 참고해 \textbf{미국 지상관제용으로 직접 정의}했다(조건부 허가는 제외). 정적 클래스는 NASA atmonto \cite{keller2017}를 따른다.
 \item \textbf{8개 개체 유형, 9개 관계 유형, 18개 명령 유형}. 명령 유형은 다시 \emph{복창 필수}, \emph{상태형}(유효 구간을 가짐), \emph{정보형}(복창 대상 아님)으로 나눈다.
 \item 추출기 출력은 JSON 스키마 제약 디코딩 \cite{willard2023}과 SHACL 형태 제약 \cite{shacl}으로 검증하고, 위반은 격리한다.
 \end{itemize}
 \end{keybox}
+
+\begin{addbox}
+\textbf{미국 교신에 유럽 온톨로지 구조를 써도 되는가.}
+\begin{itemize}[leftmargin=12pt]
+\item \textbf{실증 근거:} NASA와 DLR이 미국·유럽 공항의 지상관제 교신 2,000건 이상으로 두 지역 온톨로지를 상호 변환해 본 결과, 미국 교신을 유럽 온톨로지로 표현할 때 \textbf{명령 종류 손실은 2.6\%p}였다 \cite{helmke2025loss}. 지상관제 명령의 개념 구조는 대서양 양쪽에서 거의 공유된다.
+\item \textbf{미국에 맞춰 바꾼 것:} 복창 필수 목록은 FAA JO 7110.65 \cite{faa7110}, 어휘(Juliet, niner, altimeter 등)는 MITRE--DLR 비교 \cite{chen2023}를 반영했다. 같은 논문들이 지적한 미국 지상관제의 \cmd{GIVE\_WAY}, \cmd{MONITOR} 같은 표현도 유형으로 넣었다.
+\item \textbf{한계:} 공식 SESAR 온톨로지 파일과 미국(MITRE) 온톨로지는 공개 파일이 없어 논문 기술만 참고했다. 조건부 허가(``after the landing traffic'' 등)는 표현하지 않는다.
+\end{itemize}
+\end{addbox}
 
 \begin{minipage}[t]{0.5\textwidth}
 \small\textbf{관계 유형 (정의역 $\to$ 치역)}\\[2pt]
@@ -603,6 +613,7 @@ E4 RQ4 & 정답 템플릿 20개 생성 (\texttt{data/gold/katl\_gnd\_gold\_templ
 \bibitem{prinzo2006} Prinzo, O.~V., Hendrix, A.~M., Hendrix, R. \emph{The Outcome of ATC Message Complexity on Pilot Readback Performance}. DOT/FAA/AM-06/25, 2006.
 \bibitem{aci2024} Airports Council International. World airport traffic rankings 2024 (보도 기준: ATL 여객 약 1억 800만 명, 운항 1위).
 \bibitem{bertraffic} Zuluaga-Gomez, J. et al. BERTraffic: BERT-based Joint Speaker Role and Speaker Change Detection for ATC Communications. \emph{IEEE SLT}, 2023.
+\bibitem{helmke2025loss} Helmke, H., Clarke, S.~S., Ohneiser, O., Kleinert, M., Shetty, S., Kalyanam, K. Automatic Speech Recognition and Understanding in Air Traffic Control -- How Much Information Is Lost Over the Atlantic Ocean? \emph{DASC}, 2025. NASA NTRS 20250001345.
 \bibitem{helmke2018} Helmke, H. et al. Ontology for Transcription of ATC Speech Commands of SESAR 2020 Solution PJ.16-04. \emph{DASC}, 2018.
 \bibitem{kleinert2021} Kleinert, M. et al. Automated Interpretation of Air Traffic Control Communication: The Journey from Spoken Words to a Deeper Understanding of the Meaning. \emph{DASC}, 2021.
 \bibitem{helmke2021} Helmke, H. et al. Readback Error Detection by Automatic Speech Recognition to Increase ATM Safety. \emph{14th USA/Europe ATM R\&D Seminar}, 2021.

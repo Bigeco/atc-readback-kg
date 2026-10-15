@@ -68,6 +68,8 @@ def main():
     parser.add_argument("--reuse-extraction", action="store_true", help="skip M4 if extraction.jsonl exists")
     parser.add_argument("--revalidate", action="store_true", help="re-apply M4 validation to stored raw LLM output")
     parser.add_argument("--limit", type=int, default=0, help="debug: only the first N segments")
+    parser.add_argument("--m4-shard", default=None, help="'i/n': run M4 on every n-th turn starting at i, write a part file, exit")
+    parser.add_argument("--merge-shards", type=int, default=0, help="merge n M4 part files instead of running M4")
     args = parser.parse_args()
 
     out = run_dir(args.run_name)
@@ -102,7 +104,41 @@ def main():
     t0 = time.perf_counter()
     ext_path = out / "extraction.jsonl"
     extractor_usage = {}
-    if args.reuse_extraction and ext_path.exists():
+    if args.m4_shard:
+        i, n = (int(x) for x in args.m4_shard.split("/"))
+        part = [t for k, t in enumerate(turns) if k % n == i and not t["unsupported_lang"]]
+        extractor = build_extractor(args, ontology, callsign_re)
+        rows = []
+        for j in tqdm(range(0, len(part), 256), desc=f"M4 shard {i}/{n}"):
+            batch = part[j:j + 256]
+            for turn, ext in zip(batch, extractor.extract(batch)):
+                rows.append({"turn_id": turn["turn_id"], **ext})
+        write_jsonl(rows, out / f"extraction.part{i}-of-{n}.jsonl")
+        save_json({"usage": getattr(getattr(extractor, "llm", None), "usage", {}),
+                   "sec": round(time.perf_counter() - t0, 1)}, out / f"extraction.part{i}-of-{n}.meta.json")
+        print(f"[M4] shard {i}/{n}: {len(rows)} turns -> extraction.part{i}-of-{n}.jsonl")
+        return
+
+    if args.merge_shards:
+        by_turn = {}
+        usage = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "latency_sec": 0.0}
+        shard_secs = []
+        for i in range(args.merge_shards):
+            for row in iter_jsonl(out / f"extraction.part{i}-of-{args.merge_shards}.jsonl"):
+                by_turn[row["turn_id"]] = row
+            meta = load_json(out / f"extraction.part{i}-of-{args.merge_shards}.meta.json")
+            for k in usage:
+                usage[k] += meta["usage"].get(k, 0)
+            shard_secs.append(meta["sec"])
+        extractions = []
+        for turn in turns:
+            extractions.append(by_turn.get(turn["turn_id"]) or {
+                "turn_id": turn["turn_id"], "speaker": turn["role"], "callsign": None, "instructions": [],
+                "normalized_text": turn["text"], "edits": [], "backend": "unsupported_lang", "valid_json": True})
+        write_jsonl(extractions, ext_path)
+        extractor_usage = {**usage, "shards": args.merge_shards, "shard_wall_sec": shard_secs}
+        print(f"[M4] merged {args.merge_shards} shards ({len(by_turn)} turns)")
+    elif args.reuse_extraction and ext_path.exists():
         extractions = load_jsonl(ext_path)
         if len(extractions) != len(turns):
             raise ValueError("extraction.jsonl does not match the current turns; rerun without --reuse-extraction")
@@ -132,6 +168,8 @@ def main():
     timings["m4_sec"] = round(time.perf_counter() - t0, 1)
     if args.reuse_extraction:
         timings["m4_sec"] = previous_summary.get("timings", {}).get("m4_sec", timings["m4_sec"])
+    if args.merge_shards:
+        timings["m4_sec"] = max(extractor_usage["shard_wall_sec"])
     print(f"[M4] backends: {dict(Counter(e['backend'] for e in extractions))}")
 
     # ---------------- M5 + M6: canonicalize and build graph (UTC order)

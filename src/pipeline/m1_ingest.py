@@ -15,7 +15,7 @@ FILE_RE = re.compile(
     r"^(?P<feed>.+?)-(?P<mon>[A-Z][a-z]{2})-(?P<day>\d{2})-(?P<year>\d{4})-(?P<hhmm>\d{4})Z\.mp3$"
 )
 FACILITY_KEYWORDS = [
-    ("CTAF", "CTAF"), ("ATIS", "ATIS"), ("COMPANY", "COMPANY"),
+    ("CTAF", "CTAF"), ("UNICOM", "CTAF"), ("ATIS", "ATIS"), ("COMPANY", "COMPANY"),
     ("GND", "GND"), ("GROUND", "GND"), ("DEL", "DEL"), ("CLNC", "DEL"),
     ("TWR", "TWR"), ("TOWER", "TWR"), ("DEP", "DEP"),
     ("APP", "APP"), ("FINAL", "APP"), ("CTR", "CTR"), ("CENTER", "CTR"),
@@ -50,7 +50,10 @@ def parse_archive_name(path: Path) -> Optional[dict]:
         "feed": feed,
         "icao": icao,
         "facility": facility or "UNKNOWN",
-        "facility_class": facility_class(facility or feed),
+        # File names like "KBDL-Aug-..." carry no facility; fall back to the feed folder ("kbdl2_twr").
+        "facility_class": next((c for c in (facility_class(facility or feed), facility_class(path.parent.name.replace("_", "-")))
+                                if c != "OTHER"), "OTHER"),
+        "feed_dir": path.parent.name,
         "utc_start": start.isoformat().replace("+00:00", "Z"),
         "utc_start_epoch": start.timestamp(),
     }

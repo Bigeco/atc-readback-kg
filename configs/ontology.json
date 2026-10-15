@@ -1,10 +1,10 @@
 {
   "version": "0.1",
   "sources": [
-    "Helmke et al. 2018, SESAR PJ.16-04 command ontology",
-    "Chen et al. 2023, MITRE-DLR ontology comparison",
-    "Keller 2017, NASA ATM Ontology (atmonto) for static classes",
-    "FAA JO 7110.65 2-4-3 and ICAO Doc 4444 for readback requirements"
+    "Command structure (callsign + type/value/unit/qualifier) follows the European SESAR PJ.16-04 ATC command ontology as published in Helmke et al. 2018 (DASC). Conditions are not modeled. No official machine-readable release exists; this file is our own US-ground adaptation.",
+    "Transfer to US ground control is supported by Helmke, Clarke et al. 2025 (DASC): European-ontology command-type loss of 2.6% absolute on US ground transmissions.",
+    "US lexical/semantic adaptations follow the MITRE-DLR comparison (Chen et al. 2023) and FAA JO 7110.65 phraseology and readback rules.",
+    "Static classes (Airport, Runway, Taxiway, Facility) follow the NASA ATM Ontology (Keller 2017); hold-short points correspond to AIXM 5.1 TaxiHoldingPosition."
   ],
   "entity_types": [
     "Airport",

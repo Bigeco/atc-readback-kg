@@ -79,7 +79,7 @@ M6 & Neo4j 저장, SHACL 검증 & \textbf{파이썬 이중 시간 그래프(JSON
 M7 & $\rho_1$--$\rho_7$ & 같다. 경로 비교는 \emph{일부 생략은 허용, 치환은 불일치}로 정의했다. $\rho_4$에서 동시 활주로 횡단(CROSS--CROSS)은 정상 운영이라 제외한다.\\
 M8 & 시점 질의 & 같다. FastAPI 웹 데모(\texttt{src/demo/}): strip board, 시간 스크러버, 시점 스냅샷, 2열 교신 기록, 사건 그래프, 근거 원음 재생.\\
 M9 & 진단 하네스 & E1--E4 스크립트(\texttt{src/evaluation/}). E2 LLM 판정은 추출과 다른 모델(Qwen3.5-9B)을 쓴다.\\
-온톨로지 & TARGET & 경로를 위한 \cmd{VIA} 관계, \cmd{Ramp} 노드, \cmd{REQUEST}/\cmd{ACK}, \cmd{MONITOR}/\cmd{FOLLOW} 유형, 명령별 \texttt{lexical\_cues}를 추가했다.\\
+온톨로지 & SESAR 온톨로지 재사용 & SESAR 논문의 \emph{구조}를 참고한 미국 지상관제용 자체 정의다(공식 파일 없음, 조건부 허가 제외). 미국 적용 근거는 NASA--DLR 실증(손실 2.6\%p) \cite{helmke2025loss}. 경로를 위한 \cmd{VIA} 관계, \cmd{Ramp} 노드, \cmd{REQUEST}/\cmd{ACK}, \cmd{MONITOR} 유형, 명령별 \texttt{lexical\_cues}를 추가했다.\\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -183,7 +183,7 @@ $\G|_t$ & 시각 $t$의 스냅샷 & $\Delta_{\mathrm{rb}}$ & 복창 허용 시�
 \begin{itemize}
 \item \textbf{출처}: Hugging Face \texttt{nyuuzyou/liveatc} \cite{hfliveatc}. LiveATC.net의 30분 단위 MP3 아카이브이며, 2024-08-26 하루분이다. 수집 한도 때문에 일부만 들어 있다.
 \item \textbf{규모·구성 (직접 확인)}: 213개 공항 아카이브, 45.5\,GB. \textbf{전사가 없는 음성 전용} 데이터라 M1--M2의 STT 단계가 필수다.
-\item \textbf{공항 범위의 편향}: 아카이브가 ICAO 코드 알파벳순으로 잘려 있다. 미국 공항은 \texttt{KA*}--\texttt{KCH*} 80곳뿐이다. KSFO, KJFK 같은 주요 공항과 일본(\texttt{RJ*})·한국(\texttt{RK*}) 공항은 없다. 그래서 구축 대상 공항을 KSFO에서 \textbf{KATL(애틀랜타)}로 바꾼다.
+\item \textbf{국가 구성과 공항 범위}: 미국·캐나다·유럽 공항이 섞여 있다(내용 있는 파일 20,742개 중 미국 117개 피드 10,029개 48\%, 캐나다 31.5\%, 유럽 9개국 19.2\%, 레위니옹·마다가스카르 0.9\%). 미국 공항은 코드 알파벳 앞쪽 일부만 들어 있어 KSFO, KJFK 같은 주요 공항이 없고, 일본(\texttt{RJ*})·한국(\texttt{RK*}) 공항도 없다. 그래서 구축 대상 공항을 KSFO에서 \textbf{KATL(애틀랜타)}로 바꾼다.
 \item \textbf{KATL 피드}: \cmd{Gnd-All}, \cmd{Del}, \cmd{Dep-North/South}, \cmd{App-Final}(3개), \cmd{ATIS-Arr/Dep}, \cmd{Company}. \textbf{Tower 피드는 없다}.
 \item \textbf{결손}: \cmd{Gnd-All}은 48개 파일 중 \textbf{11개만 실제 음성}이다(00:00--05:30Z, 약 5.5시간). 나머지는 0바이트다. 다른 피드는 24시간이 모두 있다.
 \item \textbf{샘플 확인}: \cmd{Gnd-All} 02:30Z 파일의 5분을 전사했다.
@@ -235,7 +235,7 @@ $\G|_t$ & 시각 $t$의 스냅샷 & $\Delta_{\mathrm{rb}}$ & 복창 허용 시�
 \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{3.4cm}ccccccc>{\raggedright\arraybackslash}X@{}}
 \toprule
 데이터 & 내용 & R1 & R2 & R3 & R4 & R5 & R6 & R7 & 판단\\\midrule
-\textbf{HF LiveATC} \cite{hfliveatc} & 미국 80개 공항 포함, 30분 연속 MP3, 2024-08-26 & $\bullet$ & $\bullet$ & $\bullet$ & $\circ$ & $\bullet$ & $\bullet$ & -- & \textbf{주 구축 데이터}\\
+\textbf{HF LiveATC} \cite{hfliveatc} & 미국·캐나다·유럽 혼합(미국 117개 피드, 48\%), 30분 연속 MP3, 2024-08-26 & $\bullet$ & $\bullet$ & $\bullet$ & $\circ$ & $\bullet$ & $\bullet$ & -- & \textbf{주 구축 데이터}\\
 LiveATC 아카이브 직접 수집 & 임의 공항(예: KSFO Tower), 최근 기간만 보관 & $\bullet$ & $\bullet$ & $\bullet$ & $\circ$ & $\circ$ & $\bullet$ & -- & 보조 (Tower 보강, 일본 검증)\\
 TartanAviation \cite{tartan2025} & KAGC Tower(유관제)·KBTP CTAF, 3{,}374\,h, ADS-B 동시 수집 & $\bullet$ & $\bullet$ & $\circ$ & $\bullet$ & $\circ$ & -- & -- & 보조 후보 (Tower + ADS-B). 단 소형기(GA) 공항\\
 LDC ATC0 \cite{atc0} & DFW/BOS/DCA, 약 70\,h, 시각 포함 전사 & $\bullet$ & $\bullet$ & $\bullet$ & $\circ$ & -- & -- & $\bullet$ & 학교 LDC 회원이면 정답 전사 보조. 1990년대·유료\\
@@ -460,7 +460,7 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 \item \textbf{정보형} $\Tadv = \{\cmd{TRAFFIC\_INFO},\cmd{WAKE\_ADVISORY}\}$, $\Tadv \cap \Treq = \emptyset$ (\ch{C7}).
 \end{itemize}
 
-\textbf{[방법·근거]} 이미 검증된 온톨로지를 재사용하면 ``도메인에 맞는 기술'' 요건을 직접 충족한다. 노드 라벨은 atmonto IRI(예: \texttt{atm:Runway})에 매핑한다 \cite{keller2017,keller2019}. $\Sigma$는 SHACL shape로 기술한다 \cite{shacl}. 예: ``\cmd{Instruction}은 정확히 하나의 \cmd{Transmission}에 포함된다'', ``\cmd{CLEARED\_TO\_LAND}의 대상은 \cmd{Runway}이다''.
+\textbf{[방법·근거]} 명령 구조는 SESAR PJ.16-04 온톨로지 논문 \cite{helmke2018}에 공개된 구조를 참고해 미국 지상관제용으로 직접 정의했다(공식 파일은 공개되지 않음, 조건부 허가 제외). 유럽 온톨로지를 미국 지상관제 교신에 적용했을 때 명령 종류 손실이 2.6\%p에 그친다는 실증 \cite{helmke2025loss}이 이 선택을 뒷받침한다. 복창 규정은 FAA JO 7110.65 \cite{faa7110}, 미국 어휘는 MITRE--DLR 비교 \cite{chen2023}를 따른다. 노드 라벨은 atmonto IRI(예: \texttt{atm:Runway})에 매핑한다 \cite{keller2017,keller2019}. $\Sigma$는 SHACL shape로 기술한다 \cite{shacl}. 예: ``\cmd{Instruction}은 정확히 하나의 \cmd{Transmission}에 포함된다'', ``\cmd{CLEARED\_TO\_LAND}의 대상은 \cmd{Runway}이다''.
 
 %----------------------------------------------------------
 \subsection{M1. 송신 분할 (Transmission Segmentation)}
@@ -913,6 +913,7 @@ M9 & $\mathcal{J}$, 소량 정답 & $\mathrm{CSR}_\rho,\mathrm{CmdF1}_\rho,P_\rh
 \bibitem{faa7340} FAA. \emph{Order JO 7340.2, Contractions} (항공사 telephony 및 3자리 코드).
 \bibitem{eurocontrol} Van Es, G. (NLR for EUROCONTROL). \emph{Air-Ground Communication Safety Study: Causes and Recommendations}, Ed.~1.1, 2005.
 \bibitem{cardosi94} Cardosi, K.~M. \emph{An Analysis of Tower (Local) Controller--Pilot Voice Communications}. DOT/FAA/RD-94/15, Volpe Center, 1994.
+\bibitem{helmke2025loss} Helmke, H., Clarke, S.~S., Ohneiser, O., Kleinert, M., Shetty, S., Kalyanam, K. Automatic Speech Recognition and Understanding in Air Traffic Control -- How Much Information Is Lost Over the Atlantic Ocean? \emph{DASC}, 2025. NASA NTRS 20250001345.
 \bibitem{helmke2018} Helmke, H. et al. Ontology for Transcription of ATC Speech Commands of SESAR 2020 Solution PJ.16-04. \emph{DASC}, 2018. doi:10.1109/DASC.2018.8569238
 \bibitem{kleinert2021} Kleinert, M., Helmke, H., Shetty, S., Ohneiser, O., Ehr, H., Prasad, A., Motlicek, P., Harfmann, J. Automated Interpretation of Air Traffic Control Communication: The Journey from Spoken Words to a Deeper Understanding of the Meaning. \emph{DASC}, 2021. doi:10.1109/DASC52595.2021.9594387
 \bibitem{helmke2021} Helmke, H. et al. Readback Error Detection by Automatic Speech Recognition to Increase ATM Safety. \emph{14th USA/Europe ATM R\&D Seminar}, 2021.

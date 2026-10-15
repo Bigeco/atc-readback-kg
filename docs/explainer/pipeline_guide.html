@@ -1,0 +1,624 @@
+<title>ATC-KG 파이프라인 가이드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: a single reading column; the pipeline is a stepper with one "flight strip" panel per module, followed by two hands-on labs. */
+:root {
+  --bg: #eef1f3;
+  --paper: #ffffff;
+  --ink: #18222b;
+  --muted: #5c6a76;
+  --line: #d3dae0;
+  --accent: #b87500;
+  --accent-soft: #f6e7c8;
+  --atco: #2b5a8a;
+  --atco-soft: #dde8f3;
+  --pilot: #5f7020;
+  --pilot-soft: #e8edd6;
+  --ok: #157066;
+  --ok-soft: #d4ece8;
+  --warn: #8d5a00;
+  --warn-soft: #f5e6c4;
+  --bad: #ac3a2e;
+  --bad-soft: #f5dad5;
+  --code-bg: #f4f6f8;
+  --display: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12181d; --paper: #1a2229; --ink: #e3e9ee; --muted: #9aa8b4; --line: #2e3a44;
+    --accent: #e3a43b; --accent-soft: #3a2f1a; --atco: #8db6e0; --atco-soft: #1f3245;
+    --pilot: #b8c97a; --pilot-soft: #2c3420; --ok: #6cc6b9; --ok-soft: #173631; --warn: #e8bb62; --warn-soft: #3a2f17;
+    --bad: #ef8b7e; --bad-soft: #3d201c; --code-bg: #141b21; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12181d; --paper: #1a2229; --ink: #e3e9ee; --muted: #9aa8b4; --line: #2e3a44;
+  --accent: #e3a43b; --accent-soft: #3a2f1a; --atco: #8db6e0; --atco-soft: #1f3245;
+  --pilot: #b8c97a; --pilot-soft: #2c3420; --ok: #6cc6b9; --ok-soft: #173631; --warn: #e8bb62; --warn-soft: #3a2f17;
+  --bad: #ef8b7e; --bad-soft: #3d201c; --code-bg: #141b21; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.7; }
+.wrap { max-width: 920px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.3; }
+h1 { font-size: clamp(28px, 4.6vw, 40px); margin: 0 0 12px; letter-spacing: -0.01em; }
+h2 { font-size: 24px; margin: 0 0 12px; }
+h3 { font-size: 17px; margin: 0 0 6px; }
+p { margin: 0 0 12px; max-width: 68ch; }
+code, .mono { font-family: var(--mono); font-size: 0.92em; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.lede { font-size: 18px; color: var(--muted); }
+section { margin-top: 56px; }
+.muted { color: var(--muted); }
+small.note { display: block; color: var(--muted); font-size: 13px; margin-top: 8px; }
+
+/* ---------- hero: the radio loop ---------- */
+.loop { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch; margin-top: 24px; }
+.bubble { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.bubble .who { font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+.bubble.atco { border-left: 4px solid var(--atco); } .bubble.atco .who { color: var(--atco); }
+.bubble.pilot { border-right: 4px solid var(--pilot); } .bubble.pilot .who { color: var(--pilot); }
+.bubble q { display: block; font-size: 17px; margin-top: 4px; quotes: none; }
+.arrow { align-self: center; font-family: var(--mono); color: var(--muted); font-size: 22px; }
+.loop-caption { margin-top: 12px; color: var(--muted); font-size: 14px; }
+
+/* ---------- glossary ---------- */
+.terms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.term { font-family: var(--body); font-size: 14px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.term[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.term:focus-visible, .step:focus-visible, .preset:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.term-def { margin-top: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; min-height: 64px; }
+.term-def b { font-family: var(--display); }
+
+/* ---------- flow summary ---------- */
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; font-size: 15px; }
+.flow span.box { background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; }
+.flow span.to { color: var(--muted); font-family: var(--mono); }
+
+/* ---------- stepper ---------- */
+.stepper { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px; margin-top: 16px; }
+.steps { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.step { border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 4px; padding: 6px 2px; cursor: pointer; text-align: center; font-family: var(--mono); font-size: 13px; line-height: 1.2; }
+.step small { display: block; font-family: var(--body); font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.step[aria-current="step"] small { color: #fff; }
+.step.done { border-color: var(--accent); }
+.progress { height: 3px; background: var(--line); margin-top: 8px; border-radius: 2px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); transition: width .25s ease; }
+
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; margin-top: 12px; overflow: hidden; }
+.panel-head { display: flex; gap: 16px; align-items: baseline; flex-wrap: wrap; padding: 18px 22px 10px; border-bottom: 1px dashed var(--line); }
+.panel-head .code { font-family: var(--mono); font-size: 28px; font-weight: 600; color: var(--accent); }
+.panel-head h3 { font-size: 21px; margin: 0; }
+.panel-head .plain { width: 100%; color: var(--muted); margin: 0; }
+.panel-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; }
+.cell { padding: 16px 22px; border-bottom: 1px solid var(--line); min-width: 0; }
+.cell:nth-child(odd) { border-right: 1px solid var(--line); }
+.cell.wide { grid-column: 1 / -1; border-right: none; }
+.cell h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); font-weight: 500; }
+.cell ul { margin: 0; padding-left: 18px; }
+.cell li { margin-bottom: 4px; }
+.io { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: start; }
+.io .to { align-self: center; color: var(--muted); font-family: var(--mono); }
+.sample { background: var(--code-bg); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; font-family: var(--mono); font-size: 13px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; overflow-x: auto; }
+.sample .k { color: var(--atco); } .sample .v { color: var(--ok); } .sample .x { color: var(--bad); text-decoration: line-through; } .sample .c { color: var(--muted); }
+.tag { display: inline-block; font-family: var(--mono); font-size: 12px; border-radius: 3px; padding: 1px 6px; margin: 1px 2px; }
+.tag.c { background: var(--bad-soft); color: var(--bad); }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+.tag.w { background: var(--warn-soft); color: var(--warn); }
+.tag.a { background: var(--atco-soft); color: var(--atco); }
+.tag.p { background: var(--pilot-soft); color: var(--pilot); }
+.formula { font-family: var(--mono); font-size: 14px; background: var(--code-bg); border-radius: 4px; padding: 8px 10px; overflow-x: auto; white-space: nowrap; }
+.nav { display: flex; justify-content: space-between; gap: 8px; padding: 14px 22px; }
+.nav button { font-family: var(--body); font-size: 15px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 4px; padding: 8px 16px; cursor: pointer; }
+.nav button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.nav button:disabled { opacity: .4; cursor: default; }
+.graph-svg { width: 100%; height: auto; max-width: 100%; display: block; }
+
+/* ---------- labs ---------- */
+.lab { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 20px 22px; margin-top: 12px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 16px; }
+.preset { font-family: var(--body); font-size: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+.preset[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.compare { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.compare table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.compare td, .compare th { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.compare th { font-family: var(--mono); font-size: 12px; color: var(--muted); font-weight: 500; }
+.verdict { margin-top: 14px; border-radius: 6px; padding: 12px 16px; font-size: 15px; }
+.verdict b { font-family: var(--mono); font-size: 16px; }
+.verdict.MATCH { background: var(--ok-soft); color: var(--ink); border-left: 4px solid var(--ok); }
+.verdict.PARTIAL { background: var(--warn-soft); color: var(--ink); border-left: 4px solid var(--warn); }
+.verdict.MISMATCH, .verdict.WRONG { background: var(--bad-soft); color: var(--ink); border-left: 4px solid var(--bad); }
+
+.timeline { margin-top: 14px; }
+.track { position: relative; height: 150px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: linear-gradient(var(--line), var(--line)) 0 120px / 100% 1px no-repeat; }
+.bar { position: absolute; height: 22px; border-radius: 3px; font-family: var(--mono); font-size: 12px; padding: 2px 6px; white-space: nowrap; overflow: hidden; }
+.bar.taxi { background: var(--atco-soft); color: var(--atco); top: 14px; }
+.bar.hold { background: var(--accent-soft); color: var(--warn); top: 46px; }
+.bar.monitor { background: var(--pilot-soft); color: var(--pilot); top: 78px; }
+.bar.off { opacity: .35; }
+.cursor { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+.ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 4px; }
+input[type=range] { width: 100%; margin-top: 10px; accent-color: var(--accent); }
+.snapshot { margin-top: 12px; font-size: 15px; }
+.snapshot .clock { font-family: var(--mono); font-size: 20px; }
+
+/* ---------- eval + faq ---------- */
+.evals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.ev { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.ev .id { font-family: var(--mono); color: var(--accent); font-weight: 600; }
+.ev .num { font-family: var(--mono); font-size: 22px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+details { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 10px 16px; margin-top: 8px; }
+summary { cursor: pointer; font-weight: 600; }
+details p { margin-top: 8px; }
+.links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.links a { color: var(--atco); }
+
+@media (max-width: 720px) {
+  .steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .panel-body, .compare, .evals { grid-template-columns: 1fr; }
+  .cell:nth-child(odd) { border-right: none; }
+  .loop { grid-template-columns: 1fr; }
+  .loop .arrow { transform: rotate(90deg); justify-self: center; }
+  .io { grid-template-columns: 1fr; }
+  .io .to { transform: rotate(90deg); justify-self: center; }
+}
+@media (prefers-reduced-motion: reduce) { .progress i { transition: none; } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Team 6 · XAI616 Knowledge-Based Systems</div>
+  <h1>무전 한 마디가 지식 그래프가 되기까지</h1>
+  <p class="lede">이 페이지는 <code>system_module.pdf</code>를 처음 보는 사람을 위한 해설입니다. 실제 애틀랜타 공항(KATL) 지상관제 교신 한 건을 들고, 파이프라인의 10단계(M0–M9)를 차례로 통과시키면서 각 단계가 무엇을 받고, 무엇을 하고, 무엇을 내놓는지 보여줍니다.</p>
+</header>
+
+<!-- ============ 1. background ============ -->
+<section id="background">
+  <div class="eyebrow">먼저 알아야 할 것</div>
+  <h2>관제 교신은 "지시 → 복창 → 확인"의 반복입니다</h2>
+  <p>공항에서 비행기가 움직이려면 관제사가 무전으로 지시를 내립니다. 조종사는 그 지시를 <b>그대로 다시 말해서(복창, readback)</b> 제대로 들었는지 확인시키고, 관제사는 그 복창을 듣고 틀렸으면 고칩니다. 아래는 이 프로젝트 데이터에 실제로 있는 교신입니다.</p>
+  <div class="loop">
+    <div class="bubble atco"><div class="who">관제사 · 02:43:20 UTC</div><q>"2642, Atlanta Ground, taxi via Mike, hold short of Lima 3."</q></div>
+    <div class="arrow" aria-hidden="true">→</div>
+    <div class="bubble pilot"><div class="who">조종사 · 02:43:24 UTC</div><q>"Mike, hold short Lima 3, Delta 2642."</q></div>
+  </div>
+  <p class="loop-caption">뜻: "델타 2642편, 유도로 Mike를 따라 이동하고, 유도로 Lima 3 앞에서 멈추세요." 조종사는 같은 내용을 순서만 바꿔 복창했습니다. 이 둘이 같은 뜻인지 기계가 판단하게 만드는 것이 이 프로젝트의 핵심입니다.</p>
+
+  <h3 style="margin-top:24px">용어 사전 <span class="muted" style="font-weight:400;font-size:14px">(눌러 보세요)</span></h3>
+  <div class="terms" id="terms" role="group" aria-label="용어"></div>
+  <div class="term-def" id="term-def" aria-live="polite"></div>
+</section>
+
+<!-- ============ 2. one-line summary ============ -->
+<section id="summary">
+  <div class="eyebrow">한 줄 요약</div>
+  <h2>음성을 글로, 글을 의미로, 의미를 그래프로</h2>
+  <div class="flow">
+    <span class="box">녹음 파일(mp3)</span><span class="to">→</span>
+    <span class="box">말소리 구간</span><span class="to">→</span>
+    <span class="box">받아쓴 글</span><span class="to">→</span>
+    <span class="box">누가 말했나</span><span class="to">→</span>
+    <span class="box">지시의 의미</span><span class="to">→</span>
+    <span class="box">공항 지도와 연결</span><span class="to">→</span>
+    <span class="box">시간이 있는 그래프</span><span class="to">→</span>
+    <span class="box">복창 판정·경보</span>
+  </div>
+  <p style="margin-top:12px">여기서 중요한 점은 <b>모델을 새로 학습시키지 않는다</b>는 것입니다. 이미 학습된 음성 인식 모델(Whisper)과 언어 모델(Qwen)을 그대로 쓰고, 공항 지식·규칙·온톨로지(정해 둔 개념 체계)로 결과를 다듬습니다. 그래서 "학습"보다는 "구축"이 정확한 표현입니다.</p>
+</section>
+
+<!-- ============ 3. stepper ============ -->
+<section id="pipeline">
+  <div class="eyebrow">단계별로 따라가기</div>
+  <h2>교신 한 건이 10단계를 통과하는 과정</h2>
+  <p>위 단계 버튼이나 아래 "다음"을 누르면 한 단계씩 넘어갑니다. 키보드 ← → 키도 됩니다. 각 단계의 예시는 실제 실행 결과(KATL 지상관제, 2024-08-26)에서 가져왔습니다.</p>
+  <div class="stepper">
+    <div class="steps" id="steps" role="tablist" aria-label="파이프라인 단계"></div>
+    <div class="progress" aria-hidden="true"><i id="progress"></i></div>
+  </div>
+  <article class="panel" id="panel" role="tabpanel" aria-live="polite"></article>
+</section>
+
+<!-- ============ 4. readback lab ============ -->
+<section id="lab-readback">
+  <div class="eyebrow">실습 1 · M7</div>
+  <h2>복창을 바꿔 보면 판정이 어떻게 달라질까</h2>
+  <p>관제사 지시는 고정해 두고, 조종사 복창을 여러 방식으로 바꿔 봅니다. 시스템은 단어가 아니라 <b>개념</b>(지시 종류 + 대상 유도로/활주로 + 항공편)을 비교합니다. 평가 E3의 "오류 주입"도 바로 이런 변형을 자동으로 넣어서 탐지율을 잽니다.</p>
+  <div class="lab">
+    <div class="presets" id="presets" role="group" aria-label="복창 변형"></div>
+    <div class="compare">
+      <div>
+        <h3>관제사 지시 (고정)</h3>
+        <div class="sample">"2642, Atlanta Ground, taxi via Mike, hold short of Lima 3."</div>
+        <table><tr><th>개념</th><th>대상</th></tr>
+          <tr><td>TAXI_VIA</td><td>경로 M</td></tr>
+          <tr><td>HOLD_SHORT</td><td>L3</td></tr>
+          <tr><td>항공편</td><td>DAL2642</td></tr></table>
+      </div>
+      <div>
+        <h3>조종사 복창</h3>
+        <div class="sample" id="pilot-text"></div>
+        <table id="pilot-concepts"></table>
+      </div>
+    </div>
+    <div class="verdict" id="verdict" aria-live="polite"></div>
+    <small class="note">이 실습은 시스템의 비교 규칙(<code>src/reasoning/rules.py</code>)을 단순화해 화면에서 재현한 것입니다. 실제 파이프라인에서는 복창 문장에서 개념을 뽑는 M4 단계가 먼저 돌고, 거기서 실수하면 판정도 틀릴 수 있습니다.</small>
+  </div>
+</section>
+
+<!-- ============ 5. time lab ============ -->
+<section id="lab-time">
+  <div class="eyebrow">실습 2 · M6 · M8</div>
+  <h2>"지금" 유효한 지시만 골라내기</h2>
+  <p>지시에는 <b>유효 기간</b>이 있습니다. "Lima 3 앞에서 멈춰라"는 다음 지시가 와서 대체되거나, 다른 주파수로 넘어갈 때까지만 유효합니다. 그래프는 지시를 지우지 않고 <b>끝난 시각</b>을 기록해 둡니다(무효화). 그래서 "02:44 시점에 Lima 3 앞에서 대기 중인 비행기는?" 같은 질문에 답할 수 있습니다. 시간 막대를 움직여 보세요.</p>
+  <div class="lab">
+    <div class="timeline">
+      <div class="track" id="track"></div>
+      <div class="ticks" id="ticks"></div>
+      <label for="time-slider" class="muted" style="font-size:14px">시점 선택</label>
+      <input type="range" id="time-slider" min="0" max="240" step="5" value="40">
+    </div>
+    <div class="snapshot" id="snapshot" aria-live="polite"></div>
+    <small class="note">설명용 시나리오입니다. 앞의 두 교신(02:43:20, 02:43:24)은 실제이고, 02:45:10의 "Tower로 넘김(monitor tower 119.1)"은 이해를 돕기 위해 넣은 가상의 후속 지시입니다. 대체 지시가 없으면 시스템은 지시 종류별 최대 유효 시간(예: hold short 15분)이 지나면 만료시킵니다.</small>
+  </div>
+</section>
+
+<!-- ============ 6. evaluation ============ -->
+<section id="evaluation">
+  <div class="eyebrow">잘 만들었는지 어떻게 아나</div>
+  <h2>평가 4가지 (M9)</h2>
+  <p>KG 자체를 정답과 대조하는 대규모 평가는 교수님 지침에 따라 하지 않습니다. 대신 "질문에 답할 수 있는가", "뽑은 사실이 근거와 맞는가", "오류를 일부러 넣으면 잡는가", "다른 나라에도 통하는가"를 따로 확인합니다. 아래 숫자는 지상관제 5.84시간으로 돌린 직전 실행 결과이고, 전체 피드 재실행 결과가 나오면 바뀝니다.</p>
+  <div class="evals">
+    <div class="ev"><div class="id">E1 · 역량 질문</div><p>"이 KG라면 당연히 답해야 할 질문" 8개를 정해 두고, 실제로 답이 나오는지, 그 답을 원음까지 추적할 수 있는지 봅니다. 온톨로지 평가의 표준 방법입니다.</p><div class="num">8 / 8</div></div>
+    <div class="ev"><div class="id">E2 · 근거 대비 정밀도</div><p>그래프의 사실 60개를 뽑아 "원문이 정말 그렇게 말하는가"를 판정합니다. 지금 숫자는 다른 언어 모델이 판정한 잠정치이고, 사람 라벨이 필요합니다.</p><div class="num">60% <span class="muted" style="font-size:14px">잠정</span></div></div>
+    <div class="ev"><div class="id">E3 · 오류 주입</div><p>실제 복창 오류는 1% 미만이라 일부러 틀린 복창을 만들어 넣고 잡아내는지 봅니다. 정상 복창에서 경보가 잘못 뜨는 비율도 함께 잽니다.</p><div class="num">콜사인 이상 91–96% · 오경보 0%</div></div>
+    <div class="ev"><div class="id">E4 · 다른 나라 (RQ4)</div><p>미국 기준으로 만든 시스템을 한국·일본 교신에 그대로 적용해, 어느 단계에서 처음 실패하는지 진단합니다. 정답 템플릿을 사람이 채워야 계산됩니다.</p><div class="num">준비됨 <span class="muted" style="font-size:14px">라벨 대기</span></div></div>
+  </div>
+</section>
+
+<!-- ============ 7. faq ============ -->
+<section id="faq">
+  <div class="eyebrow">자주 헷갈리는 점</div>
+  <h2>질문과 답</h2>
+  <details><summary>그냥 받아쓴 글끼리 비교하면 안 되나요?</summary><p>안 됩니다. 조종사는 순서를 바꾸고("hold short Lima 3"을 먼저 말하기도 함), 콜사인을 뒤로 옮기고, 받아쓰기도 틀립니다("hold for the Lima 3", "Lender Ground"). 단어를 비교하면 정상 복창도 틀렸다고 나옵니다. 그래서 의미(개념) 단위로 바꾼 뒤 비교합니다. DLR 연구(Helmke 2021)도 같은 결론입니다.</p></details>
+  <details><summary>미국 교신인데 유럽(SESAR) 온톨로지 구조를 써도 되나요?</summary><p>됩니다. NASA와 DLR이 미국·유럽 공항의 지상관제 교신 2,000건 이상을 서로의 온톨로지로 바꿔 본 결과, 미국 교신을 유럽 온톨로지로 표현해도 명령 종류 손실이 2.6%p였습니다(Helmke, Clarke 외, DASC 2025). '무슨 지시를 무엇에 대해'라는 구조는 거의 같고, 차이는 단어(niner, altimeter 등)와 규정에 있습니다. 그래서 구조는 SESAR 논문을 참고하고, 반드시 복창해야 할 지시 목록은 미국 FAA 규정(JO 7110.65)으로 정했습니다. 다만 공식 온톨로지 파일은 공개되어 있지 않아 논문을 보고 직접 정의했고, 조건부 허가("착륙 비행기가 지나간 뒤" 같은 조건)는 아직 표현하지 못합니다.</p></details>
+  <details><summary>왜 굳이 그래프(KG)로 만드나요? 표로 저장하면 안 되나요?</summary><p>복창 판정에는 "이 조종사 말이 몇 초 전 어느 관제사 지시에 대한 것인가", "같은 항공편의 이전 지시는 무엇이었나", "Lima 3이 이 공항에 실제로 있나", "지금 이 지시가 아직 유효한가"가 모두 필요합니다. 발화·항공편·공항 시설·시간을 서로 이어 둔 그래프가 이런 질문에 자연스럽습니다. 시간 정보가 핵심이라 그냥 KG가 아니라 Temporal KG입니다.</p></details>
+  <details><summary>콜사인을 "2642"처럼 번호만 부르면 어떻게 아나요?</summary><p>관제사는 이미 대화 중인 비행기를 번호만으로 부르는 경우가 아주 많습니다. M5가 최근 몇 분 안에 활동한 항공편 목록(그래프에 쌓인 것)에서 번호가 같은 항공편을 찾아 연결합니다. 받아쓰기가 "Alpha 265"처럼 항공사 이름을 틀려도, 같은 번호의 활성 항공편(DAL265)이 있으면 교정하고 "교정됨" 표시를 남깁니다.</p></details>
+  <details><summary>LLM(언어 모델)이 지어내면 어떻게 하나요?</summary><p>세 겹으로 막습니다. 정해진 지시 종류만 받고, 대상(유도로·활주로)이 원문에 실제로 있어야 하고, 지시마다 원문에 꼭 있어야 하는 단어(예: HOLD_SHORT는 "hold short"나 "hold for")가 없으면 버립니다. 이 단어 검사를 넣기 전에는 지상 주파수에서 "기수를 바꿔라(HEADING)" 같은 엉뚱한 지시가 125건 나왔는데, 넣은 뒤 3건으로 줄었습니다.</p></details>
+  <details><summary>신뢰도 HIGH / MEDIUM / LOW는 무슨 뜻인가요?</summary><p>HIGH는 관제사 지시와 조종사 복창이 개념 단위로 일치한 경우입니다. 서로 다른 두 사람이 같은 내용을 말했으니 그 사실은 교차 확인된 셈입니다. MEDIUM은 한쪽 발화만 있는 경우, LOW는 받아쓰기 확신도가 낮거나 콜사인 교정이 들어간 경우입니다. Team 2가 "두 출처에 다 나오면 신뢰도 높음"으로 정한 것과 같은 발상입니다.</p></details>
+  <details><summary>경보가 뜨면 진짜 복창 실수인가요?</summary><p>아닐 수 있습니다. 경보는 "사람이 확인해 볼 대상"입니다. 받아쓰기나 의미 추출이 틀려도 경보가 뜰 수 있어서, 데모는 경보마다 근거 발화와 원음 구간을 같이 보여줍니다. 실제로 지금 불일치 경보 중 일부는 추출 잡음으로 생긴 거짓 경보입니다.</p></details>
+</section>
+
+<section id="next">
+  <div class="eyebrow">더 보기</div>
+  <h2>관련 자료</h2>
+  <div class="links">
+    <a href="https://bigeco.github.io/atc-readback-kg/" target="_blank" rel="noopener">웹 데모 (strip board)</a>
+    <a href="https://github.com/Bigeco/atc-readback-kg" target="_blank" rel="noopener">GitHub 저장소</a>
+  </div>
+  <p class="muted" style="margin-top:12px;font-size:14px">수식으로 된 정식 명세는 <code>docs/system_design/system_module.pdf</code>, 발표용 정리는 <code>docs/report/team6_kg_report.pdf</code>에 있습니다. 이 페이지의 각 단계 패널 아래쪽 "수식 표기" 칸이 PDF의 어느 기호에 해당하는지 알려줍니다.</p>
+</section>
+
+</div>
+
+<script>
+const TERMS = [
+  ["관제사 (ATCO)", "공항이나 공역에서 비행기의 움직임을 무전으로 지시하는 사람입니다. 데이터에서는 Air Traffic Controller의 약자 ATCO로 표기합니다."],
+  ["조종사 (PILOT)", "비행기를 모는 사람입니다. 관제사의 지시를 받고 복창합니다."],
+  ["복창 (readback)", "조종사가 받은 지시를 그대로 다시 말하는 것입니다. 미국 관제 규정(FAA JO 7110.65 §2-4-3)은 관제사가 복창 내용을 확인하도록 정합니다. 활주로 횡단·대기 지시는 특히 반드시 복창해야 합니다."],
+  ["콜사인 (callsign)", "무전에서 비행기를 부르는 이름입니다. 'Delta 2642'는 델타항공 2642편이고, 시스템 안에서는 ICAO 코드로 바꿔 DAL2642로 씁니다. 관제사는 종종 '2642'처럼 번호만 부릅니다."],
+  ["게이트 (gate)", "승객이 타고 내리는, 터미널 건물에 붙은 비행기 주차 자리입니다. 출발하는 비행기는 게이트에서 시작해 유도로를 따라 활주로로 가고, 도착하는 비행기는 그 반대로 움직입니다."],
+  ["램프 (ramp)", "게이트 주변의 넓은 주기장(비행기 주차 구역)입니다. 교신에서 'ramp 5'처럼 번호로 부르고, 시스템은 Ramp 노드로 저장합니다."],
+  ["지상관제 (Ground)", "땅 위의 도로 교통 담당입니다. 게이트에서 활주로 앞까지(출발), 또는 활주로를 빠져나와 게이트까지(도착) 유도로 이동을 지시합니다. 활주로에 들어가 이착륙하라는 허가는 관제탑(Tower)이 냅니다. 이 프로젝트의 첫 데이터가 애틀랜타 지상관제(KATL Gnd)입니다."],
+  ["관제탑 (Tower)", "활주로를 담당합니다. 이륙 허가(cleared for takeoff), 착륙 허가(cleared to land), 활주로 진입을 지시합니다. 우리 KATL 데이터에는 Tower 녹음이 없어 이착륙 허가 장면은 빠져 있습니다."],
+  ["유도로 (taxiway)", "비행기가 땅 위에서 다니는 길입니다. 'Mike', 'Lima 3'처럼 음성 알파벳(M, L3)으로 부릅니다. 애틀랜타에는 OpenStreetMap 기준 102개가 있습니다."],
+  ["활주로 (runway)", "이착륙하는 길입니다. '8 right'(8R)처럼 방향 번호와 좌/우로 부릅니다. 같은 번호의 좌/우를 헷갈리는 것이 가장 흔한 실제 복창 오류입니다."],
+  ["hold short", "'~ 앞에서 멈춰라'라는 지시입니다. 이걸 놓치면 다른 비행기가 쓰는 활주로에 들어가는 활주로 침범으로 이어질 수 있습니다."],
+  ["STT / ASR", "음성을 글로 받아쓰는 기술입니다. 여기서는 OpenAI Whisper large-v3를 씁니다. 무전은 잡음이 많고 소리 대역이 좁아 받아쓰기 오류가 잦습니다."],
+  ["온톨로지 (ontology)", "다룰 개념과 관계를 미리 정해 둔 체계입니다. 예를 들어 '지시 종류는 TAXI_VIA, HOLD_SHORT, CROSS_RUNWAY …이고, HOLD_SHORT의 대상은 유도로나 활주로다'라고 정해 둡니다. 유럽 SESAR 프로젝트 논문에 공개된 관제 명령 구조를 참고해 미국 지상관제용으로 직접 정의했습니다(공식 파일은 공개되어 있지 않습니다). NASA·DLR 연구에서 유럽 온톨로지를 미국 지상관제 교신에 적용해도 명령 종류 손실이 2.6%p에 그쳐서, 구조를 그대로 쓰고 복창 규정·어휘만 미국(FAA) 기준으로 바꿨습니다."],
+  ["지식 그래프 (KG)", "사물(노드)과 그 사이의 관계(간선)로 지식을 저장하는 방식입니다. 이 프로젝트는 발화·지시·항공편·유도로를 노드로, '이 발화가 이 항공편에게 한 말이다' 같은 관계를 간선으로 저장합니다."],
+  ["Temporal KG", "사실마다 '언제부터 언제까지 유효한가'를 함께 저장하는 지식 그래프입니다. 관제 지시는 시간이 지나면 바뀌므로 시간 정보가 꼭 필요합니다."],
+  ["LiveATC", "공항 무전을 수신해 인터넷에 공개하는 사이트입니다. 이 데이터를 Hugging Face에 묶어 둔 것을 썼습니다. 미국(48%)·캐나다(32%)·유럽(19%) 공항이 섞여 있고, 이 프로젝트는 그중 미국 애틀랜타(KATL)만 씁니다. 개인·비상업 용도로만 쓸 수 있어 음성은 공개하지 않습니다."],
+];
+
+const STEPS = [
+  {
+    code: "M0", name: "공항 지도", short: "공항 지식",
+    plain: "공항에 실제로 있는 활주로, 유도로, 관제 주파수 목록을 미리 만들어 둡니다. 교신을 처리하기 전에 한 번만 합니다.",
+    what: ["OurAirports(공개 공항 DB)에서 활주로 5개와 주파수 12개를 가져옵니다.", "OpenStreetMap에서 애틀랜타 유도로 이름 102개(A, B, L3, M2 …)를 가져옵니다.", "결과를 data/static_kb/katl.json 파일 하나로 저장합니다."],
+    why: ["받아쓴 'Lima 3'가 정말 있는 유도로인지 확인하려면 정답 목록이 필요합니다. (문제 C9: 맥락·정적 지식)", "음성 인식에 '이 공항에서 나올 단어'를 힌트로 줄 수 있습니다. (C2)"],
+    input: "공개 데이터\nOurAirports runways.csv\nOpenStreetMap aeroway=taxiway",
+    output: '<span class="k">"runway_ends"</span>: [<span class="v">"8L","8R","9L","9R","10",…</span>]\n<span class="k">"taxiways"</span>: [<span class="v">"A","B",…,"L3","M","M2",…</span>]\n<span class="k">"facilities"</span>: [{<span class="v">"GND", "121.65"</span>}, {<span class="v">"TWR", "119.1"</span>}, …]',
+    formula: "𝒦_S = (V_S, E_S),  𝒱_dom = 공항 어휘",
+    code_path: "src/kb/build_static_kb.py",
+    numbers: "활주로 5개(양 끝 10개), 유도로 102개, 주파수 12개",
+  },
+  {
+    code: "M1", name: "녹음 정리·자르기", short: "녹음 정리",
+    plain: "30분짜리 녹음 파일들을 찾아서 어느 공항·어느 주파수·몇 시 녹음인지 읽고, 말소리가 있는 구간만 잘라냅니다.",
+    what: ["파일 이름 'KATL-Gnd-All-Aug-26-2024-0230Z.mp3'에서 공항(KATL), 주파수 종류(Ground), 시작 시각(02:30 UTC)을 읽습니다.", "관제사가 없는 비관제 주파수(CTAF), 자동 방송(ATIS), 항공사 내부 통신은 뺍니다.", "음성 구간 검출기(VAD)로 말소리가 있는 부분만 잘라 각 조각에 절대 시각을 붙입니다."],
+    why: ["무음 구간을 음성 인식에 넣으면 'Thank you.' 같은 없는 말을 지어냅니다. 샘플에서 실제로 확인했습니다. (C1)", "여러 주파수를 같은 UTC 시계로 맞춰야 나중에 '지상 → 출발 관제'처럼 이어 붙일 수 있습니다. (C9, C10)"],
+    input: "KATL-Gnd-All-Aug-26-2024-0230Z.mp3\n(30분 52초, 잡음 섞인 무전)",
+    output: '공항 <span class="v">KATL</span> · 주파수 <span class="v">GND</span>\n구간 <span class="v">800.5s – 805.3s</span>\n→ 절대 시각 <span class="v">02:43:20 UTC</span>',
+    formula: "S = { s_i = [t_i^s, t_i^e) },  𝒞 = (공항, 주파수, 시작 시각)",
+    code_path: "src/pipeline/m1_ingest.py",
+    numbers: "KATL 전체 관제 피드 298개 파일(빈 파일 37개 자동 제외)",
+  },
+  {
+    code: "M2", name: "받아쓰기 (STT)", short: "받아쓰기",
+    plain: "잘라낸 말소리를 글로 받아씁니다. 공항 어휘를 힌트로 줘서 정확도를 높이고, 지어낸 문장은 걸러 냅니다.",
+    what: ["Whisper large-v3 모델로 받아씁니다. 이미 학습된 모델을 그대로 씁니다.", "'Atlanta Ground, Foxtrot, Lima, runway 8 right …' 같은 공항 어휘와 최근 등장한 콜사인을 힌트로 줍니다.", "확신도가 낮거나 'Thank you.'처럼 알려진 환각 문장은 표시해 둡니다."],
+    why: ["무전은 소리 대역이 좁아(약 240–1720 Hz) 숫자·알파벳을 자주 틀립니다. 힌트가 이를 줄입니다. (C2)", "받아쓰기 확신도를 기록해 두면 나중에 판정의 신뢰도에 반영할 수 있습니다. (C12)"],
+    input: "말소리 구간 (5초)",
+    output: '<span class="c">// 실제 출력 (오류 포함)</span>\n"2642, <span class="x">Lender</span> Ground, taxi via Mike, <span class="x">hold for</span> the Lima 3"\n확신도(평균 로그확률) -0.37',
+    formula: "w_i = argmax P_θ(w | x_i, prompt(𝒱_dom, 활성 콜사인))",
+    code_path: "src/pipeline/m2_asr.py · src/run_asr.py",
+    numbers: "30분 파일 하나에 약 41초 (GPU 1장). 지상관제 5.84시간에서 환각 의심 11건",
+  },
+  {
+    code: "M3", name: "누가 말했나", short: "화자 구분",
+    plain: "받아쓴 문장이 관제사 말인지 조종사 말인지 정하고, 한 조각에 두 사람 말이 섞여 있으면 나눕니다.",
+    what: ["관제사는 콜사인을 문장 앞에 두고 지시 동사(taxi, hold short …)를 씁니다 → ATCO", "조종사는 복창 끝에 콜사인을 붙입니다('…, Delta 2642') → PILOT", "'Good evening, Delta 2642 …'처럼 인사로 시작하면 조종사의 첫 호출입니다."],
+    why: ["복창 판정은 '관제사 지시'와 '조종사 복창'을 짝지어야 가능합니다. 화자를 모르면 시작도 못 합니다. (C3)", "무전 간격이 0.1–0.5초로 짧아 음성만으로는 화자 경계가 잘 안 나뉩니다."],
+    input: '"2642, Lender Ground, taxi via Mike, hold for the Lima 3"',
+    output: '화자 <span class="tag a">ATCO</span>\n근거: 콜사인(번호만)이 맨 앞 + 지시 동사 taxi',
+    formula: "r_i ∈ {ATCO, PILOT}",
+    code_path: "src/pipeline/m3_role.py",
+    numbers: "규칙만으로는 51%가 '모름'으로 남고, 다음 단계 LLM이 0.2%까지 줄입니다",
+  },
+  {
+    code: "M4", name: "의미 뽑기", short: "의미 추출",
+    plain: "문장에서 '어떤 지시를, 어디에 대해' 했는지를 정해 둔 형식(온톨로지)에 맞춰 뽑습니다. 로컬 언어 모델(Qwen3-4B)이 하고, 규칙으로 검증·보충합니다.",
+    what: ["언어 모델에게 예시 몇 개를 보여 주고 JSON 형식으로 답하게 합니다(few-shot).", "정해진 지시 종류만 받고, 대상이 원문에 실제로 있어야 하고, 지시마다 꼭 있어야 하는 단어가 있어야 통과합니다.", "언어 모델이 놓친 지시는 규칙 문법으로 보충합니다(하이브리드)."],
+    why: ["복창은 순서·표현이 달라서 단어가 아니라 개념으로 비교해야 합니다. (C6)", "'heavy departed' 같은 정보성 발언은 지시가 아니라서 복창 대상에서 빼야 합니다. (C7)", "언어 모델의 지어내기를 막아야 합니다. (C13)"],
+    input: '"2642, Lender Ground, taxi via Mike, hold for the Lima 3"',
+    output: '{ <span class="k">"speaker"</span>: <span class="v">"ATCO"</span>, <span class="k">"callsign"</span>: <span class="v">"2642"</span>,\n  <span class="k">"instructions"</span>: [\n    { <span class="k">"type"</span>: <span class="v">"TAXI_VIA"</span>, <span class="k">"route"</span>: [<span class="v">"M"</span>] },\n    { <span class="k">"type"</span>: <span class="v">"HOLD_SHORT"</span>, <span class="k">"target"</span>: <span class="v">"L3"</span> } ] }',
+    formula: "u_i = (ĉ_i, I_i),  ι = (κ 종류, v 값, μ 단위, q 한정어, g 대상)",
+    code_path: "src/pipeline/m4_extract.py · src/prompt/prompt.py",
+    numbers: "필수 단어 검사로 지상 주파수의 엉뚱한 HEADING 지시 125건 → 3건",
+  },
+  {
+    code: "M5", name: "이름 맞추기", short: "정규화",
+    plain: "같은 것을 가리키는 여러 표현을 하나의 정식 이름으로 맞추고, 공항 지도(M0)의 실제 항목에 연결합니다.",
+    what: ["콜사인: '2642' → 최근 활동한 항공편 중 번호가 같은 DAL2642 (번호만 부름 = ABBREVIATED)", "받아쓰기 오류 교정: 'Alpha 265' → 같은 번호의 활성 항공편 DAL265 (ASR_CORRECTED)", "대상: 'Lima 3' → Taxiway:KATL:L3. 공항에 없는 이름이면 KB_VIOLATION 표시", "표기 통일: '9 or left' → 9L, 'Fox shot' → Foxtrot, '19-1' → 119.1"],
+    why: ["같은 비행기가 'Delta 2642', '26-42', '2642'로 다르게 불립니다. 하나로 묶어야 이력이 쌓입니다. (C4, C5)", "애틀랜타는 콜사인의 88%가 Delta라서 숫자만 다른 콜사인이 많습니다. 한 자리만 다른 활성 항공편이 있으면 '유사 콜사인'으로 표시합니다."],
+    input: '콜사인 "2642"\n대상 "L3", 경로 ["M"]',
+    output: '항공편 <span class="v">DAL2642</span> <span class="tag w">ABBREVIATED</span>\n대상 <span class="v">Taxiway:KATL:L3</span> ✓ 공항 지도에 있음\n경로 <span class="v">Taxiway:KATL:M</span> ✓',
+    formula: "f_i = argmax_f [β·sim(ĉ_i, tel(f)) + (1-β)·ctx(f, i)],  ℓ(g) ∈ V_S ∪ {⊥}",
+    code_path: "src/pipeline/m5_canonicalize.py",
+    numbers: "번호만 부른 콜사인 처리 513회, 유사 콜사인 표시 78회 (지상관제 실행 기준)",
+  },
+  {
+    code: "M6", name: "그래프 쌓기", short: "그래프",
+    plain: "정리된 내용을 시간 순서대로 그래프에 쌓습니다. 각 사실에 '언제부터 언제까지 유효한지'와 '어느 발화에서 나왔는지'를 붙이고, 조종사 복창을 해당 관제사 지시에 연결합니다.",
+    what: ["발화 하나 = Transmission 노드, 지시 하나 = Instruction 노드 (사건으로 저장)", "조종사 발화가 20초 안에 같은 항공편에게 한 관제사 지시를 가리키면 READBACK_OF 간선을 만듭니다.", "새 지시가 이전 지시를 대체하면 이전 지시를 지우지 않고 '끝난 시각'만 기록합니다(무효화).", "복창으로 교차 확인된 지시는 신뢰도 HIGH가 됩니다."],
+    why: ["지시–복창–이관은 여러 발화에 걸친 관계라서 그래프가 필요합니다. (C8)", "'지금 유효한 지시'를 물으려면 시간 정보가 필요합니다. (C10)", "모든 사실이 원음 구간까지 추적되어야 사람이 검증할 수 있습니다. (C12)"],
+    input: "정리된 관제사 지시 + 조종사 복창 (02:43:20, 02:43:24)",
+    output: "GRAPH",
+    formula: "𝒢 = (V, E, λ, τ 유효구간, prov 출처, conf 신뢰도)",
+    code_path: "src/pipeline/m6_graph.py",
+    numbers: "지상관제 5.84시간 → 노드 4,789개, 간선 7,717개, 항공편 513개",
+  },
+  {
+    code: "M7", name: "판정·경보", short: "판정",
+    plain: "연결된 지시–복창 쌍을 개념 단위로 비교해 일치(MATCH)·부분(PARTIAL)·불일치(MISMATCH)를 정하고, 규칙 7가지로 확인이 필요한 상황을 경보로 띄웁니다.",
+    what: ["ρ1 복창 불일치·부분 복창", "ρ2 복창이 아예 없음 (20초 안에)", "ρ3 콜사인 없이 복창 (FAA 규정 위반 소지)", "ρ4 같은 활주로에 다른 항공편 허가가 겹침", "ρ5 다른 주파수로 넘긴 뒤에도 지시가 나감", "ρ6 공항 지도에 없는 유도로·활주로", "ρ7 한 자리만 다른 유사 콜사인"],
+    why: ["복창 오류는 활주로 침범 같은 사고로 이어질 수 있습니다(미국 2023 회계연도 활주로 침범 1,756건).", "규칙은 규정에서 바로 나오므로 학습 데이터가 필요 없고, 왜 경보가 떴는지 설명할 수 있습니다."],
+    input: "READBACK_OF(조종사 02:43:24 → 관제사 02:43:20)",
+    output: '필수 개념 HOLD_SHORT L3 ↔ HOLD_SHORT L3 <span class="tag ok">일치</span>\n필수 개념 TAXI_VIA M ↔ TAXI_VIA M <span class="tag ok">일치</span>\n판정 <span class="tag ok">MATCH</span> → 두 지시 신뢰도 HIGH',
+    formula: "Miss(j,i), Conf(j,i) → status ∈ {MATCH, PARTIAL, MISMATCH}",
+    code_path: "src/reasoning/rules.py",
+    numbers: "지상관제 실행: 복창 연결 105건 (일치 71 / 부분 14 / 불일치 20), 경보 312건",
+  },
+  {
+    code: "M8", name: "질문하기·화면", short: "질의·데모",
+    plain: "완성된 그래프에 시간을 지정해 질문하고, 웹 데모로 보여줍니다.",
+    what: ["시점 스냅샷: 't 시각에 유효한 지시만' 남긴 그래프로 공항 상태를 보여줍니다.", "항공편 이력: 한 비행기가 받은 지시와 복창을 시간순으로 나열합니다.", "웹 데모: flight strip 보드, 시간 막대, 2열 교신 기록, 사건 그래프, 경보 근거와 원음 재생"],
+    why: ["상황 인식(지금 누가 어디서 대기 중인가)은 시점을 지정한 질문입니다. (C10)", "경보마다 근거를 보여줘야 사람이 거짓 경보를 걸러낼 수 있습니다. (C12)"],
+    input: '질문: "DAL2642가 받은 지시를 시간순으로?"',
+    output: '02:43:05 PILOT  택시 요청\n02:43:20 ATCO   TAXI_VIA M, HOLD_SHORT L3  <span class="tag ok">readback MATCH</span>\n02:43:24 PILOT  복창 (Mike, hold short Lima 3)',
+    formula: "𝒢|_t = (V, { e : t ∈ τ(e) }),  Q(𝒢, t, q)",
+    code_path: "src/reasoning/queries.py · src/demo/",
+    numbers: "웹 데모: bigeco.github.io/atc-readback-kg",
+  },
+  {
+    code: "M9", name: "평가", short: "평가",
+    plain: "파이프라인이 각 단계에서 얼마나 잘 했는지, 어디서 틀렸는지를 측정합니다. 아래 '평가 4가지'에 자세히 정리했습니다.",
+    what: ["E1 역량 질문 8개에 답하는지", "E2 그래프 사실이 원문과 맞는지 (사람 라벨)", "E3 일부러 넣은 복창 오류를 잡는지", "E4 한국·일본 교신에서 처음 실패하는 단계는 어디인지"],
+    why: ["데모만 보여주면 '좋은 사례만 골랐다'는 반론을 막기 어렵습니다.", "실제 복창 오류는 1% 미만으로 드물어서 일부러 넣어 봐야 탐지 능력을 잴 수 있습니다."],
+    input: "결과 그래프 + 사람이 단 정답 일부",
+    output: '<span class="k">E1</span> 8/8 답변·근거 추적\n<span class="k">E3</span> 콜사인 이상 91–96% 탐지, 오경보 0%\n<span class="k">E2·E4</span> 사람 라벨 대기',
+    formula: "CSR_ρ, CmdF1_ρ, m†(i) = 처음 틀린 모듈",
+    code_path: "src/evaluation/",
+    numbers: "E2 60%는 다른 언어 모델이 판정한 잠정치",
+  },
+];
+
+/* ---------- glossary ---------- */
+const termsEl = document.getElementById("terms");
+const defEl = document.getElementById("term-def");
+TERMS.forEach(([name, def], i) => {
+  const b = document.createElement("button");
+  b.className = "term"; b.type = "button"; b.textContent = name; b.id = `term-${i}`;
+  b.setAttribute("aria-pressed", "false");
+  b.addEventListener("click", () => {
+    termsEl.querySelectorAll(".term").forEach((x) => x.setAttribute("aria-pressed", "false"));
+    b.setAttribute("aria-pressed", "true");
+    defEl.innerHTML = `<b>${name}</b><br>${def}`;
+  });
+  termsEl.appendChild(b);
+});
+termsEl.querySelector(".term").click();
+
+/* ---------- stepper ---------- */
+const stepsEl = document.getElementById("steps");
+const panelEl = document.getElementById("panel");
+let current = 0;
+STEPS.forEach((s, i) => {
+  const b = document.createElement("button");
+  b.className = "step"; b.type = "button"; b.id = `step-${s.code}`;
+  b.setAttribute("role", "tab");
+  b.innerHTML = `${s.code}<small>${s.short}</small>`;
+  b.addEventListener("click", () => show(i, true));
+  stepsEl.appendChild(b);
+});
+
+const GRAPH_SVG = `
+<svg class="graph-svg" viewBox="0 0 660 270" role="img" aria-label="DAL2642 교신의 그래프 구조">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker>
+  <marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker></defs>
+  <g font-family="IBM Plex Mono, monospace" font-size="11">
+    <line x1="150" y1="60" x2="300" y2="60" stroke="var(--muted)" marker-end="url(#ah)"/><text x="190" y="52" fill="var(--muted)">ADDRESSES</text>
+    <line x1="80" y1="185" x2="80" y2="82" stroke="var(--accent)" stroke-width="2" marker-end="url(#ah2)"/><text x="88" y="140" fill="var(--accent)">READBACK_OF</text><text x="88" y="154" fill="var(--accent)">MATCH</text>
+    <line x1="150" y1="200" x2="300" y2="80" stroke="var(--muted)" marker-end="url(#ah)"/><text x="196" y="170" fill="var(--muted)">ADDRESSES</text>
+    <line x1="130" y1="78" x2="300" y2="175" stroke="var(--muted)" marker-end="url(#ah)"/><text x="215" y="114" fill="var(--muted)">CONTAINS</text>
+    <path d="M120,40 Q300,0 470,58" fill="none" stroke="var(--muted)" marker-end="url(#ah)"/><text x="330" y="24" fill="var(--muted)">CONTAINS</text>
+    <line x1="410" y1="190" x2="520" y2="215" stroke="var(--muted)" marker-end="url(#ah)"/><text x="440" y="222" fill="var(--muted)">TARGET</text>
+    <line x1="560" y1="82" x2="575" y2="140" stroke="var(--muted)" marker-end="url(#ah)"/><text x="575" y="114" fill="var(--muted)">VIA</text>
+  </g>
+  <g font-family="IBM Plex Sans KR, sans-serif" font-size="12">
+    <rect x="10" y="40" width="140" height="40" rx="4" fill="var(--atco-soft)" stroke="var(--atco)"/><text x="20" y="57" fill="var(--atco)" font-weight="600">Transmission</text><text x="20" y="72" fill="var(--ink)">관제사 02:43:20</text>
+    <rect x="10" y="185" width="140" height="40" rx="4" fill="var(--pilot-soft)" stroke="var(--pilot)"/><text x="20" y="202" fill="var(--pilot)" font-weight="600">Transmission</text><text x="20" y="217" fill="var(--ink)">조종사 02:43:24</text>
+    <rect x="300" y="45" width="120" height="40" rx="20" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="316" y="62" fill="var(--warn)" font-weight="600">Flight</text><text x="316" y="77" fill="var(--ink)">DAL2642</text>
+    <rect x="300" y="160" width="130" height="40" rx="4" fill="var(--ok-soft)" stroke="var(--ok)"/><text x="310" y="177" fill="var(--ok)" font-weight="600">Instruction</text><text x="310" y="192" fill="var(--ink)">HOLD_SHORT · HIGH</text>
+    <rect x="470" y="45" width="130" height="40" rx="4" fill="var(--ok-soft)" stroke="var(--ok)"/><text x="480" y="62" fill="var(--ok)" font-weight="600">Instruction</text><text x="480" y="77" fill="var(--ink)">TAXI_VIA · HIGH</text>
+    <rect x="520" y="200" width="120" height="36" rx="4" fill="var(--code-bg)" stroke="var(--muted)"/><text x="530" y="222" fill="var(--ink)">Taxiway L3</text>
+    <rect x="540" y="140" width="110" height="36" rx="4" fill="var(--code-bg)" stroke="var(--muted)"/><text x="550" y="162" fill="var(--ink)">Taxiway M</text>
+  </g>
+</svg>
+<small class="note">회색 상자(Taxiway)는 M0에서 미리 만든 공항 지도 노드입니다. 지시 노드에는 유효 구간(언제부터 언제까지)과 근거 발화가 속성으로 붙어 있습니다.</small>`;
+
+function show(i, focus) {
+  current = Math.max(0, Math.min(STEPS.length - 1, i));
+  const s = STEPS[current];
+  stepsEl.querySelectorAll(".step").forEach((b, k) => {
+    b.toggleAttribute("aria-current", false);
+    if (k === current) b.setAttribute("aria-current", "step");
+    b.classList.toggle("done", k < current);
+    b.setAttribute("aria-selected", k === current ? "true" : "false");
+  });
+  document.getElementById("progress").style.width = `${((current + 1) / STEPS.length) * 100}%`;
+  const outBlock = s.output === "GRAPH" ? GRAPH_SVG : `<div class="sample">${s.output}</div>`;
+  panelEl.innerHTML = `
+    <div class="panel-head">
+      <span class="code">${s.code}</span><h3>${s.name}</h3>
+      <p class="plain">${s.plain}</p>
+    </div>
+    <div class="panel-body">
+      <div class="cell"><h4>무엇을 하나요</h4><ul>${s.what.map((x) => `<li>${x}</li>`).join("")}</ul></div>
+      <div class="cell"><h4>왜 필요한가요</h4><ul>${s.why.map((x) => `<li>${x}</li>`).join("")}</ul></div>
+      <div class="cell wide"><h4>예시: DAL2642 교신이 이 단계에서 어떻게 바뀌나</h4>
+        ${s.output === "GRAPH" ? `<div class="sample" style="margin-bottom:10px">${s.input}</div>${outBlock}` :
+          `<div class="io"><div class="sample">${s.input}</div><div class="to" aria-hidden="true">→</div>${outBlock}</div>`}
+      </div>
+      <div class="cell"><h4>수식 표기 (system_module.pdf)</h4><div class="formula">${s.formula}</div></div>
+      <div class="cell"><h4>코드 위치 · 실제 수치</h4><div><code>${s.code_path}</code></div><div class="muted" style="margin-top:6px">${s.numbers}</div></div>
+    </div>
+    <div class="nav">
+      <button type="button" id="prev" ${current === 0 ? "disabled" : ""}>← ${current > 0 ? STEPS[current - 1].code + " " + STEPS[current - 1].short : "처음"}</button>
+      <button type="button" class="primary" id="next" ${current === STEPS.length - 1 ? "disabled" : ""}>${current < STEPS.length - 1 ? STEPS[current + 1].code + " " + STEPS[current + 1].short : "끝"} →</button>
+    </div>`;
+  document.getElementById("prev").addEventListener("click", () => show(current - 1, true));
+  document.getElementById("next").addEventListener("click", () => show(current + 1, true));
+  if (focus) stepsEl.querySelectorAll(".step")[current].focus({ preventScroll: true });
+  try { localStorage.setItem("atckg-guide-step", String(current)); } catch (e) {}
+}
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input, textarea")) return;
+  const panelTop = document.getElementById("pipeline").getBoundingClientRect();
+  if (panelTop.top > window.innerHeight || panelTop.bottom < 0) return;
+  if (e.key === "ArrowRight") show(current + 1, true);
+  if (e.key === "ArrowLeft") show(current - 1, true);
+});
+let start = 0;
+const fromHash = STEPS.findIndex((s) => `#${s.code.toLowerCase()}` === location.hash.toLowerCase());
+if (fromHash >= 0) start = fromHash;
+else { try { start = Number(localStorage.getItem("atckg-guide-step") || 0) || 0; } catch (e) {} }
+show(start, false);
+
+/* ---------- readback lab ---------- */
+const PRESETS = [
+  { id: "ok", label: "정상 복창", text: "Mike, hold short Lima 3, Delta 2642.",
+    concepts: [["TAXI_VIA", "경로 M"], ["HOLD_SHORT", "L3"], ["항공편", "DAL2642"]],
+    status: "MATCH", msg: "필수 개념 두 개(TAXI_VIA M, HOLD_SHORT L3)가 모두 같고 항공편도 같습니다. 순서가 바뀌어도 개념이 같으면 일치입니다. 두 지시는 교차 확인되어 신뢰도 HIGH가 됩니다." },
+  { id: "twy", label: "유도로를 바꿔 말함", text: "Mike, hold short Lima 4, Delta 2642.",
+    concepts: [["TAXI_VIA", "경로 M"], ["HOLD_SHORT", "L4 ≠ L3"], ["항공편", "DAL2642"]],
+    status: "MISMATCH", msg: "HOLD_SHORT의 대상이 L3이 아니라 L4입니다. 엉뚱한 곳에서 멈추거나 지나칠 수 있는 위험한 오류라 경보 ρ1(MISMATCH)이 뜹니다." },
+  { id: "drop", label: "hold short를 빼먹음", text: "Taxi via Mike, Delta 2642.",
+    concepts: [["TAXI_VIA", "경로 M"], ["HOLD_SHORT", "없음"], ["항공편", "DAL2642"]],
+    status: "PARTIAL", msg: "꼭 복창해야 하는 HOLD_SHORT가 빠졌습니다. FAA 규정상 hold short는 반드시 복창 확인 대상이라 경보 ρ1(PARTIAL)이 뜹니다." },
+  { id: "nocs", label: "콜사인을 빼먹음", text: "Mike, hold short Lima 3.",
+    concepts: [["TAXI_VIA", "경로 M"], ["HOLD_SHORT", "L3"], ["항공편", "없음 → 문맥으로 DAL2642"]],
+    status: "MATCH", extra: "NO_CALLSIGN", msg: "내용은 일치합니다. 하지만 콜사인이 없어서 시스템은 '방금 Lima 3 지시를 받은 항공편'을 문맥으로 찾아 연결했습니다. 내용은 MATCH지만 콜사인 없는 복창이라 경보 ρ3(NO_CALLSIGN)이 따로 뜹니다." },
+  { id: "cs", label: "콜사인 숫자를 틀림", text: "Mike, hold short Lima 3, Delta 2643.",
+    concepts: [["TAXI_VIA", "경로 M"], ["HOLD_SHORT", "L3"], ["항공편", "DAL2643 ≠ DAL2642"]],
+    status: "WRONG", msg: "다른 비행기(DAL2643)가 복창한 것으로 처리되어 DAL2642의 지시와 연결되지 않습니다. 그 결과 DAL2642에는 ρ2(복창 없음), DAL2643에는 한 자리만 다른 ρ7(유사 콜사인) 경보가 뜹니다. 유사 콜사인은 실제 통신 사고의 33%에 기여한 요인입니다." },
+  { id: "roger", label: "\"Roger\"만 함", text: "Roger, Delta 2642.",
+    concepts: [["TAXI_VIA", "없음"], ["HOLD_SHORT", "없음"], ["항공편", "DAL2642"]],
+    status: "PARTIAL", msg: "알았다는 뜻의 Roger만 했습니다. 필수 개념이 하나도 복창되지 않아 PARTIAL입니다. 관제사가 다시 복창을 요청해야 하는 상황입니다." },
+];
+const presetsEl = document.getElementById("presets");
+function pickPreset(p) {
+  presetsEl.querySelectorAll(".preset").forEach((b) => b.setAttribute("aria-pressed", b.dataset.id === p.id ? "true" : "false"));
+  document.getElementById("pilot-text").textContent = `"${p.text}"`;
+  document.getElementById("pilot-concepts").innerHTML = `<tr><th>개념</th><th>대상</th></tr>` +
+    p.concepts.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+  const label = p.status === "WRONG" ? "다른 항공편으로 연결" : p.status;
+  document.getElementById("verdict").className = `verdict ${p.status}`;
+  document.getElementById("verdict").innerHTML = `<b>판정: ${label}</b>${p.extra ? ` <span class="tag w">+ ${p.extra}</span>` : ""}<br>${p.msg}`;
+}
+PRESETS.forEach((p) => {
+  const b = document.createElement("button");
+  b.className = "preset"; b.type = "button"; b.dataset.id = p.id; b.id = `preset-${p.id}`; b.textContent = p.label;
+  b.addEventListener("click", () => pickPreset(p));
+  presetsEl.appendChild(b);
+});
+pickPreset(PRESETS[0]);
+
+/* ---------- time lab ---------- */
+// seconds after 02:43:00
+const T0 = 0, T1 = 240;
+const BARS = [
+  { cls: "taxi", label: "TAXI_VIA M (DAL2642)", from: 20, to: 130, ended: "Tower로 넘기며 종료" },
+  { cls: "hold", label: "HOLD_SHORT L3 (DAL2642)", from: 20, to: 130, ended: "Tower로 넘기며 종료" },
+  { cls: "monitor", label: "MONITOR Tower 119.1 (가상)", from: 130, to: 240, ended: "" },
+];
+const fmt = (s) => { const t = 2 * 3600 + 43 * 60 + s; return `${String(Math.floor(t / 3600)).padStart(2, "0")}:${String(Math.floor(t % 3600 / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`; };
+const track = document.getElementById("track");
+BARS.forEach((b) => {
+  const el = document.createElement("div");
+  el.className = `bar ${b.cls}`;
+  el.style.left = `${(b.from - T0) / (T1 - T0) * 100}%`;
+  el.style.width = `${(b.to - b.from) / (T1 - T0) * 100}%`;
+  el.textContent = b.label;
+  el.title = `${fmt(b.from)} – ${fmt(b.to)}`;
+  b.el = el; track.appendChild(el);
+});
+const cursor = document.createElement("div"); cursor.className = "cursor"; track.appendChild(cursor);
+const marks = [[20, "관제사 지시"], [24, "조종사 복창"], [130, "Tower로 넘김"]];
+marks.forEach(([s, l]) => {
+  const m = document.createElement("div");
+  m.style.cssText = `position:absolute;left:${(s - T0) / (T1 - T0) * 100}%;top:112px;font-family:var(--mono);font-size:11px;color:var(--muted);transform:translateX(-4px);white-space:nowrap`;
+  m.textContent = `▲ ${l}`;
+  if (s === 24) m.style.top = "128px";
+  track.appendChild(m);
+});
+document.getElementById("ticks").innerHTML = [0, 60, 120, 180, 240].map((s) => `<span>${fmt(s).slice(0, 5)}</span>`).join("");
+function setT(s) {
+  cursor.style.left = `${(s - T0) / (T1 - T0) * 100}%`;
+  const active = BARS.filter((b) => b.from <= s && s < b.to);
+  BARS.forEach((b) => b.el.classList.toggle("off", !(b.from <= s && s < b.to)));
+  const ended = BARS.filter((b) => b.to <= s && b.ended);
+  document.getElementById("snapshot").innerHTML = `<span class="clock">${fmt(s)} UTC</span><br>` +
+    (active.length ? `이 시점에 유효한 지시: ${active.map((b) => `<span class="tag ${b.cls === "taxi" ? "a" : b.cls === "hold" ? "w" : "p"}">${b.label}</span>`).join(" ")}` : "이 시점에 유효한 지시가 없습니다.") +
+    (ended.length ? `<br><span class="muted">종료된 지시(지우지 않고 기록만 남김): ${ended.map((b) => `${b.label} → ${b.ended}`).join(", ")}</span>` : "");
+}
+const slider = document.getElementById("time-slider");
+slider.addEventListener("input", () => setT(Number(slider.value)));
+setT(Number(slider.value));
+</script>

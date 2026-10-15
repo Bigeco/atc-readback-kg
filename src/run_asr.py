@@ -29,6 +29,20 @@ def load_kb(icao: str) -> dict:
     return load_json(path)
 
 
+def shard_by_feed(archives, num_shards: int, shard_index: int):
+    """Greedy bin packing of whole feeds, so the active-callsign carry stays within one process."""
+    by_feed = {}
+    for a in archives:
+        by_feed.setdefault(a["feed"], []).append(a)
+    loads = [0] * num_shards
+    owner = {}
+    for feed, items in sorted(by_feed.items(), key=lambda kv: -len(kv[1])):
+        k = loads.index(min(loads))
+        owner[feed] = k
+        loads[k] += len(items)
+    return [a for a in archives if owner[a["feed"]] == shard_index]
+
+
 def recent_callsigns(rows, callsign_re, top_k: int = 10):
     counter = Counter()
     for row in rows:
@@ -49,6 +63,8 @@ def main():
     parser.add_argument("--segment-lang", action="store_true", help="per-segment language id (RQ4)")
     parser.add_argument("--no-context-carry", action="store_true", help="disable active-callsign prompt feedback")
     parser.add_argument("--limit", type=int, default=0, help="process only the first N archives")
+    parser.add_argument("--num-shards", type=int, default=1, help="split work across processes/GPUs")
+    parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
@@ -56,6 +72,10 @@ def main():
     archives = discover_archives(args.airports, args.facilities)
     if args.limit:
         archives = archives[: args.limit]
+    if args.num_shards > 1:
+        archives = shard_by_feed(archives, args.num_shards, args.shard_index)
+        print(f"[M2] shard {args.shard_index + 1}/{args.num_shards}: {len(archives)} archives, "
+              f"feeds {sorted({a['feed'] for a in archives})}")
     if not archives:
         print("[M1] nothing to transcribe; check data/raw/liveatc/<airport>/ and --facilities")
         return
@@ -101,7 +121,7 @@ def main():
 
     save_json({"run_name": args.run_name, "model": args.model, "language": args.language,
                "context_carry": not args.no_context_carry, "archives": manifest},
-              out_root / "manifest.json")
+              out_root / (f"manifest.shard{args.shard_index}.json" if args.num_shards > 1 else "manifest.json"))
     print(f"[M2] done -> {display_path(out_root)}")
 
 
