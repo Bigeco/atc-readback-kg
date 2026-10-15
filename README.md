@@ -2,6 +2,14 @@
 
 > Team project for **XAI616-00 Knowledge-Based Systems** (Fall 2026, Department of Artificial Intelligence, Korea University) — Team 6.
 
+**[Live demo → bigeco.github.io/atc-readback-kg](https://bigeco.github.io/atc-readback-kg/)**
+
+[![demo](docs/report/figures/demo_timeline.png)](https://bigeco.github.io/atc-readback-kg/)
+
+The live demo is a static build of KATL Ground (2024-08-26, 00:00–05:30Z): a flight-strip board, a UTC time scrubber,
+the airfield state at time *t*, two-lane radio logs with readback verdicts, per-flight event graphs, and evaluation results.
+Audio playback is available only in the local server mode (`bash scripts/run_demo.sh`), because LiveATC audio may not be redistributed.
+
 This repository turns raw VHF air traffic control audio (LiveATC) into an **event-centric temporal knowledge graph**.
 On that graph it then checks **controller–pilot readbacks** and answers **time-aware situational-awareness queries**,
 and a web demo presents the results.
