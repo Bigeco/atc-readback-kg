@@ -35,9 +35,10 @@
 \begin{note}{요약}
 \begin{itemize}[leftmargin=12pt]
 \item 이 온톨로지는 \textbf{미국 지상관제 교신}에서 ``누가, 어느 항공편에게, 어떤 지시를, 무엇에 대해, 언제부터 언제까지'' 했는지를 표현하기 위한 개념 체계다.
-\item \textbf{명령 구조}는 유럽 SESAR PJ.16-04 관제 명령 온톨로지 논문 \cite{helmke2018}에 공개된 구조(콜사인 + 종류·값·단위·한정어)를 참고했다. 공식 온톨로지 파일은 공개되어 있지 않아 \textbf{논문을 보고 미국 지상관제용으로 직접 정의}했다. 조건부 허가(Condition)는 제외했다.
+\item \textbf{명령 구조}는 유럽 SESAR PJ.16-04 관제 명령 온톨로지 논문 \cite{helmke2018}에 공개된 구조(콜사인 + 종류·값·단위·한정어)를 참고했다. 기계 판독 파일은 공개되어 있지 않아 \textbf{미국 지상관제용으로 직접 정의}하고, 공식 사양서 \cite{dlr2025}의 이름과 대조했다. 조건부 허가(Condition)는 제외했다.
 \item \textbf{미국 적용 근거:} 유럽 온톨로지를 미국 지상관제 교신에 적용했을 때 명령 종류 손실은 \textbf{2.6\%p}였다 \cite{helmke2025loss}.
 \item \textbf{미국에 맞춘 부분:} 복창 필수 목록은 FAA JO 7110.65 \cite{faa7110}, 어휘 차이는 MITRE--DLR 비교 \cite{chen2023}, 공항 같은 정적 개념은 NASA ATM Ontology \cite{keller2017}와 AIXM 5.1 \cite{aixm}을 따랐다.
+\item \textbf{공식 사양 확인 (2026-10):} DLR이 공식 사양서 v3.00과 명령 표를 \textbf{PDF}로 공개했다 \cite{dlr2025}. OWL·JSON 파일은 미국·유럽 모두 없다. 우리 20개 종류는 공식 이름에 대응시켰고, 미국식 MONITOR만 확장이다(\S\ref{sec:avail}).
 \end{itemize}
 \end{note}
 
@@ -67,6 +68,7 @@ Helmke et al. (2018), DASC \cite{helmke2018} & 명령 = 콜사인 + 종류(Type)
 Helmke et al. (2021), SID \cite{helmke2021sid}; Kleinert et al. (2021), DASC \cite{kleinert2021} & 유럽 20여 개 기관 합의, 조종사 발화까지 확장, 단어 $\to$ 명령 변환과 JSON 인터페이스 & 논문 공개\\
 Chen et al. (2023), Aerospace \cite{chen2023} & 미국(MITRE)·유럽(DLR) 온톨로지의 어휘·의미 차이(niner/nine, altimeter/QNH, 철자 등) & 논문 공개. MITRE 파일은 없음\\
 \textbf{Helmke, Clarke et al. (2025), DASC} \cite{helmke2025loss} & \textbf{미국 지상관제 교신을 유럽 온톨로지로 표현해도 명령 종류 손실 2.6\%p} (미국·유럽 지상관제 2,000건 이상). 미국 온톨로지는 FAA JO 7110.65와 미국 3개 주요 공항의 운영 표현을 반영해 수정됨 & NASA NTRS 공개\\
+\textbf{Helmke, Kleinert, Ohneiser (2025), DLR-IB-FL-BS-2025-107 v3.00} \cite{dlr2025} & 공식 사양: 15개 명령 부류·약 90개 Main type 목록(별도 PDF 표), Speaker/Reason/Condition 요소, JSON 교환 형식(5장) & elib 공개 PDF. OWL/JSON 파일 없음\\
 FAA JO 7110.65 \cite{faa7110} & 복창 확인 의무(§2-4-3), hold short 복창 요청, 지상 이동 표현(§3-7-2) & 공개\\
 Keller (2017), NASA ATM Ontology \cite{keller2017} & 정적 클래스 이름(Airport, Runway, Taxiway, Facility) & 문서 공개 (data.nasa.gov)\\
 AIXM 5.1 \cite{aixm} & 공항 시설 개념. hold short 지점은 \texttt{TaxiHoldingPosition}에 대응 & 공개\\
@@ -80,6 +82,41 @@ AIXM 5.1 \cite{aixm} & 공항 시설 개념. hold short 지점은 \texttt{TaxiHo
 \item 실제로 미국 지상관제 교신을 유럽 온톨로지로 변환했다 되돌렸을 때 명령 종류 손실은 2.6\%p, 반대 방향은 1.2\%p였다 \cite{helmke2025loss}.
 \item 차이는 주로 \textbf{어휘 층}(niner, Juliet/Juliett, altimeter/QNH, 축약 표기)과 \textbf{규정}에 있다 \cite{chen2023}. 그래서 구조는 유지하고, 어휘·복창 규정만 미국 기준으로 바꿨다.
 \end{enumerate}
+
+%==========================================================
+\section{온톨로지 ``데이터'' 공개 현황 (2026-10 재조사)}\label{sec:avail}
+%==========================================================
+\noindent ``논문 설명''이 아니라 \emph{바로 내려받아 쓸 수 있는 형태}(OWL/RDF, JSON, 표 등)로 미국·유럽 관제 명령 온톨로지가 공개되어 있는지 다시 조사했다. 결론은 \textbf{유럽(DLR)은 공식 사양 문서와 명령 표가 PDF로 공개되어 있고, 기계 판독 파일(OWL/JSON)은 미국·유럽 모두 공개된 것이 없다}이다.
+
+\begin{center}\footnotesize
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{2.0cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{3.6cm}@{}}
+\toprule
+자원 & 형태 & 내용 & 우리 활용\\\midrule\endhead
+\multicolumn{4}{@{}l}{\textit{유럽 (SESAR / DLR)}}\\
+Helmke et al. 2018 \cite{helmke2018}, SID 2021 \cite{helmke2021sid}, Kleinert 2021 \cite{kleinert2021} & 논문 & 구조 설명과 예시만. 데이터 배포 언급 없음(Kleinert: ``not final yet'') & 구조 참고\\
+\textbf{DLR-IB-FL-BS-2025-107 v3.00} \cite{dlr2025} (2025-07-04, 52쪽) & \textbf{PDF 사양서} & Instruction = Callsign + Command(Type Main/Sub, Value, Unit, Qualifier, Speaker, Reason) + Condition(UNTIL/WHEN/IF/AFTER). 15개 부류, 5장에 JSON 교환 형식 정의 & 이름·구조 대조 기준\\
+\textbf{DLR 명령 표} (같은 elib 기록의 첨부, \texttt{OntologyATC\allowbreak CommandsTable\_\allowbreak v20250704.pdf}) & \textbf{PDF 표 (A1, 2쪽)} & 1쪽: 약 90개 Main type과 Sub type·값·단위·한정어·조건 키워드. 2쪽: 매개변수 형식(예: 활주로 \texttt{RW09L}, 주파수 \texttt{118.300}, TX-Point) & \S\ref{sec:cmd}의 오른쪽 열 확인\\
+ATCO2 corpus (GitHub \texttt{idiap/atco2-corpus}) & 주석 데이터 & 콜사인·명령·값 개체명 태그. 1시간 무료, 전체는 ELDA 유료 & (선택) 추출 평가용\\
+EUROCONTROL AIRM / AIRM-O & \textbf{OWL} & ATM 정보 전반(항공기·공역·비행계획) 모델. 음성 명령 개념은 없음 & 정적 계층 이름 참고만\\
+\multicolumn{4}{@{}l}{\textit{미국 (MITRE / NASA / FAA)}}\\
+Chen et al. 2023 \cite{chen2023}; Helmke, Clarke et al. 2025 \cite{helmke2025loss} & 논문 & MITRE·DLR 온톨로지 비교, 미국 온톨로지는 JO 7110.65 기반. 파일 공개 없음 & 2.6\%p 근거\\
+MITRE 미국 ATC 온톨로지 & 비공개 & 공개 문서·파일 모두 찾지 못함 & --\\
+NASA ATM Ontology (atmonto) \cite{keller2017} & OWL(일부) & 공항·활주로·시설 등 정적 개념. 문서 페이지는 열리나 \texttt{ATM.ttl}·\texttt{NAS.ttl} 링크는 404. 음성 명령 개념 없음 & 정적 클래스 이름\\
+FAA JO 7110.65 \cite{faa7110} & 규정 문서 & 용어·복창 규정(문장) & 복창 규칙\\
+\multicolumn{4}{@{}l}{\textit{기타}}\\
+\texttt{sash-tim/ATC-parsing} (GitHub) & 코드 & CCG 의미 파서, JSON 형태 출력. 온톨로지 파일은 아님 & --\\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\paragraph{주의할 점.}
+\begin{itemize}[leftmargin=12pt]
+\item DLR elib 기록은 ``Open Access: Ja''로 표시되지만, 보고서 본문의 저작권 문구는 ``DLR의 서면 동의 없는 사용은 불법''이라고 적고 있다. 그래서 \textbf{표를 재배포하거나 그대로 옮겨 싣지 않고, 인용과 이름 대조에만 쓴다}.
+\item 공식 표에도 미국식 \cmd{MONITOR}(호출 없이 청취)는 별도 종류로 없다. 이것은 FAA 7110.65에 근거한 우리 확장이다.
+\end{itemize}
+
+\paragraph{이것이 우리 설계 서술에 미치는 영향.}
+이전 판의 ``공식 파일이 없어 논문 구조를 참고해 직접 정의했다''는 표현은 다음처럼 좁힌다. \emph{``공식 사양(DLR v3.00, PDF)은 공개되어 있으나 기계 판독 파일은 없으므로, 미국 지상관제에 필요한 20개 종류를 직접 정의하고 각 종류를 공식 이름에 대응시켰다(\S\ref{sec:cmd}). 미국식 MONITOR만 공식 목록 밖의 확장이다.''} 즉 우리 온톨로지는 \textbf{공식 사양의 지상·타워 부분집합 + 미국 규정 확장}으로 설명할 수 있다.
 
 %==========================================================
 \section{개체 유형 (Entity types)}
@@ -150,42 +187,42 @@ $R$ & 경로 (순서 있는 유도로 목록) & \texttt{[M, L3]} & TAXI VIA의 V
 송신 한 건은 $u_i = (\hat c_i,\ I_i)$로 표현한다. $\hat c_i$는 들린 콜사인(없으면 $\varepsilon$), $I_i = \{\iota_{ij}\}$는 지시 개념 집합이다.
 
 %==========================================================
-\section{명령 종류 (Command types)}
+\section{명령 종류 (Command types)}\label{sec:cmd}
 %==========================================================
 \noindent 상태형 = 유효 구간을 가지는 지시. 복창 필수 = 해당 규정상 복창을 확인해야 하는 지시(\S\ref{sec:readback}).
 \begin{center}\footnotesize
 \setlength{\tabcolsep}{3.5pt}
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.3cm} >{\raggedright\arraybackslash}p{3.3cm} c c c >{\raggedright\arraybackslash}p{2.3cm} >{\raggedright\arraybackslash}p{2.4cm}@{}}
 \toprule
-종류 $\kappa$ & 의미 & 상태형 & FAA & ICAO & 대상 & SESAR 이름\\\midrule\endhead
+종류 $\kappa$ & 의미 & 상태형 & FAA & ICAO & 대상 & DLR v3.00 이름 \cite{dlr2025}\\\midrule\endhead
 \multicolumn{7}{@{}l}{\textit{지상 이동}}\\
 \cmd{TAXI\_VIA} & 경로 따라 택시 (목적지 포함 가능) & \yes & \yes & \yes & Runway, Ramp, Taxiway & TAXI VIA / TAXI TO\\
 \cmd{HOLD\_SHORT} & $\sim$ 앞에서 정지 & \yes & \yes & \yes & Runway, Taxiway & HOLD\_SHORT\\
 \cmd{CROSS\_RUNWAY} & 활주로 횡단 허가 & \yes & \yes & \yes & Runway & CROSS\\
-\cmd{HOLD\_POSITION} & 그 자리에서 대기 & \yes & \yes & \yes & -- & HOLD 계열\\
-\cmd{GIVE\_WAY} & 다른 항공기에 양보 & \no & \no & \no & (값: 대상 항공기) & GIVE\_WAY \cite{helmke2025loss}\\
+\cmd{HOLD\_POSITION} & 그 자리에서 대기 & \yes & \yes & \yes & -- & HOLD\_POSITION\\
+\cmd{GIVE\_WAY} & 다른 항공기에 양보 & \no & \no & \no & (값: 대상 항공기) & GIVE\_WAY\\
 \cmd{FOLLOW} & 뒤따라가기 & \no & \no & \no & (값: 대상 항공기) & FOLLOW\\
-\cmd{TURN} & 좌/우 회전 & \no & \no & \no & Taxiway & TURN\\
+\cmd{TURN} & 좌/우 회전 & \no & \no & \no & Taxiway & TURN (지상은 TAXI의 GND\_DIRECTION 한정어)\\
 \multicolumn{7}{@{}l}{\textit{주파수 이관}}\\
-\cmd{CONTACT} & 다른 주파수 호출 & \yes & \yes & \yes & Facility & CONTACT\_\allowbreak FREQUENCY\\
-\cmd{MONITOR} & 다른 주파수 청취(호출 없이) & \yes & \yes & \no & Facility & (CONTACT 계열, 미국식 분리)\\
+\cmd{CONTACT} & 다른 주파수 호출 & \yes & \yes & \yes & Facility & CONTACT / CONTACT\_\allowbreak FREQUENCY\\
+\cmd{MONITOR} & 다른 주파수 청취(호출 없이) & \yes & \yes & \no & Facility & (별도 종류 없음, 미국식 분리)\\
 \multicolumn{7}{@{}l}{\textit{활주로 사용 (Tower)}}\\
 \cmd{LINE\_UP\_\allowbreak AND\_WAIT} & 활주로 진입 후 대기 & \yes & \yes & \yes & Runway & LINEUP\\
-\cmd{CLEARED\_\allowbreak FOR\_\allowbreak TAKEOFF} & 이륙 허가 & \yes & \yes & \yes & Runway & CLEARED 계열\\
-\cmd{CLEARED\_TO\_LAND} & 착륙 허가 & \yes & \yes & \yes & Runway & CLEARED 계열\\
+\cmd{CLEARED\_\allowbreak FOR\_\allowbreak TAKEOFF} & 이륙 허가 & \yes & \yes & \yes & Runway & CLEARED TAKEOFF\\
+\cmd{CLEARED\_TO\_LAND} & 착륙 허가 & \yes & \yes & \yes & Runway & CLEARED LANDING\\
 \multicolumn{7}{@{}l}{\textit{공중 (출발·접근 주파수)}}\\
 \cmd{CLIMB} / \cmd{DESCEND} & 상승 / 강하 & \no & \yes & \yes & -- & CLIMB / DESCEND\\
 \cmd{HEADING} & 기수 방향 & \no & \yes & \yes & -- & HEADING\\
-\cmd{SQUAWK} & 트랜스폰더 코드 & \no & \yes & \yes & -- & (확인 필요)\\
+\cmd{SQUAWK} & 트랜스폰더 코드 & \no & \yes & \yes & -- & SQUAWK\\
 \multicolumn{7}{@{}l}{\textit{정보·비지시 (복창 비교에서 제외)}}\\
-\cmd{TRAFFIC\_INFO} & 교통 정보 & \no & \no & \no & -- & (확인 필요)\\
-\cmd{WAKE\_ADVISORY} & 후류 경고 & \no & \no & \no & -- & (확인 필요)\\
-\cmd{ACK} & roger, wilco, copy & \no & \no & \no & -- & --\\
-\cmd{REQUEST} & 조종사 요청 & \no & \no & \no & -- & --\\
+\cmd{TRAFFIC\_INFO} & 교통 정보 & \no & \no & \no & -- & INFORMATION TRAFFIC\\
+\cmd{WAKE\_ADVISORY} & 후류 경고 & \no & \no & \no & -- & CAUTION WAKE\_\allowbreak TURBULENCE\\
+\cmd{ACK} & roger, wilco, copy & \no & \no & \no & -- & (AFFIRM 등 일부만 대응)\\
+\cmd{REQUEST} & 조종사 요청 & \no & \no & \no & -- & 속성 Reason=REQUEST\\
 \bottomrule
 \end{longtable}
 \end{center}
-{\footnotesize ``(확인 필요)''는 공개 논문에서 대응 이름을 확인하지 못한 경우다. ``CLEARED 계열''은 2018 논문에 \texttt{CLEARED TOUCH\_GO} 같은 두 단어 형태가 예시로만 있어 정확한 이름을 확인하지 못했다.}
+{\footnotesize 오른쪽 열은 DLR 공개 보고서 v3.00 \cite{dlr2025}과 함께 배포된 명령 표(\texttt{OntologyATCCommandsTable\_v20250704.pdf})에서 직접 확인한 공식 이름이다(Type Main + Sub). 이전 판에서 ``확인 필요''였던 SQUAWK, TRAFFIC, WAKE\_TURBULENCE, CLEARED 계열은 모두 확인되었다. 공식 표에 없는 것은 미국식 \cmd{MONITOR}와 roger/wilco류 응답뿐이다.}
 
 %==========================================================
 \section{시간 의미론}
@@ -310,11 +347,11 @@ $\kappa$ & $g$ & $R$ & 비고\\\midrule
 %==========================================================
 \begin{caveat}
 \begin{itemize}[leftmargin=12pt]
-\item \textbf{공식 파일 미사용:} SESAR와 MITRE 온톨로지는 기계가 읽을 수 있는 공개 파일이 없어 논문 기술만 참고했다. 명령 이름 일부는 대응을 확인하지 못했다(``확인 필요'' 표시).
+\item \textbf{공식 사양은 문서(PDF)뿐:} DLR v3.00 사양서와 명령 표는 공개되어 있지만 OWL·JSON 같은 기계 판독 파일은 없다. 그래서 우리 20개 종류를 사람이 공식 이름에 대응시켰다(\S\ref{sec:avail}). MITRE 미국 온톨로지는 문서·파일 모두 공개본을 찾지 못했다.
 \item \textbf{조건부 허가 미지원:} ``after the landing traffic, line up and wait'' 같은 조건을 표현하지 못한다.
 \item \textbf{설계값:} $T_{\max}$와 대체 규칙은 운영 규정이 아니라 데모용 설계값이다.
 \item \textbf{OWL/RDF 미제공:} 현재는 JSON 설정과 코드 검사로 구현했다. atmonto·AIXM IRI를 노드 속성(\texttt{iri})으로만 연결했다.
-\item \textbf{향후:} 조건부 허가 추가, SHACL 파일로 제약 분리, 캐나다·유럽 데이터로 ICAO 규정 검증(RQ4), 원저자에게 공식 온톨로지 사양 요청.
+\item \textbf{향후:} 조건부 허가 추가, SHACL 파일로 제약 분리, 캐나다·유럽 데이터로 ICAO 규정 검증(RQ4), DLR v3.00 이름으로 \texttt{configs/ontology.json}의 종류 이름 별칭(alias) 추가, 조건 요소(UNTIL/WHEN/AFTER) 반영.
 \end{itemize}
 \end{caveat}
 
@@ -326,6 +363,7 @@ $\kappa$ & $g$ & $R$ & 비고\\\midrule
 \bibitem{helmke2021} Helmke, H. et al. Readback Error Detection by Automatic Speech Recognition to Increase ATM Safety. \emph{14th USA/Europe ATM R\&D Seminar}, 2021.
 \bibitem{chen2023} Chen, S., Helmke, H., Tarakan, R.~M., Ohneiser, O., Kopald, H., Kleinert, M. Effects of Language Ontology on Transatlantic Automatic Speech Understanding Research Collaboration in the Air Traffic Management Domain. \emph{Aerospace} 10(6):526, 2023. doi:10.3390/aerospace10060526
 \bibitem{helmke2025loss} Helmke, H., Clarke, S.~S., Ohneiser, O., Kleinert, M., Shetty, S., Kalyanam, K. Automatic Speech Recognition and Understanding in Air Traffic Control -- How Much Information Is Lost Over the Atlantic Ocean? \emph{DASC}, 2025. \url{https://ntrs.nasa.gov/citations/20250001345}
+\bibitem{dlr2025} Helmke, H., Kleinert, M., Ohneiser, O. \emph{Ontology for Air Traffic Control Command Annotation -- Description}, v3.00. DLR-IB-FL-BS-2025-107, DLR, 2025-07-04. \url{https://elib.dlr.de/214852} (명령 표: OntologyATCCommandsTable\_v20250704.pdf)
 \bibitem{faa7110} FAA. \emph{Order JO 7110.65, Air Traffic Control}, §2-4-3 Pilot Acknowledgment/Readback, §3-7-2 Taxi and Ground Movement Operations. (최신판 조항 번호 재확인 필요)
 \bibitem{faa7340} FAA. \emph{Order JO 7340.2, Contractions}.
 \bibitem{icao4444} ICAO. \emph{Doc 4444, PANS-ATM}. (복창 요건 조항 번호는 최신판에서 확인 필요)
