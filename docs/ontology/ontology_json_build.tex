@@ -23,9 +23,9 @@
 \newtcolorbox{note}[1]{colback=gray!5,colframe=blue!45!black,boxrule=0.5pt,arc=2pt,left=6pt,right=6pt,top=3pt,bottom=3pt,title={\small\bfseries #1},coltitle=white,colbacktitle=blue!45!black}
 \newtcolorbox{caveat}{colback=yellow!7,colframe=orange!70!black,boxrule=0.5pt,arc=2pt,left=6pt,right=6pt,top=3pt,bottom=3pt,title={\small\bfseries 한계와 주의},coltitle=white,colbacktitle=orange!70!black}
 
-\title{\textbf{온톨로지 정형화 (PDF $\to$ JSON) 작업 기록}\\[3pt]\large DLR 온톨로지 사양 v3.00 + FAA JO 7110.65BB $\to$ \texttt{configs/ontology.json}}
+\title{\textbf{온톨로지 정형화 (PDF $\to$ JSON) 작업 기록}\\[3pt]\large DLR 온톨로지 사양 v3.00 + FAA JO 7110.65BB $\to$ \texttt{configs/ontology.json} + \texttt{configs/rules.json}}
 \author{Team 6 \quad (XAI616 Knowledge-Based Systems)}
-\date{2026-10-15 \quad 생성 코드: \texttt{src/kb/build\_ontology.py} \quad 출력: \texttt{configs/ontology.json} (v1.0)}
+\date{2026-10-15 \quad 생성 코드: \texttt{src/kb/build\_ontology.py} \quad 출력: \texttt{ontology.json}, \texttt{rules.json} (v1.1)}
 
 \begin{document}
 \sloppy
@@ -33,10 +33,10 @@
 
 \begin{note}{요약}
 \begin{itemize}[leftmargin=12pt]
-\item 문서(PDF) 3개를 근거로, 파이프라인이 읽는 온톨로지 파일 \texttt{configs/ontology.json}을 \textbf{코드로 생성}했다.
+\item 문서(PDF) 3개를 근거로, 파이프라인이 읽는 지식 파일 두 개를 \textbf{코드로 생성}했다. \texttt{configs/ontology.json}은 \textbf{어휘·구조}(무엇을 말할 수 있나, DLR 근거), \texttt{configs/rules.json}은 \textbf{규칙}(무엇이 지켜져야 하나, FAA/ICAO 근거와 KG 설계값)이다(\S\ref{sec:split}).
 \item 원칙: \textbf{우리가 정한 것(설계)}과 \textbf{문서가 말하는 것(근거)}을 분리하고, 근거로 적은 내용은 \textbf{빌드할 때 PDF 원문과 자동 대조}한다. 하나라도 원문에 없으면 빌드가 실패한다.
 \item 결과: 명령 종류 20개 모두 검증 통과. 18개는 DLR 공식 명령에 대응되고, 2개(\cmd{MONITOR}, \cmd{REQUEST})는 미국 확장이다.
-\item 파이프라인이 실제로 쓰는 값(복창 필수 목록, 대체 규칙 등)은 이전 v0.1과 동일하다. 근거 정보만 추가됐다.
+\item 파이프라인이 실제로 쓰는 값(복창 필수 목록, 대체 규칙 등)은 이전 v0.1과 동일하다. KATL 전체 KG를 다시 만들어 그래프와 경고가 똑같음을 확인했다(\S\ref{sec:compat}).
 \end{itemize}
 \end{note}
 
@@ -76,11 +76,12 @@
 \node[stp,right=10mm of d3] (p3) {조항 분할·\\표준 문구 탐색};
 \node[box,fill=orange!10,above=6mm of p1] (cur) {설계값 (코드 안에 명시)\\20개 종류, 매핑, 상태·대체 규칙};
 \node[stp,right=12mm of p2,minimum height=2.6cm,text width=2.4cm] (v) {\textbf{검증}\\원문에 없으면\\빌드 실패};
-\node[outb,right=10mm of v] (o) {\texttt{configs/}\\\texttt{ontology.json}};
+\node[outb,right=10mm of v,yshift=6mm] (o) {\texttt{ontology.json}\\{\footnotesize 어휘·구조}};
+\node[outb,right=10mm of v,yshift=-6mm] (o2) {\texttt{rules.json}\\{\footnotesize 규칙}};
 \draw[->] (d1)--(p1); \draw[->] (d2)--(p2); \draw[->] (d3)--(p3);
 \draw[->] (p1)--(v); \draw[->] (p2)--(v); \draw[->] (p3)--(v);
 \draw[->] (cur) -| (v);
-\draw[->] (v)--(o);
+\draw[->] (v)--(o.west); \draw[->] (v)--(o2.west);
 \end{tikzpicture}
 \end{center}
 
@@ -93,8 +94,8 @@
 코드 맨 위 \key{COMMAND\_TYPES}에 20개 종류를 적는다. 종류마다 적는 항목은 다음과 같다.
 \begin{itemize}[leftmargin=14pt]
 \item \key{dlr}: 대응하는 DLR 표의 (Type Main, Type Sub). 예: \cmd{CLEARED\_FOR\_TAKEOFF} $\to$ (\texttt{CLEARED}, \texttt{TAKEOFF}). Sub 칸이 비어 있으면 \texttt{None}, 아무 Sub나 허용하면 \texttt{*}.
-\item \key{faa}: (조항 번호, 그 조항에 있어야 할 표준 문구의 정규식). 예: \cmd{HOLD\_SHORT} $\to$ (3-7-2, \texttt{READ BACK HOLD INSTRUCTIONS}).
-\item \key{faa\_readback}: FAA 복창 등급(\S\ref{sec:levels}). \key{icao\_readback}: ICAO 기준 복창 여부.
+\item \key{faa}: (조항 번호, 그 조항에 있어야 할 표준 문구의 정규식). 예: \cmd{HOLD\_SHORT} $\to$ (3-7-2, \texttt{READ BACK HOLD INSTRUCTIONS}). 검증 후 \texttt{ontology.json}의 \key{faa\_phraseology}로 저장된다.
+\item \key{faa\_readback}: FAA 복창 등급(\S\ref{sec:levels}). \key{icao\_readback}: ICAO 기준 복창 여부. 둘 다 \texttt{rules.json}으로 간다.
 \item KG용 설계값: \key{state}(유효 구간을 가지는지), \key{targets}, 대체 규칙, 최대 유효시간, 오탐 방지 키워드(\key{lexical\_cues}). 이 값들은 규정이 아니라 설계값이라고 JSON의 \key{scope\_notes}에 밝힌다.
 \end{itemize}
 
@@ -134,8 +135,8 @@ FAA 복창 등급 & 각 등급의 근거 문장이 §2-4-3 본문에 있는가\\
 \end{tabularx}
 \end{center}
 
-\subsection{⑥ 출력 조립}
-검증을 통과한 정보와 설계값을 합쳐 JSON으로 저장한다. 파이프라인 코드(M4, M6, M7, E3)가 읽는 키는 이름과 의미를 그대로 유지한다.
+\subsection{⑥ 출력 조립: 두 파일로 나누기}
+검증을 통과한 정보와 설계값을 성격에 따라 두 파일로 나눠 저장한다(\S\ref{sec:split}). 규칙 파일이 정의되지 않은 명령 종류를 가리키면 생성을 멈춘다. 파이프라인 코드가 읽는 키는 이름과 의미를 그대로 유지하고, 읽는 파일만 바뀌었다.
 
 %==========================================================
 \section{FAA 복창 등급}\label{sec:levels}
@@ -154,7 +155,7 @@ FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK)을 읽어 보면, 복창 요구의 �
 \bottomrule
 \end{tabularx}
 \end{center}
-\noindent \key{readback\_required.FAA}는 등급이 있는 13개 종류이고, v0.1과 같은 목록이다. ICAO 목록은 입력 파일에 ICAO 문서가 없어서 \textbf{검증하지 못했다}고 \key{readback\_basis.ICAO}에 명시했다.
+\noindent \texttt{rules.json}의 \key{readback\_required.FAA}는 등급이 있는 13개 종류이고, v0.1과 같은 목록이다. ICAO 목록은 입력 파일에 ICAO 문서가 없어서 \textbf{검증하지 못했다}고 \key{readback\_basis.ICAO}에 명시했다. 종류별 등급은 \key{readback}에 있다.
 
 %==========================================================
 \section{매핑 결과 (20개 종류)}
@@ -189,49 +190,51 @@ FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK)을 읽어 보면, 복창 요구의 �
 \end{center}
 
 %==========================================================
-\section{출력 JSON 구조}
+\section{두 파일로 나눈 이유와 구조}\label{sec:split}
 %==========================================================
+지식 기반 시스템은 보통 \textbf{온톨로지(어휘·구조)}, \textbf{규칙 베이스}, \textbf{추론 엔진}으로 나뉜다. ``HOLD\_SHORT라는 명령이 있고 값으로 활주로가 온다''는 어휘·구조이고, ``HOLD\_SHORT는 복창을 반드시 받아야 한다''는 규정에서 온 규칙이다. 두 정보는 근거 문서도, 쓰는 모듈도 다르므로 파일을 나눴다.
+
 \begin{center}\small
-\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X l@{}}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.4cm}@{}}
 \toprule
-키 & 내용 & 비고\\\midrule
-\key{generated} & 생성 코드, 날짜, 입력 파일 MD5 & 신규\\
-\key{sources}, \key{scope\_notes} & 출처 문장, 범위와 설계값 표시 & 갱신\\
-\key{dlr\_instruction\_schema} & DLR 요소 $\to$ JSON 키 $\to$ 우리 M4 필드 대응 & 신규\\
-\key{command\_types.*.dlr} & DLR 표 행(분류, 값, 한정어, 조건)과 매개변수 형식 & 신규\\
-\key{command\_types.*.faa} & 조항 번호, 제목, 원문 인용 & 신규\\
-\key{command\_types.*.readback} & \{FAA: 등급, ICAO: 참/거짓\} & 신규\\
-\key{readback\_basis} & FAA 등급별 근거 인용, ICAO 미검증 표시 & 신규\\
-\key{state}, \key{targets}, \key{description} & KG 상태 의미 & 동일\\
-\key{readback\_required}, \key{region\_rules} & 복창 판정에 쓰는 목록 & 동일\\
-\key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types} & 시간 의미론 설계값 & 동일\\
-\key{lexical\_cues} & LLM 추출 오탐 방지 키워드 & 동일\\
+파일 & 키 & 근거 & 읽는 모듈\\\midrule
+\texttt{ontology.json} & \key{entity\_types}, \key{relation\_types}, \key{dlr\_instruction\_schema}, \key{command\_types}(\key{state}, \key{targets}, \key{description}, \key{dlr}, \key{faa\_phraseology}), \key{advisory\_types}, \key{non\_instruction\_types}, \key{lexical\_cues} & DLR 설명서·표, FAA 표준 문구(미국에서 쓰는 말인지) & M4 추출, M6 그래프\\
+\texttt{rules.json} & \key{region\_rules}, \key{readback}(종류별 등급), \key{readback\_required}, \key{readback\_basis}, \key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types} & FAA §2-4-3, ICAO(미검증), KG 설계값 & M6 복창 연결, M7 경고 규칙, E3\\
 \bottomrule
 \end{tabularx}
 \end{center}
 
+\noindent 이렇게 나누면 RQ4(한국·일본)에서 \textbf{온톨로지는 그대로 두고 규칙만 ICAO로 바꾼다}는 실험 조건을 파일 단위로 보여 줄 수 있다. 두 파일 모두 \key{generated}에 생성 코드, 날짜, 입력 PDF의 MD5를 기록한다.
+
 \noindent 예시 (\cmd{HOLD\_SHORT}, 일부 생략):
 {\footnotesize
 \begin{verbatim}
+ontology.json
 "HOLD_SHORT": {
   "state": true, "targets": ["Runway", "Taxiway"],
   "dlr": [{"category": "Ground hold types", "main": "HOLD_SHORT",
            "value": "runway/TX-Point/Alphabet-Letter",
            "parameters": {"runway": "runway_without_none + \"none\"",
                           "TX-Point": "Name of defined Taxi-Point ... such as A (alfa), B1, HP_05R"}}],
-  "faa": [{"section": "3-7-2", "title": "TAXI AND GROUND MOVEMENT OPERATIONS",
-           "quote": "... PHRASEOLOGY- READ BACK HOLD INSTRUCTIONS ..."},
-          {"section": "2-4-3", "title": "PILOT ACKNOWLEDGMENT/READ BACK",
-           "quote": "... b. Ensure the read back of hold short instructions ..."}],
-  "readback": {"FAA": "mandatory", "ICAO": true}
+  "faa_phraseology": [{"section": "3-7-2", "title": "TAXI AND GROUND MOVEMENT OPERATIONS",
+                       "quote": "... PHRASEOLOGY- READ BACK HOLD INSTRUCTIONS ..."}, ...]
 }
+
+rules.json
+"readback": {"HOLD_SHORT": {"FAA": "mandatory", "ICAO": true}, ...},
+"readback_required": {"FAA": ["TAXI_VIA", "HOLD_SHORT", ...], "ICAO": [...]},
+"readback_basis": {"FAA": {"mandatory": {"section": "2-4-3",
+                   "quote": "... b. Ensure the read back of hold short instructions ..."}, ...}}
 \end{verbatim}
 }
 
 %==========================================================
-\section{호환성 확인}
+\section{호환성 확인}\label{sec:compat}
 %==========================================================
-생성 결과를 v0.1과 비교했다. \key{readback\_required}, \key{region\_rules}, \key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types}, \key{lexical\_cues}, \key{advisory\_types}, \key{non\_instruction\_types}, \key{entity\_types}, \key{relation\_types}와 20개 종류의 \key{state}·\key{targets}·\key{description}이 \textbf{모두 동일}하다. 따라서 기존 KG 결과(\texttt{results/katl\_all})는 다시 만들 필요가 없다.
+\begin{enumerate}[leftmargin=14pt]
+\item \textbf{값 비교:} 두 파일의 값을 이전 단일 파일(v0.1)과 비교했다. \key{readback\_required}, \key{region\_rules}, \key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types}, \key{lexical\_cues}, \key{advisory\_types}, \key{non\_instruction\_types}, \key{entity\_types}, \key{relation\_types}, 20개 종류의 \key{state}와 복창 등급이 모두 같다.
+\item \textbf{전체 재실행:} 저장된 추출 결과로 KATL 전체 KG(\texttt{results/katl\_all})를 다시 만들었다. 경고 파일(\texttt{alerts.json})은 바이트 단위로 같고, 그래프(\texttt{graph.json})는 적재 시각(\key{ingested\_at})을 빼면 같다. 노드 42{,}954개, 간선 65{,}016개, 복창 연결 404건(일치 232, 부분 138, 불일치 34)이다.
+\end{enumerate}
 
 %==========================================================
 \section{재현 방법}
@@ -239,8 +242,8 @@ FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK)을 읽어 보면, 복창 요구의 �
 {\small
 \begin{verbatim}
 # data/ontology/ 에 PDF 3개를 둔 뒤
-python src/kb/build_ontology.py                 # configs/ontology.json 생성
-python src/kb/build_ontology.py --out /tmp/o.json   # 다른 경로로 시험 생성
+python src/kb/build_ontology.py                    # configs/ontology.json, configs/rules.json 생성
+python src/kb/build_ontology.py --out-dir /tmp/kb   # 다른 폴더로 시험 생성
 \end{verbatim}
 }
 \noindent 매핑을 바꾸려면 코드의 \key{COMMAND\_TYPES}만 고치고 다시 실행한다. 원문에 없는 근거를 적으면 어떤 항목이 왜 실패했는지 출력하고 멈춘다.

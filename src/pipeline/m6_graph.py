@@ -115,16 +115,16 @@ RETURN count(rel);
 
 
 class GraphBuilder:
-    def __init__(self, kb: dict, ontology: dict, region: str = "US", rb_window: float = 20.0,
+    def __init__(self, kb: dict, ontology: dict, rules: dict, region: str = "US", rb_window: float = 20.0,
                  context_link_window: float = 8.0):
         self.kb = kb
         self.ontology = ontology
         self.icao = kb.get("icao", "UNKNOWN")
-        rule_set = ontology["region_rules"][region]
-        self.required: Set[str] = set(ontology["readback_required"][rule_set])
+        rule_set = rules["region_rules"][region]
+        self.required: Set[str] = set(rules["readback_required"][rule_set])
         self.state_types = {k for k, v in ontology["command_types"].items() if v["state"]}
-        self.supersedes = ontology["supersedes"]
-        self.max_validity = ontology["max_validity_sec"]
+        self.supersedes = rules["supersedes"]
+        self.max_validity = rules["max_validity_sec"]
         self.rb_window = rb_window
         self.context_link_window = context_link_window
         self.graph = TemporalEventGraph()

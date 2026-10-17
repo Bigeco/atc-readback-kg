@@ -1,7 +1,11 @@
-"""Build configs/ontology.json from the three reference documents in data/ontology/.
+"""Build configs/ontology.json (vocabulary) and configs/rules.json (rule base) from the reference documents in data/ontology/.
 
-    python src/kb/build_ontology.py                      # writes configs/ontology.json
-    python src/kb/build_ontology.py --out /tmp/onto.json # dry run elsewhere
+    python src/kb/build_ontology.py                    # writes configs/ontology.json and configs/rules.json
+    python src/kb/build_ontology.py --out-dir /tmp/kb  # dry run elsewhere
+
+Split (knowledge-based system layout)
+- ontology.json: entity/relation types, 20 command types (DLR rows, FAA phraseology), lexical cues -> used by M4, M6
+- rules.json:    region rule sets, read-back levels (FAA 2-4-3 / ICAO), supersession, validity -> used by M6, M7, E3
 
 Inputs (not redistributed; see .gitignore)
 - OntologyATCCommandsDescription_v20250704.pdf  DLR-IB-FL-BS-2025-107 v3.00: instruction elements and JSON keys (ch. 2, 5.1)
@@ -16,7 +20,7 @@ Strategy
    - each FAA reference must be a real section heading whose body contains the quoted phraseology;
    - each DLR JSON key must appear in the description document.
    A missing match aborts the build, so the JSON never cites something the documents do not say.
-3. Runtime keys read by the pipeline (state, readback_required, supersedes, ...) keep their names and meaning.
+3. Runtime keys read by the pipeline keep their names and meaning; they only moved between the two files.
 """
 import argparse
 import difflib
@@ -31,7 +35,7 @@ SRC_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SRC_ROOT))
 
 from common.io_utils import save_json
-from common.paths import DATA_ROOT, ONTOLOGY_PATH, display_path
+from common.paths import CONFIG_ROOT, DATA_ROOT, ONTOLOGY_PATH, RULES_PATH, display_path
 
 
 REF_ROOT = DATA_ROOT / "ontology"
@@ -340,7 +344,7 @@ def match_rows(rows, main: str, sub):
     return hits
 
 
-def build(out: Path):
+def build(out_dir: Path):
     description = pdf_text(DLR_DESCRIPTION)
     table_rows = parse_command_table(pdf_text(DLR_TABLE, 1))
     params = parse_parameter_table(pdf_text(DLR_TABLE, 2))
@@ -352,7 +356,7 @@ def build(out: Path):
             raise ValueError(f"DLR description does not define JSON key '{el['json_key']}'")
     readback_basis = {level: faa_evidence(faa, sec, pat) for level, (sec, pat) in FAA_READBACK_BASIS.items()}
 
-    command_types, errors = {}, []
+    command_types, readback, errors = {}, {}, []
     for ct in COMMAND_TYPES:
         try:
             dlr = []
@@ -368,23 +372,26 @@ def build(out: Path):
             "targets": ct["targets"],
             "description": ct["description"],
             "dlr": dlr or None,
-            "faa": faa_refs,
-            "readback": {"FAA": ct["faa_readback"], "ICAO": ct["icao_readback"]},
+            "faa_phraseology": faa_refs,
             **({"note": ct["note"]} if "note" in ct else {}),
         }
+        readback[ct["name"]] = {"FAA": ct["faa_readback"], "ICAO": ct["icao_readback"]}
     if errors:
         sys.exit("[onto] verification failed:\n  " + "\n  ".join(errors))
 
+    generated = {"by": "src/kb/build_ontology.py", "date": date.today().isoformat(),
+                 "inputs": {display_path(p): md5(p) for p in (DLR_DESCRIPTION, DLR_TABLE, FAA_ORDER)}}
+
+    # Vocabulary and structure: what can be said (DLR), and that the US says it (FAA phraseology).
     ontology = {
-        "version": "1.0",
-        "generated": {"by": "src/kb/build_ontology.py", "date": date.today().isoformat(),
-                      "inputs": {display_path(p): md5(p) for p in (DLR_DESCRIPTION, DLR_TABLE, FAA_ORDER)}},
+        "version": "1.1",
+        "generated": generated,
         "sources": [
             "Structure and command names: Helmke, Kleinert, Ohneiser. Ontology for Air Traffic Control Command Annotation "
             "- Description, v3.00, DLR-IB-FL-BS-2025-107, 2025-07-04, with OntologyATCCommandsTable_v20250704 "
             "(https://elib.dlr.de/214852). Each command type lists the matching table rows under 'dlr'.",
-            "US phraseology and read-back rules: FAA Order JO 7110.65BB (effective 2025-02-20). Each command type lists "
-            "verified sections under 'faa'; read-back levels are quoted under 'readback_basis.FAA'.",
+            "US usage: FAA Order JO 7110.65BB (effective 2025-02-20). Each command type lists the verified phraseology "
+            "under 'faa_phraseology'.",
             "Transfer of the European ontology to US ground control: Helmke, Clarke et al. 2025 (DASC), command-type loss "
             "2.6% absolute (4.6% with all attributes) on US ground transmissions.",
             "Static classes (Airport, Runway, Taxiway, Facility) follow the NASA ATM Ontology (Keller 2017); hold-short "
@@ -393,7 +400,7 @@ def build(out: Path):
         "scope_notes": [
             "Subset of DLR v3.00 for US ground/tower audio plus two US-only types (MONITOR, ACK).",
             "DLR Condition (UNTIL/WHEN/IF/AFTER) and Unit are not extracted.",
-            "supersedes / max_validity_sec are KG design values, not regulation.",
+            "Read-back, supersession and validity rules live in configs/rules.json.",
         ],
         "dlr_instruction_schema": DLR_ELEMENTS,
         "entity_types": ENTITY_TYPES,
@@ -401,6 +408,20 @@ def build(out: Path):
         "command_types": command_types,
         "advisory_types": [c["name"] for c in COMMAND_TYPES if c.get("advisory")],
         "non_instruction_types": [c["name"] for c in COMMAND_TYPES if c.get("non_instruction")],
+        "lexical_cues": LEXICAL_CUES,
+    }
+
+    # Rule base: what must hold (regulation per region) and KG temporal design values.
+    rules = {
+        "version": "1.1",
+        "generated": generated,
+        "sources": [
+            "FAA Order JO 7110.65BB 2-4-3 (read-back levels, quoted under readback_basis.FAA) and 3-7-2.",
+            ICAO_READBACK_SOURCE,
+            "supersedes / max_validity_sec / runway_state_types are KG design values, not regulation.",
+        ],
+        "region_rules": REGION_RULES,
+        "readback": readback,
         "readback_required": {
             "FAA": [c["name"] for c in COMMAND_TYPES if c["faa_readback"]],
             "ICAO": [c["name"] for c in COMMAND_TYPES if c["icao_readback"]],
@@ -411,22 +432,26 @@ def build(out: Path):
                               "entry or a stop on the movement area."},
             "ICAO": ICAO_READBACK_SOURCE,
         },
-        "region_rules": REGION_RULES,
         "supersedes": SUPERSEDES,
         "max_validity_sec": MAX_VALIDITY_SEC,
         "runway_state_types": RUNWAY_STATE_TYPES,
-        "lexical_cues": LEXICAL_CUES,
     }
-    save_json(ontology, out)
-    print(f"[onto] {len(command_types)} command types "
-          f"({sum(1 for c in command_types.values() if c['dlr'])} mapped to DLR) -> {display_path(out)}")
+    unknown = {k for k in [*SUPERSEDES, *MAX_VALIDITY_SEC, *RUNWAY_STATE_TYPES] if k not in command_types}
+    if unknown:
+        sys.exit(f"[onto] rules refer to undefined command types: {sorted(unknown)}")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    save_json(ontology, out_dir / ONTOLOGY_PATH.name)
+    save_json(rules, out_dir / RULES_PATH.name)
+    print(f"[onto] {len(command_types)} command types ({sum(1 for c in command_types.values() if c['dlr'])} mapped "
+          f"to DLR) -> {display_path(out_dir / ONTOLOGY_PATH.name)}, {display_path(out_dir / RULES_PATH.name)}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Build the ATC command ontology JSON from the DLR and FAA documents.")
-    parser.add_argument("--out", type=Path, default=ONTOLOGY_PATH)
+    parser.add_argument("--out-dir", type=Path, default=CONFIG_ROOT)
     args = parser.parse_args()
-    build(args.out)
+    build(args.out_dir)
 
 
 if __name__ == "__main__":

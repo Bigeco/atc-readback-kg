@@ -16,7 +16,7 @@ sys.path.insert(0, str(SRC_ROOT))
 
 from common.atc_text import build_callsign_regex
 from common.io_utils import iter_jsonl, load_json, load_jsonl, save_json, write_jsonl
-from common.paths import AIRLINES_PATH, ONTOLOGY_PATH, STATIC_KB_ROOT, display_path, run_dir
+from common.paths import AIRLINES_PATH, ONTOLOGY_PATH, RULES_PATH, STATIC_KB_ROOT, display_path, run_dir
 from pipeline.m3_role import split_turns
 from pipeline.m4_extract import LLMExtractor, RuleExtractor
 from pipeline.m5_canonicalize import Canonicalizer
@@ -75,6 +75,7 @@ def main():
     out = run_dir(args.run_name)
     previous_summary = load_json(out / "summary.json") if (out / "summary.json").exists() else {}
     ontology = load_json(ONTOLOGY_PATH)
+    rules = load_json(RULES_PATH)
     telephony = load_json(AIRLINES_PATH)["telephony"]
     kb = load_json(STATIC_KB_ROOT / f"{args.airport.lower()}.json")
     callsign_re = build_callsign_regex(telephony)
@@ -175,7 +176,7 @@ def main():
     # ---------------- M5 + M6: canonicalize and build graph (UTC order)
     t0 = time.perf_counter()
     canon = Canonicalizer(kb, telephony)
-    builder = GraphBuilder(kb, ontology, args.region, args.rb_window)
+    builder = GraphBuilder(kb, ontology, rules, args.region, args.rb_window)
     canonical = []
     for turn, ext in zip(turns, extractions):
         rec = canon.canonicalize(turn, ext)
@@ -188,7 +189,7 @@ def main():
     timings["m5_m6_sec"] = round(time.perf_counter() - t0, 1)
 
     # ---------------- M7: rules
-    alerts = detect_anomalies(graph, builder.required, set(ontology["runway_state_types"]), args.rb_window)
+    alerts = detect_anomalies(graph, builder.required, set(rules["runway_state_types"]), args.rb_window)
     save_json(alerts, out / "alerts.json")
 
     labels = Counter(n["label"] for n in graph.nodes.values())

@@ -23,6 +23,7 @@ and a web demo presents the results.
 | Stage | Module | Code | Output |
 |---|---|---|---|
 | M0 | Static airport KB (OurAirports + OpenStreetMap) | `src/kb/build_static_kb.py` | `data/static_kb/<icao>.json` |
+| KB | Ontology + rule base from DLR v3.00 spec/table and FAA JO 7110.65BB (PDFs in `data/ontology/`, not redistributed) | `src/kb/build_ontology.py` | `configs/ontology.json`, `configs/rules.json` |
 | M1 | Archive discovery, context from file names, facility filter, VAD | `src/pipeline/m1_ingest.py` | archive records |
 | M2 | Context-biased Whisper large-v3 + hallucination filter + language id | `src/pipeline/m2_asr.py`, `src/run_asr.py` | `results/<run>/stt/` |
 | M3 | Text-based speaker role and turn splitting | `src/pipeline/m3_role.py` | `turns.jsonl` |
@@ -38,7 +39,7 @@ and a web demo presents the results.
 ## Layout
 
 ```
-configs/                 ontology.json (types, readback rules, supersession), airlines.json (telephony)
+configs/                 ontology.json (vocabulary: DLR-based command types), rules.json (FAA/ICAO readback, supersession), airlines.json (telephony)
 data/
   raw/liveatc/<airport>/<feed>/*.mp3   LiveATC archives (not committed)
   static_kb/<icao>.json                M0 output

@@ -1,0 +1,212 @@
+{
+  "version": "1.1",
+  "generated": {
+    "by": "src/kb/build_ontology.py",
+    "date": "2026-10-18",
+    "inputs": {
+      "data/ontology/OntologyATCCommandsDescription_v20250704.pdf": "bf25cd79008ff0060963109c89ec0554",
+      "data/ontology/OntologyATCCommandsTable_v20250704.pdf": "9511123029c3fc434f33c6104850f3f2",
+      "data/ontology/FAA규정.pdf": "dd08ae36748a9d9a49b36ed7f28791a2"
+    }
+  },
+  "sources": [
+    "FAA Order JO 7110.65BB 2-4-3 (read-back levels, quoted under readback_basis.FAA) and 3-7-2.",
+    "ICAO Doc 4444 PANS-ATM, read-back requirements (runway, level, heading, SSR code, frequency). Not among data/ontology inputs; not verified by this script.",
+    "supersedes / max_validity_sec / runway_state_types are KG design values, not regulation."
+  ],
+  "region_rules": {
+    "US": "FAA",
+    "KR": "ICAO",
+    "JP": "ICAO"
+  },
+  "readback": {
+    "TAXI_VIA": {
+      "FAA": "runway_assignment",
+      "ICAO": true
+    },
+    "HOLD_SHORT": {
+      "FAA": "mandatory",
+      "ICAO": true
+    },
+    "CROSS_RUNWAY": {
+      "FAA": "design",
+      "ICAO": true
+    },
+    "HOLD_POSITION": {
+      "FAA": "design",
+      "ICAO": true
+    },
+    "GIVE_WAY": {
+      "FAA": null,
+      "ICAO": false
+    },
+    "FOLLOW": {
+      "FAA": null,
+      "ICAO": false
+    },
+    "CONTACT": {
+      "FAA": "numbers",
+      "ICAO": true
+    },
+    "MONITOR": {
+      "FAA": "numbers",
+      "ICAO": false
+    },
+    "LINE_UP_AND_WAIT": {
+      "FAA": "design",
+      "ICAO": true
+    },
+    "CLEARED_FOR_TAKEOFF": {
+      "FAA": "runway_assignment",
+      "ICAO": true
+    },
+    "CLEARED_TO_LAND": {
+      "FAA": "runway_assignment",
+      "ICAO": true
+    },
+    "TURN": {
+      "FAA": null,
+      "ICAO": false
+    },
+    "CLIMB": {
+      "FAA": "numbers",
+      "ICAO": true
+    },
+    "DESCEND": {
+      "FAA": "numbers",
+      "ICAO": true
+    },
+    "HEADING": {
+      "FAA": "numbers",
+      "ICAO": true
+    },
+    "SQUAWK": {
+      "FAA": "numbers",
+      "ICAO": true
+    },
+    "TRAFFIC_INFO": {
+      "FAA": null,
+      "ICAO": false
+    },
+    "WAKE_ADVISORY": {
+      "FAA": null,
+      "ICAO": false
+    },
+    "ACK": {
+      "FAA": null,
+      "ICAO": false
+    },
+    "REQUEST": {
+      "FAA": null,
+      "ICAO": false
+    }
+  },
+  "readback_required": {
+    "FAA": [
+      "TAXI_VIA",
+      "HOLD_SHORT",
+      "CROSS_RUNWAY",
+      "HOLD_POSITION",
+      "CONTACT",
+      "MONITOR",
+      "LINE_UP_AND_WAIT",
+      "CLEARED_FOR_TAKEOFF",
+      "CLEARED_TO_LAND",
+      "CLIMB",
+      "DESCEND",
+      "HEADING",
+      "SQUAWK"
+    ],
+    "ICAO": [
+      "TAXI_VIA",
+      "HOLD_SHORT",
+      "CROSS_RUNWAY",
+      "HOLD_POSITION",
+      "CONTACT",
+      "LINE_UP_AND_WAIT",
+      "CLEARED_FOR_TAKEOFF",
+      "CLEARED_TO_LAND",
+      "CLIMB",
+      "DESCEND",
+      "HEADING",
+      "SQUAWK"
+    ]
+  },
+  "readback_basis": {
+    "FAA": {
+      "acknowledge": {
+        "section": "2-4-3",
+        "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+        "quote": "Ensure pilots acknowledge all Air Traffic Clearances and ATC Instructions. When a pilot reads back an Air Traffi"
+      },
+      "mandatory": {
+        "section": "2-4-3",
+        "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+        "quote": "Instruction: a. Ensure that items read back are correct. b. Ensure the read back of hold short instructions, whether a part of taxi instructions or a LAHSO clearance."
+      },
+      "runway_assignment": {
+        "section": "2-4-3",
+        "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+        "quote": "k unless they are specifically stated by the controller. c. Initial read back of a taxi, departure or landing clearance should include the runway assignment, including left, right, center, etc. if applicable. 2. Unti"
+      },
+      "numbers": {
+        "section": "2-4-3",
+        "title": "PILOT ACKNOWLEDGMENT/READ BACK",
+        "quote": "ead Back guidance for pilots in the AIM states: a. Although pilots should read back the “numbers,” unless otherwise required by procedure or controller requ"
+      },
+      "design": "Not stated in JO 7110.65; required here because the instruction authorizes runway entry or a stop on the movement area."
+    },
+    "ICAO": "ICAO Doc 4444 PANS-ATM, read-back requirements (runway, level, heading, SSR code, frequency). Not among data/ontology inputs; not verified by this script."
+  },
+  "supersedes": {
+    "CONTACT": [
+      "*"
+    ],
+    "MONITOR": [
+      "*"
+    ],
+    "TAXI_VIA": [
+      "TAXI_VIA",
+      "HOLD_POSITION"
+    ],
+    "CROSS_RUNWAY": [
+      "HOLD_SHORT",
+      "HOLD_POSITION"
+    ],
+    "HOLD_SHORT": [
+      "HOLD_SHORT"
+    ],
+    "HOLD_POSITION": [
+      "HOLD_POSITION"
+    ],
+    "LINE_UP_AND_WAIT": [
+      "HOLD_SHORT",
+      "LINE_UP_AND_WAIT"
+    ],
+    "CLEARED_FOR_TAKEOFF": [
+      "LINE_UP_AND_WAIT",
+      "HOLD_SHORT",
+      "CLEARED_FOR_TAKEOFF"
+    ],
+    "CLEARED_TO_LAND": [
+      "CLEARED_TO_LAND"
+    ]
+  },
+  "max_validity_sec": {
+    "TAXI_VIA": 900,
+    "HOLD_SHORT": 900,
+    "CROSS_RUNWAY": 180,
+    "HOLD_POSITION": 600,
+    "CONTACT": 1800,
+    "MONITOR": 1800,
+    "LINE_UP_AND_WAIT": 300,
+    "CLEARED_FOR_TAKEOFF": 180,
+    "CLEARED_TO_LAND": 600
+  },
+  "runway_state_types": [
+    "CROSS_RUNWAY",
+    "LINE_UP_AND_WAIT",
+    "CLEARED_FOR_TAKEOFF",
+    "CLEARED_TO_LAND"
+  ]
+}

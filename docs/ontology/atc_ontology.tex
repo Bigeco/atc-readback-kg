@@ -26,7 +26,7 @@
 
 \title{\textbf{미국 지상관제 교신 온톨로지 (ATC-KG Ontology)}\\[3pt]\large 출처·근거·정의·제약 정리}
 \author{Team 6 \quad (XAI616 Knowledge-Based Systems)}
-\date{2026-10-15 \quad 기준 파일: \texttt{configs/ontology.json} (v0.1)}
+\date{2026-10-15 \quad 기준 파일: \texttt{configs/ontology.json}, \texttt{configs/rules.json} (v1.1)}
 
 \begin{document}
 \sloppy
@@ -253,7 +253,7 @@ $R$ & 경로 (순서 있는 유도로 목록) & \texttt{[M, L3]} & TAXI VIA의 V
 %==========================================================
 \section{복창 규정}\label{sec:readback}
 %==========================================================
-지역 $\rho$의 복창 필수 집합 $\mathcal{T}_{\mathrm{req}}^{\rho}$를 규정별로 정의한다(\texttt{region\_rules}: US$\to$FAA, KR·JP$\to$ICAO).
+지역 $\rho$의 복창 필수 집합 $\mathcal{T}_{\mathrm{req}}^{\rho}$를 규정별로 정의한다(\texttt{region\_rules}: US$\to$FAA, KR·JP$\to$ICAO). 이 규칙들은 어휘·구조와 분리해 \texttt{configs/rules.json}에 둔다. FAA 목록은 §2-4-3 원문에 따라 등급(mandatory, runway\_assignment, numbers, design)으로 기록했다.
 \begin{itemize}
 \item \textbf{FAA:} 관제사는 조종사가 지시를 수신 확인하게 하고, 복창 내용이 맞는지 확인해야 한다. hold short 지시는 복창이 없으면 복창을 요청해야 한다 \cite{faa7110}. 우리 목록: \cmd{TAXI\_VIA}(활주로 배정 포함), \cmd{HOLD\_SHORT}, \cmd{CROSS\_RUNWAY}, \cmd{HOLD\_POSITION}, \cmd{CONTACT}, \cmd{MONITOR}, \cmd{LINE\_UP\_AND\_WAIT}, \cmd{CLEARED\_FOR\_TAKEOFF}, \cmd{CLEARED\_TO\_LAND}, \cmd{CLIMB}, \cmd{DESCEND}, \cmd{HEADING}, \cmd{SQUAWK}.
 \item \textbf{ICAO (Doc 4444):} 활주로 진입·착륙·이륙·대기·횡단·택시 허가, 고도, 기수, 트랜스폰더 코드 등 \cite{icao4444}. MONITOR는 ICAO 표현이 아니라서 제외했다.
@@ -351,7 +351,7 @@ $\kappa$ & $g$ & $R$ & 비고\\\midrule
 \item \textbf{조건부 허가 미지원:} ``after the landing traffic, line up and wait'' 같은 조건을 표현하지 못한다.
 \item \textbf{설계값:} $T_{\max}$와 대체 규칙은 운영 규정이 아니라 데모용 설계값이다.
 \item \textbf{OWL/RDF 미제공:} 현재는 JSON 설정과 코드 검사로 구현했다. atmonto·AIXM IRI를 노드 속성(\texttt{iri})으로만 연결했다.
-\item \textbf{향후:} 조건부 허가 추가, SHACL 파일로 제약 분리, 캐나다·유럽 데이터로 ICAO 규정 검증(RQ4), DLR v3.00 이름으로 \texttt{configs/ontology.json}의 종류 이름 별칭(alias) 추가, 조건 요소(UNTIL/WHEN/AFTER) 반영.
+\item \textbf{향후:} 조건부 허가 추가, SHACL 파일로 제약 분리, 캐나다·유럽 데이터로 ICAO 규정 검증(RQ4), 조건 요소(UNTIL/WHEN/AFTER) 반영. (DLR v3.00 이름 대응은 \texttt{configs/ontology.json}의 \texttt{dlr} 항목으로 반영 완료. 생성 과정은 \texttt{ontology\_json\_build.pdf} 참고.)
 \end{itemize}
 \end{caveat}
 

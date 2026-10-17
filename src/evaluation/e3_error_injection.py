@@ -16,7 +16,7 @@ sys.path.insert(0, str(SRC_ROOT))
 
 from common.atc_text import LETTER_TO_WORD, PHONETIC, build_callsign_regex
 from common.io_utils import load_json, load_jsonl, save_json
-from common.paths import AIRLINES_PATH, ONTOLOGY_PATH, STATIC_KB_ROOT, display_path, run_dir
+from common.paths import AIRLINES_PATH, ONTOLOGY_PATH, RULES_PATH, STATIC_KB_ROOT, display_path, run_dir
 from evaluation.metrics import rate
 from pipeline.m4_extract import LLMExtractor, RuleExtractor
 from pipeline.m5_canonicalize import Canonicalizer
@@ -116,10 +116,11 @@ def main():
     out = run_dir(args.run_name)
     rng = random.Random(args.seed)
     ontology = load_json(ONTOLOGY_PATH)
+    rules = load_json(RULES_PATH)
     telephony = load_json(AIRLINES_PATH)["telephony"]
     kb = load_json(STATIC_KB_ROOT / f"{args.airport}.json")
     callsign_re = build_callsign_regex(telephony)
-    required = set(ontology["readback_required"][ontology["region_rules"]["US"]])
+    required = set(rules["readback_required"][rules["region_rules"]["US"]])
     graph = TemporalEventGraph.load(out / "kg" / "graph.json")
     turns = {t["turn_id"]: t for t in load_jsonl(out / "turns.jsonl")}
 
