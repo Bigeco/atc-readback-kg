@@ -18,7 +18,6 @@ the speaker role, the callsign, and every ATC instruction it contains, using onl
 
 [Rules]
 - speaker: "ATCO" (controller) or "PILOT". Controllers usually start with the callsign; pilots reading back usually end with it.
-  A speaker hint from a rule-based detector is given; override it only if the text clearly contradicts it.
 - callsign: the callsign as spoken, e.g. "Delta 2642" (digits only, drop hyphens). Controllers often abbreviate to the
   number only ("1606, Atlanta Ground, ...") -> return just "1606". Use null if no callsign is spoken.
 - A pilot readback repeats the controller's instructions: extract them with the same types as the controller would.
@@ -38,7 +37,6 @@ Return only JSON:
 {examples}
 
 [Input]
-speaker hint: {role_hint}
 transmission: {text}
 output:
 """.strip()
@@ -67,7 +65,7 @@ def _load_examples():
     import json
     from pathlib import Path
     path = Path(__file__).resolve().parents[2] / "configs" / "fewshot_examples.json"
-    return [{"role_hint": ex["role_hint"], "text": ex["text"], "output": ex["output"]}
+    return [{"text": ex["text"], "output": ex["output"]}
             for ex in json.loads(path.read_text(encoding="utf-8"))["examples"]]
 
 

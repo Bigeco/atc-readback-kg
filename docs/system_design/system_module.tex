@@ -548,7 +548,7 @@ LLM에는 화자마다 송신 수, 부른 콜사인 종류 수 $|\mathcal{C}_\si
 \subsection{M2b. 온톨로지 기반 LLM 의미 추출}
 \textbf{[해결 문제]} \ch{C6} 개념 단위 표현, \ch{C7} 지시와 정보 구분, \ch{C11} 라벨 부족, \ch{C13} 형식 오류.
 
-\textbf{[입력]} $(w_i, r_i)$, $\Ont$, few-shot 예시 $\mathcal{E}=\{(w^{(e)},u^{(e)})\}_{e=1}^{k}$.
+\textbf{[입력]} $w_i$, $\Ont$(\texttt{command\_types}, \texttt{value\_formats}), few-shot 예시 $\mathcal{E}=\{(w^{(e)},u^{(e)})\}_{e=1}^{k}$.
 
 \textbf{[출력]}
 \begin{equation}
@@ -922,7 +922,7 @@ M0 & $D_{\mathrm{apt}},D_{\mathrm{tel}},D_{\mathrm{fac}},D_{\mathrm{onto}},D_{\m
 M1a & $\{(a^{\varphi},\Ctx^{\varphi})\}_{\varphi}$ & $\{(s_i,x_i,\Ctx_i)\}$ (UTC 병합) & ffmpeg, Silero VAD, 파일명 파서\\
 M1b & $x_i,\Vdom,\mathcal{F}_{\mathrm{act}}$ & $(w_i,c_i,\mathrm{lang}_i)$ & faster-whisper large-v3 (RTX 4090에서 동작 확인)\\
 M2a & $\{(w_i,\sigma_i)\}_{i\in\text{파일}}$ & $\{r_i\}$, $\rho:\sigma\mapsto r$ & LLM(화자 단위) + 규칙 다수결\\
-M2b & $w_i,r_i,\Ont,\mathcal{E}$ & $u_i=(\hat c_i,I_i)$ & LLM(API 또는 로컬) + JSON Schema 구조화 출력\\
+M2b & $w_i,\Ont,\mathcal{E}$ & $u_i=(\hat c_i,I_i)$ & LLM(API 또는 로컬) + JSON Schema 구조화 출력\\
 M3 & $u_i,\KS,\G_{<t_i},\Ctx_i$ & $\tilde u_i=(f_i,\tilde I_i,\mathcal{A}_i)$ & rapidfuzz, Double Metaphone, 규칙\\
 M4 & $\G_{t_{i-1}},\tilde u_i,\Sigma,\KR,\Cfg$ & $\G_{t_i}$ & Neo4j + Cypher MERGE (Graphiti 참고)\\
 M5 & $\G_t,\mathcal{R},\KR$ & $\Yset$ & Cypher 규칙 질의\\

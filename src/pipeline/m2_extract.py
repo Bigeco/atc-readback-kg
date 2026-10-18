@@ -1,4 +1,4 @@
-"""M2 (step 2): ontology-grounded extraction of ATC instructions from one speaker turn.
+"""M2b: ontology-grounded extraction of ATC instructions from one transmission (text only; the role comes from M2a).
 
 Two backends share one output schema:
 - RuleExtractor: deterministic phraseology grammar (baseline, no GPU, used by E3 for speed).
@@ -194,7 +194,7 @@ class LLMExtractor:
         self.fallback = RuleExtractor(callsign_re)
         types = "\n".join(f"- {k}: {v['description']}" for k, v in ontology["command_types"].items())
         examples = "\n".join(
-            f"speaker hint: {ex['role_hint']}\ntransmission: {ex['text']}\noutput: {json.dumps(ex['output'])}"
+            f"transmission: {ex['text']}\noutput: {json.dumps(ex['output'])}"
             for ex in EXTRACTION_EXAMPLES
         )
         self.template = (EXTRACTION_PROMPT.replace("{command_types}", types)
@@ -202,7 +202,8 @@ class LLMExtractor:
                          .replace("{examples}", examples))
 
     def _prompt(self, turn: dict) -> str:
-        return self.template.replace("{role_hint}", turn["role"]).replace("{text}", turn["text"])
+        # No speaker hint: the role is M2a's job; M2b reads the text only.
+        return self.template.replace("{text}", turn["text"])
 
     def _validate(self, raw: dict, turn: dict) -> dict:
         norm, edits = normalize_text(turn["text"])
