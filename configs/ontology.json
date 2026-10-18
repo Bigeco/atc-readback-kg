@@ -980,7 +980,7 @@
     "ACK": {
       "state": false,
       "targets": [],
-      "description": "roger / wilco / copy",
+      "description": "pure acknowledgement without instruction content (roger, wilco, copy, see you)",
       "dlr": [
         {
           "category": "Miscellaneous types",
@@ -1000,7 +1000,7 @@
     "REQUEST": {
       "state": false,
       "targets": [],
-      "description": "pilot request (ready to taxi, request ...)",
+      "description": "a pilot asking for something (ready to taxi, request ...); a controller question is not a REQUEST",
       "dlr": null,
       "faa_phraseology": [],
       "note": "DLR encodes this as Speaker=PILOT with Reason=REQUEST (JSON reas=REQ), not as a command type."

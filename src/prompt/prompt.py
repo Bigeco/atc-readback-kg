@@ -25,9 +25,8 @@ the speaker role, the callsign, and every ATC instruction it contains, using onl
 {value_formats}
 - Recognition errors to repair: "fox shot"/"fox tractor" = Foxtrot, "9 or left" = 9 left, "hold for the Lima 3" = hold short of Lima 3,
   "19-1" after monitor/contact tower = 119.1. Repair only these kinds of obvious errors.
-- REQUEST is only for a pilot asking for something (ready to taxi, request ...). A controller question is not an instruction.
 - A pilot readback without a verb still contains instructions: "Victor to 1, Delta 22" is TAXI_VIA with route ["V"].
-- Pure acknowledgements ("roger", "see you") are ACK. Chatter without ATC content gets an empty list.
+- Chatter without ATC content gets an empty list.
 - Never use a number like "3737", "757" or "7-6" as target: aircraft types and spot numbers are values, not targets.
 
 [Output Format]
