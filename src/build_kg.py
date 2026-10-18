@@ -242,7 +242,6 @@ def main():
         "flights": labels.get("Flight", 0),
         "atco_instructions": len(ins),
         "atco_instruction_types": dict(Counter(p["type"] for p in ins)),
-        "confidence_labels": dict(Counter(p["conf_label"] for p in ins)),
         "readback_status": readback_status_counts(graph),
         "alerts": dict(Counter(a["label"] for a in alerts)),
         "callsign_flags": dict(Counter(f for r in canonical for f in r["callsign"]["flags"])),

@@ -2,7 +2,7 @@
 
   sample : stratified sample of facts -> CSV sheet (human fills `label`)
   judge  : optional LLM second opinion -> column `label_llm`
-  score  : precision overall / by relation / by confidence label, with Wilson 95% CI
+  score  : precision overall / by relation, with Wilson 95% CI
 
 Labels: explicit | partial | unsupported   (precision counts `explicit`; lenient also counts `partial`)
 """
@@ -23,7 +23,7 @@ from evaluation.metrics import rate
 from pipeline.m4_graph import TemporalEventGraph
 
 
-FIELDS = ["claim_id", "relation", "conf_label", "claim", "evidence", "utc", "audio_file", "offset_start",
+FIELDS = ["claim_id", "relation", "claim", "evidence", "utc", "audio_file", "offset_start",
           "offset_end", "label", "label_llm", "note"]
 
 
@@ -42,7 +42,7 @@ def collect_claims(graph) -> dict:
         if p["speaker"] != "ATCO" or p["type"] in ("REQUEST", "ACK"):
             continue
         tx = graph.nodes[p["tx_node"]]["props"]
-        base = {"conf_label": p.get("conf_label"), "tx": tx}
+        base = {"tx": tx}
         claims["INSTRUCTION_TYPE"].append({**base, "claim": f"The controller issues a {p['type']} instruction."})
         if p.get("target_id"):
             claims["TARGET"].append({**base, "claim": f"{p['type']} refers to {_name(p['target_id'])}."})
@@ -50,14 +50,14 @@ def collect_claims(graph) -> dict:
             claims["VIA"].append({**base, "claim": f"The taxi route includes {', '.join(_name(r) for r in p['route_ids'])}."})
     for edge in graph.edges_by_type("ADDRESSES"):
         tx = graph.nodes[edge["src"]]["props"]
-        claims["ADDRESSES"].append({"conf_label": "LOW" if set(tx.get("flags", [])) & {"ASR_CORRECTED", "LINKED_BY_CONTEXT"} else None,
+        claims["ADDRESSES"].append({
                                     "tx": tx, "claim": f"This transmission involves flight {_name(edge['dst'])} "
                                                        f"(spoken as {tx.get('callsign_surface') or 'no callsign'})."})
     for edge in graph.edges_by_type("READBACK_OF"):
         pilot = graph.nodes[edge["src"]]["props"]
         atco = graph.nodes[edge["dst"]]["props"]
         claims["READBACK_OF"].append({
-            "conf_label": None, "tx": pilot, "tx2": atco,
+            "tx": pilot, "tx2": atco,
             "claim": f"The second transmission is the pilot's readback of the first, and its status is {edge['props']['status']}.",
         })
     return claims
@@ -76,7 +76,7 @@ def sample(args):
             if c.get("tx2"):
                 evidence = f"[{c['tx2']['speaker']}] {c['tx2']['text']}  ||  " + evidence
             rows.append({
-                "claim_id": f"{relation}-{k:03d}", "relation": relation, "conf_label": c.get("conf_label") or "",
+                "claim_id": f"{relation}-{k:03d}", "relation": relation,
                 "claim": c["claim"], "evidence": evidence, "utc": utc(tx["utc_start_epoch"]),
                 "audio_file": tx["file"], "offset_start": tx["offset_start"], "offset_end": tx["offset_end"],
                 "label": "", "label_llm": "", "note": "",
@@ -123,14 +123,10 @@ def score(args):
                     "lenient": rate(sum(r[column] in ("explicit", "partial") for r in subset), len(subset))}
 
         by_relation = defaultdict(list)
-        by_conf = defaultdict(list)
         for r in labeled:
             by_relation[r["relation"]].append(r)
-            if r["conf_label"]:
-                by_conf[r["conf_label"]].append(r)
         report[column] = {"overall": block(labeled),
-                          "by_relation": {k: block(v) for k, v in sorted(by_relation.items())},
-                          "by_confidence": {k: block(v) for k, v in sorted(by_conf.items())}}
+                          "by_relation": {k: block(v) for k, v in sorted(by_relation.items())}}
         if column == "label":
             both = [r for r in rows if r["label"] and r["label_llm"]]
             if both:

@@ -62,7 +62,7 @@ def export(run_name: str, out_dir: Path):
         if p["speaker"] == "ATCO" and p.get("state"):
             states.append({"type": p["type"], "flight": p.get("flight_id"), "target": (p.get("target_id") or "").split(":")[-1] or None,
                            "route": [r.split(":")[-1] for r in p.get("route_ids", [])], "value": p.get("value"),
-                           "since": p["valid_from"], "valid_to": p.get("valid_to"), "conf_label": p.get("conf_label"), "ins_id": nid})
+                           "since": p["valid_from"], "valid_to": p.get("valid_to"), "ins_id": nid})
     dump(states, data / "states.json")
     dump(state.alerts, data / "alerts.json")
 

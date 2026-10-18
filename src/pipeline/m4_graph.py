@@ -218,7 +218,7 @@ class GraphBuilder:
                        target_id=inst["target_id"], target_text=inst["target_text"], route_ids=inst["route_ids"],
                        value=inst["value"], qualifier=inst["qualifier"], flags=inst["flags"], feed=rec["feed"],
                        valid_from=t0, valid_to=None if is_state else t1, state=is_state, tx_node=tx_id,
-                       conf_label="MEDIUM", layer="dynamic")
+                       layer="dynamic")
             g.add_edge("CONTAINS", tx_id, ins_id, valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])
             if inst["target_id"]:
                 self._ensure_target(inst["target_id"], inst["target_kind"], inst["target_text"])
@@ -308,19 +308,13 @@ class GraphBuilder:
         for inst in atco_instrs:
             node = g.nodes[inst["ins_id"]]["props"]
             if inst["ins_id"] in matched:
-                node["conf_label"] = "HIGH"
                 node["corroborated_by"] = pilot_tx
 
     def finalize(self):
-        """Close states that were never superseded at their maximum validity and assign LOW confidence."""
+        """Close states that were never superseded at their maximum validity."""
         for node in self.graph.nodes_by_label("Instruction").values():
             p = node["props"]
             if p["state"] and p["valid_to"] is None:
                 p["valid_to"] = p["valid_from"] + self.max_validity.get(p["type"], self.default_validity)
                 p["expired"] = True
-            tx = self.graph.nodes[p["tx_node"]]["props"]
-            weak = p.get("flags") or \
-                {"ASR_CORRECTED", "UNRESOLVED_AIRLINE", "LINKED_BY_CONTEXT"} & set(tx.get("flags", []))
-            if weak and p["conf_label"] != "HIGH":
-                p["conf_label"] = "LOW"
         return self.graph

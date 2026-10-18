@@ -15,7 +15,7 @@ def instruction_view(graph, ins_id: str) -> dict:
         "ins_id": ins_id, "type": p["type"], "flight": p.get("flight_id"), "target": _name(p.get("target_id")),
         "route": [_name(r) for r in p.get("route_ids", [])], "value": p.get("value"), "qualifier": p.get("qualifier"),
         "valid_from": p["valid_from"], "valid_to": p.get("valid_to"), "state": p.get("state"),
-        "invalidated_by": p.get("invalidated_by"), "conf_label": p.get("conf_label"), "flags": p.get("flags", []),
+        "invalidated_by": p.get("invalidated_by"), "flags": p.get("flags", []),
         "tx_node": p["tx_node"], "readback_status": status,
     }
 
@@ -103,7 +103,7 @@ def snapshot(graph, t: float) -> dict:
             state[key].append({
                 "flight": p.get("flight_id"), "target": _name(p.get("target_id")),
                 "route": [_name(r) for r in p.get("route_ids", [])], "value": p.get("value"),
-                "since": p["valid_from"], "conf_label": p.get("conf_label"), "ins_id": nid,
+                "since": p["valid_from"], "ins_id": nid,
             })
     for rows in state.values():
         rows.sort(key=lambda r: r["since"])

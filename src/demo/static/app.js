@@ -114,9 +114,9 @@ async function loadSnapshot() {
     <div class="lane"><h3>${title}<span>${snap[k].length}</span></h3><ul>
       ${snap[k].map((r) => `<li data-f="${esc(r.flight)}"><b>${esc(r.flight || "?")}</b>
         <span class="what">${esc([r.route && r.route.length ? r.route.join("→") : "", r.target ? (k === "TAXI_VIA" ? "to " + r.target : r.target) : "", r.value || ""].filter(Boolean).join(" ") || "—")}</span>
-        <span title="${esc(r.conf_label)} · since ${hhmmss(r.since)}"><span class="dot ${esc(r.conf_label)}"></span></span></li>`).join("")}
+        <span title="since ${hhmmss(r.since)}"><span class="dot"></span></span></li>`).join("")}
     </ul></div>`).join("");
-  $("#tab-airfield").innerHTML = `<div class="snap-title"><b>${hhmmss(S.t)}Z</b><small>유효 구간이 이 시점을 포함하는 관제 지시 ${total}건 · 점 색 = 신뢰도 (HIGH 교차확인 / MEDIUM / LOW)</small></div>
+  $("#tab-airfield").innerHTML = `<div class="snap-title"><b>${hhmmss(S.t)}Z</b><small>유효 구간이 이 시점을 포함하는 관제 지시 ${total}건</small></div>
     <div class="lanes">${lanes || '<p class="hint">이 시점에 유효한 상태형 지시가 없습니다.</p>'}</div>`;
   document.querySelectorAll(".lane li").forEach((el) => el.addEventListener("click", () => el.dataset.f && selectFlight(el.dataset.f)));
 }
@@ -143,7 +143,7 @@ function renderMsg(m) {
   const rbTag = rb ? `<span class="pill ${esc(rb.status)}">${m.speaker === "ATCO" ? "readback" : "reads back"} ${esc(rb.status)}</span>` : "";
   const flags = (m.flags || []).filter((f) => f !== "NO_CALLSIGN" || m.speaker === "PILOT").map((f) => `<span class="pill flag">${esc(f)}</span>`).join(" ");
   const chips = (m.instructions || []).filter((i) => !["REQUEST", "ACK"].includes(i.type))
-    .map((i) => `<span class="chip ${m.speaker === "ATCO" ? "req" : ""}" title="${esc(i.conf_label || "")}">${esc(insText(i))}</span>`).join("");
+    .map((i) => `<span class="chip ${m.speaker === "ATCO" ? "req" : ""}">${esc(insText(i))}</span>`).join("");
   return `<div class="msg ${esc(m.speaker)}" data-tx="${esc(m.tx_id)}">
     <div class="meta">${playBtn(m)}<span>${hhmmss(m.utc_start_epoch)}</span><span>${esc(m.speaker)}</span>${rbTag}${flags}</div>
     <div class="text">${esc(m.text)}</div>${chips ? `<div class="chips">${chips}</div>` : ""}</div>`;
@@ -156,7 +156,7 @@ async function loadGraph(fid) {
   const label = (n) => n.label === "Transmission" ? `${n.props.speaker} ${hhmmss(n.props.utc_start_epoch)}`
     : n.label === "Instruction" ? shortType(n.props.type) : n.label === "CallsignMention" ? `"${n.props.surface}"` : n.id.split(":").pop();
   const elements = [
-    ...g.nodes.map((n) => ({ data: { id: n.id, label: label(n), kind: n.label, status: n.props.conf_label || "" } })),
+    ...g.nodes.map((n) => ({ data: { id: n.id, label: label(n), kind: n.label } })),
     ...g.edges.map((e) => ({ data: { id: e.id, source: e.src, target: e.dst, label: e.type === "READBACK_OF" ? `READBACK ${e.props.status}` : e.type, type: e.type } })),
   ];
   if (S.cy) S.cy.destroy();
@@ -166,7 +166,6 @@ async function loadGraph(fid) {
       { selector: "node", style: { label: "data(label)", "font-family": "IBM Plex Mono", "font-size": 9, "text-valign": "bottom", "text-margin-y": 3,
         "background-color": (n) => NODE_COLORS[n.data("kind")] || "#999", width: 16, height: 16, color: "#1b2225" } },
       { selector: "node[kind = 'Flight']", style: { width: 30, height: 30, "font-size": 12, "font-weight": 600 } },
-      { selector: "node[kind = 'Instruction'][status = 'HIGH']", style: { "border-width": 3, "border-color": "#17766f" } },
       { selector: "node[kind = 'Transmission']", style: { shape: "round-rectangle", width: 22, height: 12 } },
       { selector: "edge", style: { width: 1, "line-color": "#c9c2ae", "target-arrow-shape": "triangle", "target-arrow-color": "#c9c2ae", "curve-style": "bezier",
         label: "data(label)", "font-size": 7, color: "#6a7276", "text-rotation": "autorotate" } },
@@ -266,12 +265,10 @@ function renderEval(ev, sm) {
     const who = ev.e2_precision.label ? "사람 판정" : "LLM 판정 · 잠정, 사람 라벨 필요";
     cards.push(`<div class="card"><h3>E2 · 근거 대비 정밀도 (${who})</h3>
       <div class="big">${pct(e.overall.strict.rate)}</div><div class="hint">95% CI ${e.overall.strict.ci95.map(pct).join("–")} · n=${e.overall.strict.n}</div>
-      <table><tr><th>신뢰도</th><th>정밀도</th><th>n</th></tr>${Object.entries(e.by_confidence).map(([k, v]) => `<tr><td><span class="pill ${k}">${k}</span></td><td>${pct(v.strict.rate)}</td><td>${v.strict.n}</td></tr>`).join("")}</table></div>`);
+      <table><tr><th>관계</th><th>정밀도</th><th>n</th></tr>${Object.entries(e.by_relation).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${pct(v.strict.rate)}</td><td>${v.strict.n}</td></tr>`).join("")}</table></div>`);
   }
-  const conf = sm.confidence_labels || {};
   cards.push(`<div class="card"><h3>KG 구성</h3><table>
-    ${Object.entries(sm.nodes || {}).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}
-    <tr><th>신뢰도 등급</th><th>${Object.entries(conf).map(([k, v]) => `<span class="pill ${k}">${k} ${v}</span>`).join(" ")}</th></tr></table></div>`);
+    ${Object.entries(sm.nodes || {}).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table></div>`);
   $("#tab-eval").innerHTML = `<div class="eval-grid">${cards.join("")}</div>`;
 }
 

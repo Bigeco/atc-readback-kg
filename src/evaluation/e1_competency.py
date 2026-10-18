@@ -81,7 +81,7 @@ def evaluate(run_name: str) -> dict:
     holds = Q.instructions_at_target(graph, target, t0, t1) if target else []
     record("CQ2", f"{target}에서 대기(hold short) 지시를 받은 항공편은?", "RQ1, RQ3", holds,
            [h["tx_node"] for h in holds], {"target": target, "window": [t0, t1]},
-           [f"{utc(h['valid_from'])} {h['flight']} ({h['conf_label']})" for h in holds[:8]])
+           [f"{utc(h['valid_from'])} {h['flight']}" for h in holds[:8]])
 
     issues = Q.alerts_by_label(alerts, ["NO_READBACK", "NO_CALLSIGN"])
     record("CQ3", "복창이 없거나 콜사인 없이 복창된 지시는?", "RQ3", issues,
