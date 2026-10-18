@@ -16,7 +16,7 @@
     "Static classes (Airport, Runway, Taxiway, Facility) follow the NASA ATM Ontology (Keller 2017); hold-short points correspond to AIXM 5.1 TaxiHoldingPosition."
   ],
   "scope_notes": [
-    "Subset of DLR v3.00 for US ground/tower audio plus two US-only types (MONITOR, ACK).",
+    "Subset of DLR v3.00 for US ground/tower audio: 18 types map to DLR rows; MONITOR (FAA 2-1-17) and REQUEST (DLR Reason attribute) have no DLR type; ACK maps to AFFIRM only partially.",
     "DLR Condition (UNTIL/WHEN/IF/AFTER) and Unit are not extracted.",
     "Read-back, supersession and validity rules live in configs/rules.json."
   ],
@@ -524,8 +524,8 @@
           "parameters": {
             "Preposition": "VIA, TO",
             "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY",
-            "APTR_COLOR": "individually for airports, e.g., RED, BLUE, GREEN",
             "GND_DIRECTION": "LEFT, RIGHT, STRAIGHT, NORTH, EAST, SOUTH, WEST, etc",
+            "APTR_COLOR": "individually for airports, e.g., RED, BLUE, GREEN",
             "Pushback-Conditional-Keywords": "WHEN/UNTIL ABEAM xxx"
           }
         }
@@ -551,8 +551,9 @@
           "main": "HOLD_SHORT",
           "value": "runway/TX-Point/Alphabet-Letter",
           "parameters": {
-            "runway": "runway_without_none + \"none\"",
             "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY",
+            "runway": "runway_without_none + \"none\"",
+            "runway_without_none": "e.g. RW01, RW01L, RW29C, RW30R",
             "Alphabet-Letter(s)": "A;B;C;D;E;F;G;H;I;J;K;L;M;N;O;P;Q;R;S;T;U;V;W;X;Y;Z"
           }
         }
@@ -583,8 +584,9 @@
           "value": "runway, TX-Point",
           "qualifier": "EXPEDITE",
           "parameters": {
+            "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY",
             "runway": "runway_without_none + \"none\"",
-            "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY"
+            "runway_without_none": "e.g. RW01, RW01L, RW29C, RW30R"
           }
         }
       ],
@@ -628,7 +630,8 @@
           "condition": "GiveWay-Conditional-Keywords",
           "parameters": {
             "Gnd-Acft": "Callsign, Callsign part (lufthansa), aircraft type (airbus), vehicle type (BUS), MARSHALLER, taxipoint, or taxiway",
-            "GiveWay-Conditional-Keywords": "WHEN AT TX-Point"
+            "GiveWay-Conditional-Keywords": "WHEN AT TX-Point",
+            "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY"
           }
         }
       ],
@@ -681,7 +684,7 @@
           "value": "Frequency",
           "condition": "Contact-Conditional-keywords",
           "parameters": {
-            "Frequency": "(zeros are added if necessary at the end)",
+            "Frequency": "3 digits decimal 3 digits (zeros are added if necessary at the end)",
             "Contact-Conditional-keywords": "WHEN AIRBORNE, WHEN REACHING ALTITUDE xxxx/xx ft/FL"
           }
         }
@@ -722,7 +725,8 @@
           "main": "LINEUP",
           "value": "runway",
           "parameters": {
-            "runway": "runway_without_none + \"none\""
+            "runway": "runway_without_none + \"none\"",
+            "runway_without_none": "e.g. RW01, RW01L, RW29C, RW30R"
           }
         }
       ],
@@ -747,7 +751,8 @@
           "sub": "TAKEOFF",
           "value": "runway",
           "parameters": {
-            "runway": "runway_without_none + \"none\""
+            "runway": "runway_without_none + \"none\"",
+            "runway_without_none": "e.g. RW01, RW01L, RW29C, RW30R"
           }
         }
       ],
@@ -772,7 +777,8 @@
           "sub": "LANDING",
           "value": "runway",
           "parameters": {
-            "runway": "runway_without_none + \"none\""
+            "runway": "runway_without_none + \"none\"",
+            "runway_without_none": "e.g. RW01, RW01L, RW29C, RW30R"
           }
         }
       ],
@@ -822,7 +828,9 @@
           "qualifier": "Alt-Qualifier",
           "condition": "climbDescend-condition-keywords",
           "parameters": {
+            "flight level": "or none",
             "altitude": "or none",
+            "CA": "",
             "Alt-Qualfier": "ABOVE, OR_ABOVE, BELOW, OR_BELOW",
             "climbDescend-condition-keywords": "UNTIL REACHING waypoint"
           }
@@ -850,7 +858,9 @@
           "qualifier": "Alt-Qualifier",
           "condition": "climbDescend-condition-keywords",
           "parameters": {
+            "flight level": "or none",
             "altitude": "or none",
+            "CA": "",
             "Alt-Qualfier": "ABOVE, OR_ABOVE, BELOW, OR_BELOW",
             "climbDescend-condition-keywords": "UNTIL REACHING waypoint"
           }
@@ -934,7 +944,8 @@
           "sub": "TRAFFIC",
           "value": "Gnd-Acft-none",
           "parameters": {
-            "Gnd-Acft-none": "Gnd-Acft or none"
+            "Gnd-Acft-none": "Gnd-Acft or none",
+            "Gnd-Acft": "Callsign, Callsign part (lufthansa), aircraft type (airbus), vehicle type (BUS), MARSHALLER, taxipoint, or taxiway"
           }
         }
       ],

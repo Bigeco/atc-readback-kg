@@ -353,12 +353,16 @@ def parse_command_table(text: str):
 
 
 def parse_parameter_table(text: str):
-    """DLR table p.2 -> {parameter name: allowed values / format}."""
+    """DLR table p.2 -> {parameter name: allowed values / format}.
+
+    The name sits on the last line of a row; wrapped value text appears on the lines above it, so value-only lines
+    are buffered and joined to the next named row (e.g. Frequency = "3 digits decimal 3 digits (zeros are added ...)").
+    """
     lines = text.splitlines()
     head = next(i for i, l in enumerate(lines) if "Parameter_Type" in l and "Parameter_Value" in l)
     value_col = lines[head].index("Parameter_Value")
     comment_col = lines[head].index("Comments")
-    params, current = {}, None
+    params, pending = {}, []
     for line in lines[head + 1:]:
         cells = list(split_cells(line))
         if not cells:
@@ -366,34 +370,43 @@ def parse_parameter_table(text: str):
         name = [t for s, t in cells if s + 3 < value_col]
         values = [t for s, t in cells if value_col <= s + 3 < comment_col]
         if name:
-            current = name[0]
-            params[current] = " ".join(values)
-        elif current and values:
-            params[current] = f"{params[current]} {' '.join(values)}".strip()
+            params[name[0]] = " ".join(pending + values).strip()
+            pending = []
+        elif values:
+            pending += values
     return params
 
 
 def referenced_parameters(row: dict, params: dict) -> dict:
-    """Resolve non-terminal names (e.g. 'TX-Point', 'APTR_COLOR') used in a row against the parameter table.
+    """Resolve non-terminal names (e.g. 'TX-Point', 'flight level', 'CA') used in a row against the parameter table.
 
-    Bold (terminal) vs non-bold (parameter) is lost in text extraction, so a token counts as a parameter when it names
-    a row of the parameter table. Exact names may be upper case (APTR_COLOR); fuzzy matching (table typos such as
-    'Alt-Qualfier', suffixes such as 'GND_DIRECTION(only') is limited to tokens with lower-case letters.
+    Bold (terminal) vs non-bold (parameter) is lost in text extraction, so a phrase counts as a parameter when it is
+    the name of a row of the parameter table (whole-phrase match, so multi-word and upper-case names work). Table typos
+    and suffixes ('Alt-Qualifier' vs 'Alt-Qualfier', 'GND_DIRECTION(only') fall back to fuzzy matching of
+    lower-case-containing tokens.
     """
     norm = {re.sub(r"[^a-z0-9]", "", k.lower()): k for k in params}
     found = {}
+
+    def exact(cell: str):
+        for name in sorted(params, key=len, reverse=True):
+            if name not in found and re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", cell):
+                found[name] = params[name]
+                exact(params[name])  # parameters defined via other parameters, e.g. runway -> runway_without_none
+
     for key in ("sub", "value", "qualifier", "condition"):
-        for token in re.split(r"[/,]|\s+", row[key]):
+        cell = row[key]
+        exact(cell)
+        for token in re.split(r"[/,]|\s+", cell):
             token = token.strip(" ()")
-            if len(token) < 3:
+            if len(token) < 3 or token.isupper() or token in params:
                 continue
             probe = re.sub(r"[^a-z0-9]", "", token.lower())
-            hit = params.get(token) and token or norm.get(probe)
-            if not hit and not token.isupper():
-                close = difflib.get_close_matches(probe, norm, n=1, cutoff=0.85)
-                hit = norm[close[0]] if close else None
-            if hit:
+            close = difflib.get_close_matches(probe, norm, n=1, cutoff=0.85)
+            hit = norm.get(probe) or (norm[close[0]] if close else None)
+            if hit and hit not in found:
                 found[hit] = params[hit]
+                exact(params[hit])
     return found
 
 
@@ -527,7 +540,7 @@ def build(out_dir: Path):
             "points correspond to AIXM 5.1 TaxiHoldingPosition.",
         ],
         "scope_notes": [
-            "Subset of DLR v3.00 for US ground/tower audio plus two US-only types (MONITOR, ACK).",
+            "Subset of DLR v3.00 for US ground/tower audio: 18 types map to DLR rows; MONITOR (FAA 2-1-17) and REQUEST (DLR Reason attribute) have no DLR type; ACK maps to AFFIRM only partially.",
             "DLR Condition (UNTIL/WHEN/IF/AFTER) and Unit are not extracted.",
             "Read-back, supersession and validity rules live in configs/rules.json.",
         ],

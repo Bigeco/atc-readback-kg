@@ -272,7 +272,7 @@ python src/kb/build_ontology.py --out-dir /tmp/kb   # 다른 폴더로 시험 �
 %==========================================================
 \begin{caveat}
 \begin{itemize}[leftmargin=12pt]
-\item \textbf{매개변수 표 줄바꿈:} DLR 표 2쪽에서 여러 줄로 나뉜 칸 일부가 잘려 들어온다(예: \texttt{altitude}는 ``or none''만, \texttt{4-digit-squawk-value}는 빈 값). 1쪽 명령 행은 정확하다.
+\item \textbf{매개변수 표 원문의 빈 칸:} DLR 표 2쪽 일부 매개변수는 원문 자체가 비어 있거나 짧다(예: \texttt{4-digit-squawk-value}는 값 칸이 비어 있음, \texttt{altitude}는 ``or none''만 있음, \texttt{CA}는 값 없이 설명 열에만 ``controlled airspace''). 설명(Comments) 열은 옮기지 않았다. 여러 줄로 나뉜 값(예: \texttt{Frequency} = ``3 digits decimal 3 digits \ldots'')은 다음 이름 줄에 합쳐 온전히 가져온다.
 \item \textbf{조건·단위 미추출:} DLR의 Condition(UNTIL/WHEN/IF/AFTER)과 Unit은 표에서 옮겨 적기만 했고, M4 추출에서는 아직 쓰지 않는다.
 \item \textbf{ICAO 미검증:} ICAO 복창 목록은 Doc 4444를 입력으로 넣지 않아 자동 검증 대상이 아니다.
 \item \textbf{TAXI TO/VIA 묶음:} DLR은 ``taxi to A4 via L N7''을 TAXI TO와 TAXI VIA 두 Instruction으로 나누지만(설명서 8쪽 예시), 우리 \cmd{TAXI\_VIA}는 하나에 경로(\key{route})와 목적지(\key{target})를 함께 담는다. \key{dlr\_instruction\_schema}의 Value(s) 항목에 명시했다.
