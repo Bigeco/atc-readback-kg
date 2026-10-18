@@ -184,24 +184,41 @@ def find_bare_callsign(text: str) -> Optional[dict]:
     return None
 
 
+# Flight numbers have at most 4 digits (ICAO flight plan Item 7: aircraft identification <= 7 characters =
+# 3-letter designator + 4 digits). US civil registrations ("November 12345") allow 5.
+MAX_FLIGHT_DIGITS = {"NOVEMBER": 5}
+
+
+def flight_number(m: re.Match) -> Tuple[str, int]:
+    """Join the digit groups after the telephony from left to right and stop before the total exceeds the limit,
+    so a following position stays text: "Delta 1489 2 south" -> 1489, "Delta 14 89" -> 1489."""
+    limit = MAX_FLIGHT_DIGITS.get(m.group(1).upper(), 4)
+    digits, end = "", m.start(2)
+    for g in re.finditer(r"\d+", m.group(2)):
+        if len(digits) + len(g.group()) > limit:
+            return digits, end
+        digits, end = digits + g.group(), m.start(2) + g.end()
+    return digits, m.end()
+
+
 def find_callsigns(text: str, callsign_re: re.Pattern, allow_bare: bool = False) -> List[dict]:
     hits = []
     length = max(len(text), 1)
     for m in callsign_re.finditer(text):
-        digits = re.sub(r"\D", "", m.group(2))
+        digits, end = flight_number(m)
         if not digits:
             continue
         # "Alpha 3" is a taxiway; only long numbers after Alpha are treated as a (misrecognized) callsign.
         if m.group(1).lower() in ("alpha", "alfa") and len(digits) < 3:
             continue
         hits.append({
-            "raw": m.group(0).strip(),
+            "raw": text[m.start():end].strip(),
             "telephony": m.group(1).upper(),
             "number": digits,
             "start": m.start(),
-            "end": m.end(),
+            "end": end,
             "pos_ratio": round(m.start() / length, 3),
-            "end_ratio": round(m.end() / length, 3),
+            "end_ratio": round(end / length, 3),
         })
     if not hits and allow_bare:
         bare = find_bare_callsign(text)
