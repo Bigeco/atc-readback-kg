@@ -1,0 +1,238 @@
+{
+  "source": "FAA Order JO 7110.65BB (2025-02-20), EXAMPLE blocks; US government work (public domain). Text is verbatim except U+2212 minus signs written as '-'. Labels (output) were added by the team following configs/ontology.json and must be reviewed.",
+  "examples": [
+    {
+      "faa_section": "3-7-2",
+      "role_hint": "ATCO",
+      "text": "American Four Ninety Two, Runway Three Six Left, taxi via taxiway Charlie, hold short of Runway Two Seven Right.",
+      "output": {
+        "speaker": "ATCO",
+        "callsign": "American 492",
+        "instructions": [
+          {
+            "type": "TAXI_VIA",
+            "target": "36L",
+            "route": [
+              "C"
+            ],
+            "value": null,
+            "qualifier": null
+          },
+          {
+            "type": "HOLD_SHORT",
+            "target": "27R",
+            "route": [],
+            "value": null,
+            "qualifier": null
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "3-7-2",
+      "role_hint": "ATCO",
+      "text": "Cross Runway Two-Eight Left, at taxiway Alpha, hold short of Runway Two-Eight Right.",
+      "output": {
+        "speaker": "ATCO",
+        "callsign": null,
+        "instructions": [
+          {
+            "type": "CROSS_RUNWAY",
+            "target": "28L",
+            "route": [],
+            "value": null,
+            "qualifier": "at A"
+          },
+          {
+            "type": "HOLD_SHORT",
+            "target": "28R",
+            "route": [],
+            "value": null,
+            "qualifier": null
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "3-7-3",
+      "role_hint": "ATCO",
+      "text": "Follow Boeing 757, Runway Three-Six Left, taxi via Alpha, Caution jet blast.",
+      "output": {
+        "speaker": "ATCO",
+        "callsign": null,
+        "instructions": [
+          {
+            "type": "FOLLOW",
+            "target": null,
+            "route": [],
+            "value": "Boeing 757",
+            "qualifier": null
+          },
+          {
+            "type": "TAXI_VIA",
+            "target": "36L",
+            "route": [
+              "A"
+            ],
+            "value": null,
+            "qualifier": null
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "3-10-9",
+      "role_hint": "ATCO",
+      "text": "U.S. Air Ten Forty Two, turn right next taxiway, cross runway two one, contact ground point seven.",
+      "output": {
+        "speaker": "ATCO",
+        "callsign": "U.S. Air 1042",
+        "instructions": [
+          {
+            "type": "TURN",
+            "target": null,
+            "route": [],
+            "value": null,
+            "qualifier": "RIGHT"
+          },
+          {
+            "type": "CROSS_RUNWAY",
+            "target": "21",
+            "route": [],
+            "value": null,
+            "qualifier": null
+          },
+          {
+            "type": "CONTACT",
+            "target": "Ground",
+            "route": [],
+            "value": "point seven",
+            "qualifier": null
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "3-10-9",
+      "role_hint": "ATCO",
+      "text": "American Four Ninety-two, turn left at Taxiway Charlie, hold short of Runway 27 Right.",
+      "output": {
+        "speaker": "ATCO",
+        "callsign": "American 492",
+        "instructions": [
+          {
+            "type": "TURN",
+            "target": "C",
+            "route": [],
+            "value": null,
+            "qualifier": "LEFT"
+          },
+          {
+            "type": "HOLD_SHORT",
+            "target": "27R",
+            "route": [],
+            "value": null,
+            "qualifier": null
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "3-9-4",
+      "role_hint": "ATCO",
+      "text": "American Four Eighty Two, Runway Three-Zero full length, line up and wait.",
+      "output": {
+        "speaker": "ATCO",
+        "callsign": "American 482",
+        "instructions": [
+          {
+            "type": "LINE_UP_AND_WAIT",
+            "target": "30",
+            "route": [],
+            "value": null,
+            "qualifier": "full length"
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "3-9-4",
+      "role_hint": "ATCO",
+      "text": "United Five, Runway Four, cleared for takeoff, traffic holding in position Runway Three-One.",
+      "output": {
+        "speaker": "ATCO",
+        "callsign": "United 5",
+        "instructions": [
+          {
+            "type": "CLEARED_FOR_TAKEOFF",
+            "target": "4",
+            "route": [],
+            "value": null,
+            "qualifier": null
+          },
+          {
+            "type": "TRAFFIC_INFO",
+            "target": null,
+            "route": [],
+            "value": "holding in position Runway 31",
+            "qualifier": null
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "2-1-17",
+      "role_hint": "ATCO",
+      "text": "Monitor Ground, One Two Zero Point Eight.",
+      "output": {
+        "speaker": "ATCO",
+        "callsign": null,
+        "instructions": [
+          {
+            "type": "MONITOR",
+            "target": "Ground",
+            "route": [],
+            "value": "120.8",
+            "qualifier": null
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "2-4-3",
+      "role_hint": "PILOT",
+      "text": "November Five Charlie Tango, roger, cleared to land runway four left.",
+      "output": {
+        "speaker": "PILOT",
+        "callsign": "N5CT",
+        "instructions": [
+          {
+            "type": "CLEARED_TO_LAND",
+            "target": "4L",
+            "route": [],
+            "value": null,
+            "qualifier": null
+          }
+        ]
+      }
+    },
+    {
+      "faa_section": "2-4-3",
+      "role_hint": "PILOT",
+      "text": "Climbing to Flight Level three three zero, United Twelve",
+      "output": {
+        "speaker": "PILOT",
+        "callsign": "United 12",
+        "instructions": [
+          {
+            "type": "CLIMB",
+            "target": null,
+            "route": [],
+            "value": "FL330",
+            "qualifier": null
+          }
+        ]
+      }
+    }
+  ]
+}

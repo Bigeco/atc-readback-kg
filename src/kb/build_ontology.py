@@ -486,6 +486,23 @@ def build_catalog(rows, description: str, command_types: dict) -> dict:
     }
 
 
+def verify_fewshot_examples(sections: dict, path: Path = CONFIG_ROOT / "fewshot_examples.json"):
+    """Few-shot examples for M2 must be verbatim FAA EXAMPLE text in the cited section, with known command types."""
+    import json
+    if not path.exists():
+        return
+    known = {c["name"] for c in COMMAND_TYPES}
+    errors = []
+    for ex in json.loads(path.read_text(encoding="utf-8"))["examples"]:
+        body = sections.get(ex["faa_section"], {}).get("body", "").replace("\u2212", "-")
+        if ex["text"] not in body:
+            errors.append(f"not in FAA {ex['faa_section']}: {ex['text'][:60]}")
+        errors += [f"unknown type {i['type']}" for i in ex["output"]["instructions"] if i["type"] not in known]
+    if errors:
+        sys.exit("[onto] few-shot verification failed:\n  " + "\n  ".join(errors))
+    print(f"[onto] few-shot examples verified against FAA text: {path.name}")
+
+
 def build(out_dir: Path):
     description = pdf_text(DLR_DESCRIPTION)
     table_rows = parse_command_table(pdf_text(DLR_TABLE, 1))
@@ -497,6 +514,7 @@ def build(out_dir: Path):
                      if not re.search(rf"(?<!\w){re.escape(t)}(?!\w)", description))
     if missing:
         sys.exit(f"[onto] DLR description does not contain: {missing}")
+    verify_fewshot_examples(faa)
     readback_basis = {level: {**faa_evidence(faa, sec, pat), "part": part}
                       for level, (sec, part, pat) in FAA_READBACK_BASIS.items()}
 

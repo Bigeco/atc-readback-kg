@@ -46,48 +46,17 @@ output:
 """.strip()
 
 
-EXTRACTION_EXAMPLES = [
-    {
-        "role_hint": "ATCO",
-        "text": "Delta 26-42, on the ground, taxi via Mike, hold for the Lima-3.",
-        "output": {"speaker": "ATCO", "callsign": "Delta 2642", "instructions": [
-            {"type": "TAXI_VIA", "target": None, "route": ["M"], "value": None, "qualifier": None},
-            {"type": "HOLD_SHORT", "target": "L3", "route": [], "value": None, "qualifier": None}]},
-    },
-    {
-        "role_hint": "PILOT",
-        "text": "Mike, hold short, Lima-3, Delta 26-42.",
-        "output": {"speaker": "PILOT", "callsign": "Delta 2642", "instructions": [
-            {"type": "TAXI_VIA", "target": None, "route": ["M"], "value": None, "qualifier": None},
-            {"type": "HOLD_SHORT", "target": "L3", "route": [], "value": None, "qualifier": None}]},
-    },
-    {
-        "role_hint": "ATCO",
-        "text": "Delta 818, you're number 1 for departure, following the NEO, you can monitor the tower on 119.1, have a good day.",
-        "output": {"speaker": "ATCO", "callsign": "Delta 818", "instructions": [
-            {"type": "FOLLOW", "target": None, "route": [], "value": "the NEO", "qualifier": "number 1 for departure"},
-            {"type": "MONITOR", "target": "Tower", "route": [], "value": "119.1", "qualifier": None}]},
-    },
-    {
-        "role_hint": "PILOT",
-        "text": "9 or left, via Mike, Delta 42.",
-        "output": {"speaker": "PILOT", "callsign": "Delta 42", "instructions": [
-            {"type": "TAXI_VIA", "target": "9L", "route": ["M"], "value": None, "qualifier": None}]},
-    },
-    {
-        "role_hint": "UNKNOWN",
-        "text": "1606, Atlanta Ground, give way to a heavy 767, taxi via Lima 1.",
-        "output": {"speaker": "ATCO", "callsign": "1606", "instructions": [
-            {"type": "GIVE_WAY", "target": None, "route": [], "value": "heavy 767", "qualifier": None},
-            {"type": "TAXI_VIA", "target": None, "route": ["L1"], "value": None, "qualifier": None}]},
-    },
-    {
-        "role_hint": "UNKNOWN",
-        "text": "Good evening, Delta 30-74, 2 south with Papa.",
-        "output": {"speaker": "PILOT", "callsign": "Delta 3074", "instructions": [
-            {"type": "REQUEST", "target": None, "route": [], "value": "2 south with information Papa", "qualifier": None}]},
-    },
-]
+# Few-shot examples are verbatim controller/pilot phraseology from FAA JO 7110.65BB EXAMPLE blocks
+# (configs/fewshot_examples.json, section-checked by src/kb/build_ontology.py), not hand-written transmissions.
+def _load_examples():
+    import json
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[2] / "configs" / "fewshot_examples.json"
+    return [{"role_hint": ex["role_hint"], "text": ex["text"], "output": ex["output"]}
+            for ex in json.loads(path.read_text(encoding="utf-8"))["examples"]]
+
+
+EXTRACTION_EXAMPLES = _load_examples()
 
 
 ########################## E2: evidence judge (optional second opinion) ###########################
