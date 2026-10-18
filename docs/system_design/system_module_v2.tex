@@ -23,14 +23,14 @@
 
 \begin{document}
 \noindent{\Large\bfseries ATC 복창 KG 시스템: 모듈 입출력 정의}\hfill{\small XAI616 Team 6}\\[2pt]
-{\small 상자 = 모듈(처리 단계), 검은 글자 = 모듈 사이를 흐르는 데이터(입력·출력), \textcolor{kn}{보라 글자} = 미리 준비해 둔 지식 파일. 송신 하나가 M1부터 M7까지 차례로 처리되며 KG가 커진다.}
+{\small 상자 = 모듈(처리 단계), 검은 글자 = 모듈 사이를 흐르는 데이터(입력·출력), \textcolor{kn}{보라 글자} = 미리 준비해 둔 지식 파일. 송신 하나가 M1부터 M7까지 차례로 처리되며 KG가 커진다.\\ \textbf{*} STT를 MOSS-ATC(30분 통녹음 → 전사 + 송신 경계 + 화자 번호)로 쓰면 M1의 음성 구간 분할은 생략하고 M2가 송신을 나눈다. Whisper를 쓰면 M1이 음성 구간 탐지(VAD)로 자른다.}
 
 \vspace{4mm}
 \begin{center}
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[
   font=\normalsize,
-  mod/.style={draw=modl, very thick, rounded corners=3pt, fill=modf, minimum width=4.0cm, minimum height=1.9cm, align=center, font=\large},
+  mod/.style={draw=modl, very thick, rounded corners=3pt, fill=modf, minimum width=4.0cm, text width=3.9cm, minimum height=1.9cm, align=center, font=\large},
   data/.style={align=center, text=dat, font=\normalsize},
   bdata/.style={align=center, text=dat, font=\small, fill=white, inner sep=1.5pt},
   know/.style={align=center, text=kn, font=\normalsize},
@@ -40,16 +40,16 @@
 ]
 % ---------------- row 1: audio -> STT -> text -> extraction
 \node[data, anchor=east] (in) at (0,0) {\textbf{입력}\\[2pt]\textbf{교신 음성} $a$\\(30분 mp3, 관제 주파수 1개)\\[3pt]+ \textbf{녹음 맥락} $\mathcal{C}$\\{\footnotesize 파일 이름의 공항·관제 위치·시작 시각}\\{\footnotesize 예: \file{KATL-Gnd-All-Aug-26-2024-0000Z}}};
-\node[mod] (m1) at (2.6,0) {\textbf{M1}\\송신 분할\\{\footnotesize 음성 구간 탐지(VAD)}};
-\node[mod] (m2) at (11.3,0) {\textbf{M2}\\STT\\{\footnotesize Whisper + 환각 필터}};
-\node[mod] (m3) at (20.0,0) {\textbf{M3}\\화자 역할·턴 분리\\{\footnotesize 콜사인 위치 규칙}};
+\node[mod] (m1) at (2.6,0) {\textbf{M1}\\입력 정리·송신 분할\\{\footnotesize 파일 맥락 풀기 + VAD 분할*}};
+\node[mod] (m2) at (11.3,0) {\textbf{M2}\\STT\\{\footnotesize (+ 송신 분할·화자 구분*)}\\{\footnotesize MOSS-ATC 또는 Whisper}};
+\node[mod] (m3) at (20.0,0) {\textbf{M3}\\화자 역할·턴 분리\\{\footnotesize 화자 번호·콜사인 위치 규칙}};
 \node[mod] (m4) at (28.7,0) {\textbf{M4}\\지시 추출\\{\footnotesize LLM(Qwen3-4B) + 규칙}};
 
 \draw[flow] (in.east) -- (m1.west);
-\draw[flow] (m1) -- node[data, above=3pt]{송신 구간 $s_i=[t^s_i,t^e_i)$}
-                    node[data, below=3pt]{음성 조각 $x_i$\\{\footnotesize 시각은 UTC로 변환}} (m2);
-\draw[flow] (m2) -- node[data, above=3pt]{전사 텍스트 $w_i$}
-                    node[data, below=3pt]{인식 신뢰도 $c_i$\\{\footnotesize + 공항·주파수·시각 꼬리표}} (m3);
+\draw[flow] (m1) -- node[data, above=3pt]{음성 + 꼬리표\\{\footnotesize (공항·주파수·시각)}}
+                    node[data, below=3pt]{{\footnotesize Whisper: 구간 $s_i$, 조각 $x_i$}\\{\footnotesize MOSS: 30분 통녹음}} (m2);
+\draw[flow] (m2) -- node[data, above=3pt]{전사 텍스트 $w_i$\\{\footnotesize 송신별, UTC 시각}}
+                    node[data, below=3pt]{{\footnotesize MOSS: 화자 번호 S01…}\\{\footnotesize Whisper: 신뢰도 $c_i$}} (m3);
 \draw[flow] (m3) -- node[data, above=3pt]{턴 $w_i$, 역할 $r_i$}
                     node[data, below=3pt]{{\footnotesize ATCO / PILOT}} (m4);
 
