@@ -29,6 +29,8 @@
 \newcommand{\Tadv}{\mathcal{T}_{\mathrm{adv}}}
 \newcommand{\Yset}{\mathcal{Y}}
 \newcommand{\Vdom}{\mathcal{V}_{\mathrm{dom}}}
+\newcommand{\KR}{\mathcal{K}_R}
+\newcommand{\Cfg}{\Theta_{\mathrm{kg}}}
 \newcommand{\Ivl}{\mathbb{I}}
 \newcommand{\ATCO}{\textsf{ATCO}}
 \newcommand{\PILOT}{\textsf{PILOT}}
@@ -69,7 +71,7 @@
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{4.0cm}>{\raggedright\arraybackslash}X@{}}
 \toprule
 모듈 & 설계 & 구현 (이유)\\\midrule
-M0 & FAA NASR 또는 OurAirports & 활주로·주파수는 OurAirports, 유도로 102개는 OpenStreetMap에서 가져온다 (NASR에는 유도로 이름이 없다). \texttt{kb/build\_static\_kb.py}\\
+M0 & FAA NASR 또는 OurAirports & 활주로·주파수는 OurAirports, 유도로 102개는 OpenStreetMap에서 가져온다 (NASR에는 유도로 이름이 없다). 결과 \texttt{data/static\_kb/katl.json}은 \textbf{이름 목록}이며 좌표·연결 정보는 없다. \texttt{kb/build\_static\_kb.py}\\
 M1 & 에너지 문턱 + VAD & faster-whisper에 내장된 Silero VAD만 쓴다(최소 무음 300\,ms). 원본 아카이브는 디지털 무음이 0\%이기 때문이다. 30분 파일끼리 약 2분 겹치는 부분은 UTC 기준으로 중복 제거한다.\\
 M2 & 맥락 프롬프트 & 같다. 직전 파일의 활성 콜사인을 다음 파일의 프롬프트에 넣는다(KG$\to$STT 되먹임). 도시명은 \texttt{municipality}에서 가져온다(``Atlanta Ground'').\\
 M3 & 콜사인 위치 규칙 & 같다. 추가로 \textbf{번호만 부른 콜사인}(``1606, Atlanta Ground'')을 인식한다. 규칙만으로는 역할 미정이 51\%였고, M4 LLM이 이를 0.2\%로 줄였다.\\
@@ -79,7 +81,8 @@ M6 & Neo4j 저장, SHACL 검증 & \textbf{파이썬 이중 시간 그래프(JSON
 M7 & $\rho_1$--$\rho_7$ & 같다. 경로 비교는 \emph{일부 생략은 허용, 치환은 불일치}로 정의했다. $\rho_4$에서 동시 활주로 횡단(CROSS--CROSS)은 정상 운영이라 제외한다.\\
 M8 & 시점 질의 & 같다. FastAPI 웹 데모(\texttt{src/demo/}): strip board, 시간 스크러버, 시점 스냅샷, 2열 교신 기록, 사건 그래프, 근거 원음 재생.\\
 M9 & 진단 하네스 & E1--E4 스크립트(\texttt{src/evaluation/}). E2 LLM 판정은 추출과 다른 모델(Qwen3.5-9B)을 쓴다.\\
-온톨로지 & SESAR 온톨로지 재사용 & SESAR 논문의 \emph{구조}를 참고한 미국 지상관제용 자체 정의다(공식 파일 없음, 조건부 허가 제외). 미국 적용 근거는 NASA--DLR 실증(손실 2.6\%p) \cite{helmke2025loss}. 경로를 위한 \cmd{VIA} 관계, \cmd{Ramp} 노드, \cmd{REQUEST}/\cmd{ACK}, \cmd{MONITOR} 유형, 명령별 \texttt{lexical\_cues}를 추가했다.\\
+온톨로지 & SESAR 온톨로지 재사용 & \textbf{DLR 공식 사양 v3.00(설명서·명령 표 PDF)} \cite{dlr2025}과 \textbf{FAA JO 7110.65BB} \cite{faa7110}를 입력으로 \texttt{kb/build\_ontology.py}가 생성한다. 사람이 정한 대응(20개 종류 $\leftrightarrow$ DLR 표의 행, FAA 조항·표준 문구)을 코드가 PDF 원문과 대조하고, 하나라도 원문에 없으면 생성을 멈춘다. 기계 판독 공식 파일(OWL/JSON)은 없다. 18개 종류가 DLR 행에 대응하고, \cmd{MONITOR}(FAA §2-1-17)와 \cmd{REQUEST}(DLR의 Reason 속성)는 대응 행이 없다. 미국 적용 근거는 NASA--DLR 실증(명령 종류 손실 2.6\%, 값 포함 4.6\%) \cite{helmke2025loss}.\\
+지식 파일 & 온톨로지 $\Ont$ 하나 & 성격별로 세 파일로 나눴다. \texttt{configs/ontology.json}(어휘·구조, DLR 근거), \texttt{configs/rules.json}(규칙 베이스 $\KR$: 복창 규칙·지시 대체·활주로 점유, FAA 근거와 지시 의미), \texttt{configs/kg\_build.json}(구축 설정 $\Cfg$: 복창 시간창 20\,s, 최대 유효시간). 항공사 호출부호는 \texttt{configs/airlines.json}. RQ4에서는 온톨로지를 그대로 두고 $\KR$의 복창 규칙만 지역 규정으로 바꾼다.\\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -119,6 +122,8 @@ E2(근거 정밀도)는 LLM 판정 기준 60\%(잠정, n=60)다. 판정 모델�
   \begin{itemize}
   \item 온톨로지 $\Ont = (\mathcal{T}, \mathcal{R}, \Sigma)$: 개념 유형 $\mathcal{T}$, 관계 유형 $\mathcal{R}$, 무결성 제약 $\Sigma$.
   \item 정적 도메인 KB $\KS = (V_S, E_S)$: 공항·활주로·유도로·관제시설·항공사.
+  \item 규칙 베이스 $\KR = (\Treq^{\rho},\ \mathrm{sup},\ \mathcal{T}_{\mathrm{rwy}})$: 지역별 복창 필수 유형, 지시 대체 관계, 활주로 점유 유형.
+  \item 구축 설정 $\Cfg = (\Delta_{\mathrm{rb}},\ T_{\max})$: 복창 허용 시간창, 유형별 최대 유효시간. 도메인 지식이 아니라 녹음 누락에 대비한 데이터 처리 설정이다.
   \end{itemize}
 \end{itemize}
 
@@ -148,7 +153,7 @@ E2(근거 정밀도)는 LLM 판정 기준 60\%(잠정, n=60)다. 판정 모델�
 
 \subsection{시스템 함수와 만족해야 할 조건}
 \begin{equation}
-F:\; (a,\, \Ctx;\; \Ont,\, \KS) \;\longmapsto\; (\G,\, \Yset,\, Q)
+F:\; (a,\, \Ctx;\; \Ont,\, \KS,\, \KR,\, \Cfg) \;\longmapsto\; (\G,\, \Yset,\, Q)
 \end{equation}
 $F$는 다음을 만족해야 한다.
 \begin{enumerate}[label=(P\arabic*)]
@@ -172,6 +177,7 @@ $f_i \in V_{\mathrm{Flight}}$ & 해석된 항공편 노드 & $\Tcmd$ & 지시 �
 $\Treq\subseteq\Tcmd$ & 복창 필수 유형 & $\Tst\subseteq\Tcmd$ & 상태형(유효 구간을 가지는) 유형\\
 $\Tadv$ & 정보·권고(advisory) 유형 & $\G_{<t}$ & 시각 $t$ 이전까지 누적된 그래프\\
 $\G|_t$ & 시각 $t$의 스냅샷 & $\Delta_{\mathrm{rb}}$ & 복창 허용 시간창\\
+$\KR$ & 규칙 베이스 (\texttt{rules.json}) & $\Cfg$ & 구축 설정 (\texttt{kg\_build.json})\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -319,7 +325,7 @@ ID & 기술적 문제 & 증거 (샘플 측정 / 선행연구) & 대응 RQ\\\midr
 \toprule
 & 선택 & 기각한 대안 & 근거 (문제 ID와 문헌)\\\midrule
 D1 & \textbf{계단식 파이프라인} (ASR $\to$ 의미추출 $\to$ KG) & 음성$\to$KG 종단간(end-to-end) 모델 & 학습 데이터가 없고(\ch{C11}) 중간 산출물로 오류를 추적해야 함(\ch{C12}). DLR·ATCO2의 ATC 음성 이해 연구도 ASR$\to$NLU 계단식 구조를 씀 \cite{kleinert2021,atco2}\\
-D2 & \textbf{스키마 기반(온톨로지 기반) 추출} & 스키마 없는 개방형 추출 (EDC 개방 단계, GraphRAG) & 복창 비교(\ch{C6})에는 \emph{정규화된 개념}이 필요함. 검증된 도메인 온톨로지가 이미 있음 \cite{helmke2018,chen2023,keller2017}. 온톨로지 기반 생성은 일관성과 해석 가능성을 높임 \cite{feng2024}. LLM-KGC 서베이의 schema-based 패러다임에 해당 \cite{llmkgc2025}. GraphRAG는 질의 요약용 자유 개체 그래프라 명령 의미를 담지 못함 \cite{graphrag}\\
+D2 & \textbf{스키마 기반(온톨로지 기반) 추출} & 스키마 없는 개방형 추출 (EDC 개방 단계, GraphRAG) & 복창 비교(\ch{C6})에는 \emph{정규화된 개념}이 필요함. 검증된 도메인 온톨로지와 공식 사양이 이미 있음 \cite{dlr2025,helmke2018,chen2023,keller2017}. 온톨로지 기반 생성은 일관성과 해석 가능성을 높임 \cite{feng2024}. LLM-KGC 서베이의 schema-based 패러다임에 해당 \cite{llmkgc2025}. GraphRAG는 질의 요약용 자유 개체 그래프라 명령 의미를 담지 못함 \cite{graphrag}\\
 D3 & \textbf{LLM few-shot 추출} & BERT NER 미세조정 & 미국 주석 데이터가 없음(\ch{C11}). ATCO2 NER은 1시간 학습으로 F1 0.66 \cite{atco2}. LLM 추출은 대량 주석 없이 micro-F1 0.95(사람 전사)/0.86(Whisper 전사) \cite{mekerishvili2025}\\
 D4 & \textbf{JSON Schema 제약 디코딩} + 사후 검증 & 자유 생성 후 파싱 & 출력이 문법상 항상 스키마를 만족하도록 강제(\ch{C13}) \cite{willard2023}. \emph{[v2 구현: 사후 검증 + 어휘 단서 + 규칙 보충. \S\ref{sec:impl}]}\\
 D5 & \textbf{증분 구축 + 개체 해소} & 문서 단위 일괄 구축 후 병합 & 송신은 시간순 스트림임. 증분 개체·관계 해소로 중복과 환각 개체를 억제 \cite{itext2kg}(\ch{C4}, \ch{C13})\\
@@ -370,7 +376,7 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 \node[mod, dashed, fill=gray!8] (m9) at (3.3,-7.6) {\textbf{M9}\\진단 하네스\\(RQ4)};
 \node[io] (out2) at (0,-7.6) {\textbf{RQ4 진단}\\$\mathrm{CSR},\mathrm{CmdF1},m^\dagger$};
 % resources
-\node[resb] (m0) at (17.9,-1.7) {\textbf{M0}\\정적 자원\\(오프라인)\\[3pt]$\Ont=(\mathcal{T},\mathcal{R},\Sigma)$\\$\KS=(V_S,E_S)$\\$\Vdom$};
+\node[resb] (m0) at (17.9,-1.7) {\textbf{M0}\\정적 자원\\(오프라인)\\[3pt]$\Ont=(\mathcal{T},\mathcal{R},\Sigma)$\\$\KS=(V_S,E_S)$\\$\KR,\ \Cfg,\ \Vdom$};
 
 % main arrows
 \draw[arr] (in) -- node[lab,above=2pt]{$a,\Ctx$} (m1);
@@ -388,7 +394,7 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 \draw[arr, violet] (m0.north) |- ++(0,1.75) -| node[lab,pos=0.25,above]{$\Vdom$, $\mathcal{F}_{\mathrm{act}}$ (콜사인·시설·유도로 어휘)} (m2.north);
 \draw[arr, violet] (m0.west |- m4) -- node[lab,above]{$\Ont$, 예시 $\mathcal{E}$} (m4.east);
 \draw[arr, violet] (m0.west |- m5) -- node[lab,above]{$\KS$} (m5.east);
-\draw[arr, violet] (m0.south) |- ++(0,-2.05) -| node[lab,pos=0.25,below]{$\Sigma$ (SHACL 제약), $\Treq,\Tst$} ($(m6.south)+(-0.7,0)$);
+\draw[arr, violet] (m0.south) |- ++(0,-2.05) -| node[lab,pos=0.25,below]{$\Sigma$, $\Tst$, $\KR$ (rules.json), $\Cfg$ (kg\_build.json)} ($(m6.south)+(-0.7,0)$);
 
 \draw[arr, dashed, gray] (m8.south) -- node[lab,right=2pt,pos=0.72]{중간 산출물 로그 $\mathcal{J}$ (M1--M7)} (m9.north);
 \draw[arr, dashed, gray] (m9) -- (out2);
@@ -432,10 +438,11 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 
 \textbf{[입력]}
 \begin{itemize}
-\item $D_{\mathrm{apt}}$: 공항 레이아웃. FAA NASR 또는 OurAirports의 활주로·유도로 데이터.
+\item $D_{\mathrm{apt}}$: 공항 정적 정보. OurAirports의 활주로와 OpenStreetMap의 유도로 이름 \textbf{목록}(좌표·연결 관계는 쓰지 않음).
 \item $D_{\mathrm{tel}}$: 항공사 telephony$\leftrightarrow$ICAO 표. FAA JO 7340.2 \cite{faa7340}.
-\item $D_{\mathrm{fac}}$: 관제시설 목록 (예: \cmd{NorCal TRACON}).
-\item 기존 온톨로지: SESAR/DLR \cite{helmke2018,kleinert2021}, MITRE 비교 결과 \cite{chen2023}, NASA atmonto \cite{keller2017}.
+\item $D_{\mathrm{fac}}$: 관제시설·주파수 목록 (OurAirports. 예: KATL \cmd{GND} 121.65, \cmd{TWR} 119.1).
+\item $D_{\mathrm{onto}}$: \textbf{DLR 온톨로지 공식 사양 v3.00} \cite{dlr2025}. 설명서 PDF(지시 구조 Figure 2-1, JSON 키 5.1장)와 명령 표 PDF(16개 그룹, Type (Main) 91개, 126줄과 매개변수 형식).\footnote{설명서 9쪽은 Cleared/Cancel을 합쳐 15개 그룹으로 나열한다.} 배경 문헌: SESAR 논문 \cite{helmke2018,kleinert2021}, MITRE 비교 \cite{chen2023}, NASA atmonto \cite{keller2017}.
+\item $D_{\mathrm{reg}}$: \textbf{FAA Order JO 7110.65BB} \cite{faa7110}. 명령별 표준 문구(PHRASEOLOGY)와 복창 규정 §2-4-3. KR/JP의 ICAO 규정은 RQ4 단계에서 추가한다(현재 미검증).
 \item 지역 매개변수 $\rho\in\{\mathrm{US},\mathrm{KR},\mathrm{JP}\}$: 공항, 복창 규정, 용어 표면형(예: ICAO \texttt{holding point}, \texttt{QNH} $\leftrightarrow$ FAA \texttt{hold short}, \texttt{altimeter}).
 \end{itemize}
 
@@ -443,24 +450,38 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 \begin{align}
 \Ont &= (\mathcal{T},\mathcal{R},\Sigma),\quad \mathcal{T} = \mathcal{T}_{\mathrm{ent}} \cup \Tcmd,\\
 \KS &= (V_S, E_S),\quad V_S \subseteq \{\cmd{Airport},\cmd{Runway},\cmd{Taxiway},\cmd{Facility},\cmd{Airline}\}\text{-유형 노드},\\
-\Vdom(\alpha_{\mathrm{apt}}) &= \{\mathrm{tel}(l) : l\in V_{\cmd{Airline}}\} \cup \{\mathrm{name}(v): v \in V_S,\ v \sqsubseteq \alpha_{\mathrm{apt}}\}.
+\Vdom(\alpha_{\mathrm{apt}}) &= \{\mathrm{tel}(l) : l\in V_{\cmd{Airline}}\} \cup \{\mathrm{name}(v): v \in V_S,\ v \sqsubseteq \alpha_{\mathrm{apt}}\},\\
+\KR &= \big(\{\Treq^{\rho}\}_{\rho},\ \mathrm{sup},\ \mathcal{T}_{\mathrm{rwy}}\big),\qquad \Cfg = \big(\Delta_{\mathrm{rb}},\ T_{\max}\big).
 \end{align}
+구현 파일은 다음과 같다. $\Ont$와 $\KR$은 \texttt{kb/build\_ontology.py}가 PDF 원문과 대조해 생성하고, $\KS$는 \texttt{kb/build\_static\_kb.py}가 생성하며, $\Cfg$와 항공사 표는 사람이 작성한다.
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l l>{\raggedright\arraybackslash}X l@{}}
+\toprule
+기호 & 파일 & 내용 & 근거\\\midrule
+$\Ont$ & \texttt{configs/ontology.json} & 개체·관계 유형, 명령 20종(DLR 표의 행·값 형식, FAA 표준 문구), DLR 지시 구조와 16개 그룹 목록, 오탐 방지 어휘 단서 & DLR v3.00, FAA\\
+$\KR$ & \texttt{configs/rules.json} & 지역 선택, 복창 등급과 필수 목록(FAA 13종, ICAO 12종), 지시 대체 관계, 활주로 점유 유형 & FAA §2-4-3, 지시 의미\\
+$\Cfg$ & \texttt{configs/kg\_build.json} & $\Delta_{\mathrm{rb}}=20$\,s, $T_{\max}(\kappa)$ 180--1800\,s (기본 600\,s) & 설계값(KATL 실측 참고)\\
+$\KS$ & \texttt{data/static\_kb/katl.json} & 활주로 5개(이름 10개), 유도로 102개, 관제시설 12개 & OurAirports, OSM\\
+$D_{\mathrm{tel}}$ & \texttt{configs/airlines.json} & 호출 이름 $\to$ ICAO 코드 44개 & FAA JO 7340.2\\
+\bottomrule
+\end{tabularx}
+\end{center}
 
 \textbf{[정의]} 지시 유형 $\Tcmd$는 DLR 온톨로지의 명령 유형을 기본으로 하고, 미국에만 있는 어휘(\texttt{niner}, \texttt{altimeter} 등)를 표면형 사전에 추가한다 \cite{chen2023}.
 \begin{align*}
-\Tcmd \supseteq \{&\cmd{CLEARED\_TO\_LAND}, \cmd{CLEARED\_FOR\_TAKEOFF}, \cmd{LINE\_UP\_AND\_WAIT}, \cmd{TAXI\_VIA}, \cmd{CROSS\_RUNWAY},\\
+\Tcmd = \{&\cmd{CLEARED\_TO\_LAND}, \cmd{CLEARED\_FOR\_TAKEOFF}, \cmd{LINE\_UP\_AND\_WAIT}, \cmd{TAXI\_VIA}, \cmd{CROSS\_RUNWAY},\\
 &\cmd{HOLD\_SHORT}, \cmd{CONTACT}, \cmd{GIVE\_WAY}, \cmd{TURN}, \cmd{CLIMB}, \cmd{DESCEND}, \cmd{HEADING}, \cmd{SQUAWK},\\
-&\cmd{MONITOR}, \cmd{FOLLOW}, \cmd{TRAFFIC\_INFO}, \cmd{WAKE\_ADVISORY}, \cmd{ACK}\},
+&\cmd{HOLD\_POSITION}, \cmd{MONITOR}, \cmd{FOLLOW}, \cmd{TRAFFIC\_INFO}, \cmd{WAKE\_ADVISORY}, \cmd{ACK}, \cmd{REQUEST}\},
 \end{align*}
-세 부분집합을 둔다.
+즉 20종이다. 세 부분집합을 둔다.
 \begin{itemize}
-\item \textbf{복창 필수} $\Treq^{\rho}$: 활주로 배정, 활주로 횡단, hold short, 고도, 기수, 주파수 등. \textbf{지역 규정에 따라 정의한다}. US는 FAA JO 7110.65 §2-4-3과 AIM \cite{faa7110}, KR/JP는 ICAO Doc 4444(PANS-ATM)의 복창 요건 \cite{icao4444}과 각국 AIP. 항목이 대부분 겹치지만 완전히 같지는 않으므로 지역별 매개변수로 둔다 (RQ4).
+\item \textbf{복창 필수} $\Treq^{\rho}$ ($\KR$에 둔다): \textbf{지역 규정에 따라 정의한다}. US는 FAA JO 7110.65 §2-4-3 \cite{faa7110}을 근거로 등급을 매겼다. 본문 b의 관제사 의무(\texttt{required\_by\_atc}: \cmd{HOLD\_SHORT}), NOTE 1의 권고(\texttt{recommended\_runway}: 택시·이륙·착륙 허가의 활주로, \texttt{recommended\_numbers}: 주파수·고도·기수·코드), 규정에는 없지만 활주로 진입·정지 지시라 팀이 정한 \texttt{team\_rule}(\cmd{CROSS\_RUNWAY}, \cmd{LINE\_UP\_AND\_WAIT}, \cmd{HOLD\_POSITION})을 합쳐 13종이다. 응답만 하면 되는 \texttt{ack\_only}는 제외한다. KR/JP는 ICAO Doc 4444(PANS-ATM)의 복창 요건 \cite{icao4444}과 각국 AIP를 따르며, 현재 목록(12종, \cmd{MONITOR} 제외)은 원문 미검증이다 (RQ4 단계 과제).
 \item \textbf{상태형}:
-\begin{align*}\Tst = \{&\cmd{CLEARED\_TO\_LAND},\cmd{CLEARED\_FOR\_TAKEOFF},\cmd{LINE\_UP\_AND\_WAIT},\\ &\cmd{HOLD\_SHORT},\cmd{CROSS\_RUNWAY},\cmd{CONTACT}\}\end{align*}
+\begin{align*}\Tst = \{&\cmd{CLEARED\_TO\_LAND},\cmd{CLEARED\_FOR\_TAKEOFF},\cmd{LINE\_UP\_AND\_WAIT},\cmd{HOLD\_SHORT},\\ &\cmd{HOLD\_POSITION},\cmd{CROSS\_RUNWAY},\cmd{TAXI\_VIA},\cmd{CONTACT},\cmd{MONITOR}\}\end{align*}
 \item \textbf{정보형} $\Tadv = \{\cmd{TRAFFIC\_INFO},\cmd{WAKE\_ADVISORY}\}$, $\Tadv \cap \Treq = \emptyset$ (\ch{C7}).
 \end{itemize}
 
-\textbf{[방법·근거]} 명령 구조는 SESAR PJ.16-04 온톨로지 논문 \cite{helmke2018}에 공개된 구조를 참고해 미국 지상관제용으로 직접 정의했다(공식 파일은 공개되지 않음, 조건부 허가 제외). 유럽 온톨로지를 미국 지상관제 교신에 적용했을 때 명령 종류 손실이 2.6\%p에 그친다는 실증 \cite{helmke2025loss}이 이 선택을 뒷받침한다. 복창 규정은 FAA JO 7110.65 \cite{faa7110}, 미국 어휘는 MITRE--DLR 비교 \cite{chen2023}를 따른다. 노드 라벨은 atmonto IRI(예: \texttt{atm:Runway})에 매핑한다 \cite{keller2017,keller2019}. $\Sigma$는 SHACL shape로 기술한다 \cite{shacl}. 예: ``\cmd{Instruction}은 정확히 하나의 \cmd{Transmission}에 포함된다'', ``\cmd{CLEARED\_TO\_LAND}의 대상은 \cmd{Runway}이다''.
+\textbf{[방법·근거]} 명령 구조와 이름은 DLR 공식 사양 v3.00 \cite{dlr2025}을 기준으로 하고, 미국 지상·타워 교신에 필요한 20종을 골라 정형화했다. 공개된 기계 판독 파일(OWL/JSON)이 없으므로, 사람이 정한 대응을 생성 코드가 PDF 원문과 자동 대조한다(조건부 허가는 범위 제외). 유럽 온톨로지로 미국 지상관제 교신을 표현했을 때 명령 종류 손실이 2.6\%(값 포함 4.6\%)라는 실증 \cite{helmke2025loss}이 이 선택을 뒷받침한다. 복창 규정은 FAA JO 7110.65 \cite{faa7110}, 미국 어휘는 MITRE--DLR 비교 \cite{chen2023}를 따른다. 노드 라벨은 atmonto IRI(예: \texttt{atm:Runway})에 매핑한다 \cite{keller2017,keller2019}. $\Sigma$는 SHACL shape로 기술한다 \cite{shacl}. 예: ``\cmd{Instruction}은 정확히 하나의 \cmd{Transmission}에 포함된다'', ``\cmd{CLEARED\_TO\_LAND}의 대상은 \cmd{Runway}이다''.
 
 %----------------------------------------------------------
 \subsection{M1. 송신 분할 (Transmission Segmentation)}
@@ -593,7 +614,7 @@ f_i = \arg\max_{f\in\mathcal{F}_{\mathrm{act}}(t_i)\cup\{f_{\mathrm{new}}\}}\;\B
 \subsection{M6. 증분 사건 중심 Temporal KG 구축}
 \textbf{[해결 문제]} \ch{C8} 발화 간 관계, \ch{C10} 시간 유효성, \ch{C12} 출처·신뢰도, \ch{C13} 스키마 검증.
 
-\textbf{[입력]} $\G_{t_{i-1}}$, $\tilde u_i$, $(s_i, r_i, w_i, c_i)$, $\Sigma$.
+\textbf{[입력]} $\G_{t_{i-1}}$, $\tilde u_i$, $(s_i, r_i, w_i, c_i)$, $\Sigma$, $\KR$, $\Cfg$.
 
 \textbf{[출력]} $\G_{t_i} = \G_{t_{i-1}} \oplus \Delta_i$.
 
@@ -614,7 +635,7 @@ f_i = \arg\max_{f\in\mathcal{F}_{\mathrm{act}}(t_i)\cup\{f_{\mathrm{new}}\}}\;\B
 \tau(\iota) = \big[t^s_i,\ t^{\mathrm{to}}\big),\quad
 t^{\mathrm{to}} = \min\Big(\{t^s_k : k>i,\ f_k=f_i,\ \exists\iota'\in \tilde I_k,\ \mathrm{sup}(\iota',\iota)\} \cup \{t^s_i + T_{\max}(\kappa)\}\Big)
 \end{equation}
-이다. $\mathrm{sup}(\iota',\iota)$는 대체(supersede) 관계다. 예: \cmd{CONTACT}는 해당 주파수의 모든 상태를 종료하고, 같은 유형의 새 지시는 이전 지시를 종료한다. 비상태형 지시는 $\tau(\iota)=[t^s_i,t^e_i)$이다.
+이다. $\mathrm{sup}(\iota',\iota)$는 대체(supersede) 관계로, $\KR$(\texttt{rules.json})에 표로 정의한다. 예: \cmd{CROSS\_RUNWAY}는 \cmd{HOLD\_SHORT}·\cmd{HOLD\_POSITION}을, \cmd{CLEARED\_FOR\_TAKEOFF}는 \cmd{LINE\_UP\_AND\_WAIT}·\cmd{HOLD\_SHORT}를 종료하고, \cmd{CONTACT}·\cmd{MONITOR}는 그 항공편의 모든 상태를 종료한다. 이 관계는 규정 문장이 아니라 지시의 의미에서 정했다. $T_{\max}(\kappa)$는 대체 지시가 녹음에 없을 때의 상한으로 $\Cfg$(\texttt{kg\_build.json})에 둔다(예: \cmd{HOLD\_SHORT} 900\,s, \cmd{CROSS\_RUNWAY} 180\,s, 기본 600\,s). KATL 전체 KG에서 관제사 상태형 지시 2{,}993개 중 2{,}251개가 이 상한으로 종료되었다. 비상태형 지시는 $\tau(\iota)=[t^s_i,t^e_i)$이다.
 
 \textbf{삭제하지 않고 무효화한다}: 대체가 일어나면 $\Delta^{\mathrm{inv}}_i$가 기존 간선의 $t^{\mathrm{to}}$만 설정하고 간선은 남긴다. 따라서 과거 시점 질의가 가능하다 \cite{zep2025}.
 
@@ -622,7 +643,7 @@ t^{\mathrm{to}} = \min\Big(\{t^s_k : k>i,\ f_k=f_i,\ \exists\iota'\in \tilde I_k
 \begin{equation}
 \Delta^{\mathrm{rb}}_i = \Big\{(n^T_i,\cmd{READBACK\_OF},n^T_j)\ :\ r_i=\PILOT,\ r_j=\ATCO,\ f_i=f_j,\ 0 < t^s_i - t^e_j \le \Delta_{\mathrm{rb}},\ j=\max\{j'<i\}\Big\},
 \end{equation}
-$f_i=\bot$이면 직전 관제사 송신의 수신자와의 개념 중복도 $\mathrm{ovl}(\tilde I_i,\tilde I_j)\ge\theta_{\mathrm{ovl}}$로 대신 판정한다.
+$f_i=\bot$이면 직전 관제사 송신의 수신자와의 개념 중복도 $\mathrm{ovl}(\tilde I_i,\tilde I_j)\ge\theta_{\mathrm{ovl}}$로 대신 판정한다. $\Delta_{\mathrm{rb}}=20$\,s는 $\Cfg$에 둔다. KATL에서 연결된 복창 404건 중 351건이 5\,s 이내, 95\%가 12.4\,s 이내였다(20\,s 창 안에서 측정).
 
 \textbf{[정의] 검증.} 적재 후 $\G_{t_i}\models\Sigma$를 검사한다. 위반하면 해당 $\Delta$를 \cmd{quarantine} 라벨로 격리한다.
 
@@ -638,7 +659,7 @@ $f_i=\bot$이면 직전 관제사 송신의 수신자와의 개념 중복도 $\m
 \subsection{M7. 규칙 기반 추론과 이상 탐지}
 \textbf{[해결 문제]} \ch{C6} 개념 단위 복창 검증, \ch{C4} 콜사인 누락, \ch{C7} 정보형 제외, \ch{C12} 근거 제시.
 
-\textbf{[입력]} $\G_{t}$, 규칙 집합 $\mathcal{R}=\{\rho_1,\dots,\rho_6\}$.
+\textbf{[입력]} $\G_{t}$, 규칙 집합 $\mathcal{R}=\{\rho_1,\dots,\rho_7\}$, $\KR$의 $\Treq^{\rho}$와 $\mathcal{T}_{\mathrm{rwy}}$.
 
 \textbf{[출력]} $\Yset=\{(y_k,\pi_k,\gamma_k)\}$와 \cmd{READBACK\_OF} 간선의 상태 속성.
 
@@ -861,7 +882,7 @@ F_{\rho} = F\big(\,\cdot\,;\ \Ont_{\rho},\ \KS^{\rho},\ \Vdom^{\rho},\ \mathcal{
 \text{(a) 그대로 적용:}&\quad \hat{\G}^{(a)}_\rho = F_{\mathrm{US}}(D_\rho),\\
 \text{(b) 지역 자원만 교체:}&\quad \hat{\G}^{(b)}_\rho = F\big(D_\rho;\ \Ont_{\mathrm{US}}[\Treq^{\rho}],\ \KS^{\rho},\ \Vdom^{\rho},\ \mathcal{E}_{\mathrm{US}}\big).
 \end{align}
-(b)에서 바꾸는 것은 공항 1곳(KR: \cmd{RKSI}, JP: \cmd{RJTT})의 정적 지식과 프롬프트 어휘뿐이다. 데이터는 OurAirports와 FAA JO 7340.2 콜사인 표 \cite{faa7340}를 그대로 재사용한다.
+(b)에서 바꾸는 것은 공항 1곳(KR: \cmd{RKSI}, JP: \cmd{RJTT})의 정적 지식, 프롬프트 어휘, 그리고 $\KR$(\texttt{rules.json})의 복창 규칙(ICAO)뿐이고 온톨로지(\texttt{ontology.json})는 그대로다. ICAO·국가 규정 원문은 아직 입력 자료에 없어 RQ4 단계에서 확보·검증한다. 데이터는 OurAirports와 FAA JO 7340.2 콜사인 표 \cite{faa7340}를 그대로 재사용한다.
 
 \textbf{[측정]} 국가별 송신 $n_\rho\approx 15$--$20$개에 대해 사람이 정답 $(f^*_i, I^*_i)$를 단다.
 \begin{align}
@@ -891,14 +912,14 @@ m^\dagger(i) &= \min\big\{k\in\{1,\dots,7\} : \mathrm{out}_{\mathrm{M}k}(i)\neq 
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}X@{}}
 \toprule
 모듈 & 입력 & 출력 & 구현 후보\\\midrule
-M0 & $D_{\mathrm{apt}},D_{\mathrm{tel}},D_{\mathrm{fac}}$, 기존 온톨로지 & $\Ont,\ \KS,\ \Vdom$ & Python, Neo4j import, SHACL(pySHACL 또는 Cypher 검사)\\
+M0 & $D_{\mathrm{apt}},D_{\mathrm{tel}},D_{\mathrm{fac}},D_{\mathrm{onto}},D_{\mathrm{reg}}$ & $\Ont,\ \KS,\ \KR,\ \Vdom$ (+ 설정 $\Cfg$) & Python, pdftotext (\texttt{kb/})\\
 M1 & $\{(a^{\varphi},\Ctx^{\varphi})\}_{\varphi}$ & $\{(s_i,x_i,\Ctx_i)\}$ (UTC 병합) & ffmpeg, Silero VAD, 파일명 파서\\
 M2 & $x_i,\Vdom,\mathcal{F}_{\mathrm{act}}$ & $(w_i,c_i,\mathrm{lang}_i)$ & faster-whisper large-v3 (RTX 4090에서 동작 확인)\\
 M3 & $w_{i-1:i+1}$ & $\{(w_{i,m},r_{i,m})\}$ & 규칙 + LLM\\
 M4 & $w_i,r_i,\Ont,\mathcal{E}$ & $u_i=(\hat c_i,I_i)$ & LLM(API 또는 로컬) + JSON Schema 구조화 출력\\
 M5 & $u_i,\KS,\G_{<t_i},\Ctx_i$ & $\tilde u_i=(f_i,\tilde I_i,\mathcal{A}_i)$ & rapidfuzz, Double Metaphone, 규칙\\
-M6 & $\G_{t_{i-1}},\tilde u_i,\Sigma$ & $\G_{t_i}$ & Neo4j + Cypher MERGE (Graphiti 참고)\\
-M7 & $\G_t,\mathcal{R}$ & $\Yset$ & Cypher 규칙 질의\\
+M6 & $\G_{t_{i-1}},\tilde u_i,\Sigma,\KR,\Cfg$ & $\G_{t_i}$ & Neo4j + Cypher MERGE (Graphiti 참고)\\
+M7 & $\G_t,\mathcal{R},\KR$ & $\Yset$ & Cypher 규칙 질의\\
 M8 & $\G,t,q$ & $Q(\G,t,q)$ & Neo4j Browser / Streamlit\\
 M9 & $\mathcal{J}$, 소량 정답 & $\mathrm{CSR}_\rho,\mathrm{CmdF1}_\rho,P_\rho(m^\dagger)$ & Python 로그 + 간단한 주석 시트\\
 \bottomrule
@@ -909,7 +930,8 @@ M9 & $\mathcal{J}$, 소량 정답 & $\mathrm{CSR}_\rho,\mathrm{CmdF1}_\rho,P_\rh
 
 %==========================================================
 \begin{thebibliography}{99}\small
-\bibitem{faa7110} FAA. \emph{Order JO 7110.65, Air Traffic Control}, §2-4-3 Pilot Acknowledgment/Readback. (최신판 조항 번호 재확인 필요)
+\bibitem{faa7110} FAA. \emph{Order JO 7110.65BB, Air Traffic Control}, effective 2025-02-20. §2-4-3 Pilot Acknowledgment/Read Back, §3-7-2 Taxi and Ground Movement Operations. \url{https://www.faa.gov/documentLibrary/media/Order/7110.65BB_Basic_dtd_2-20-25.pdf}
+\bibitem{dlr2025} Helmke, H., Kleinert, M., Ohneiser, O. \emph{Ontology for Air Traffic Control Command Annotation -- Description}, v3.00. DLR-IB-FL-BS-2025-107, 2025-07-04, with OntologyATCCommandsTable\_v20250704. \url{https://elib.dlr.de/214852}
 \bibitem{faa7340} FAA. \emph{Order JO 7340.2, Contractions} (항공사 telephony 및 3자리 코드).
 \bibitem{eurocontrol} Van Es, G. (NLR for EUROCONTROL). \emph{Air-Ground Communication Safety Study: Causes and Recommendations}, Ed.~1.1, 2005.
 \bibitem{cardosi94} Cardosi, K.~M. \emph{An Analysis of Tower (Local) Controller--Pilot Voice Communications}. DOT/FAA/RD-94/15, Volpe Center, 1994.
