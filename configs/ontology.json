@@ -154,6 +154,301 @@
       }
     }
   },
+  "dlr_catalog": {
+    "source": "OntologyATCCommandsTable_v20250704.pdf p.1 (group headings in table order); description_class = class number in the Description p.9",
+    "counts": {
+      "groups": 16,
+      "main_types": 91,
+      "table_rows": 126,
+      "main_types_used": 18
+    },
+    "note": "We count 16 groups by the table headings. The Description p.9 lists 15 classes because it merges 'Cleared types' and 'Cancel types' (class 5). Main names such as MAINTAIN, CONTINUE and INFORMATION appear in several groups, so the per-group lists sum to more than the distinct count.",
+    "groups": [
+      {
+        "order": 1,
+        "heading": "Cleared types",
+        "description_class": 5,
+        "description_name": "Cleared and Cancel types",
+        "main_types": [
+          "CLEARED",
+          "CONTINUE",
+          "GO_AROUND",
+          "INTERCEPT_GLIDEPATH",
+          "INTERCEPT_LOCALIZER"
+        ],
+        "rows": 13,
+        "used_by": [
+          "CLEARED_FOR_TAKEOFF",
+          "CLEARED_TO_LAND"
+        ]
+      },
+      {
+        "order": 2,
+        "heading": "Cancel types",
+        "description_class": 5,
+        "description_name": "Cleared and Cancel types",
+        "main_types": [
+          "ABORT",
+          "CANCEL"
+        ],
+        "rows": 7,
+        "used_by": []
+      },
+      {
+        "order": 3,
+        "heading": "Pushback and startup types",
+        "description_class": 13,
+        "description_name": "Pushback and start-up types",
+        "main_types": [
+          "PUSHBACK",
+          "PULL_FWD",
+          "DISCONNECT",
+          "STARTUP"
+        ],
+        "rows": 4,
+        "used_by": []
+      },
+      {
+        "order": 4,
+        "heading": "Ground hold types",
+        "description_class": 14,
+        "description_name": "Ground hold types",
+        "main_types": [
+          "HOLD_AT",
+          "HOLD_POSITION",
+          "HOLD_SHORT"
+        ],
+        "rows": 3,
+        "used_by": [
+          "HOLD_POSITION",
+          "HOLD_SHORT"
+        ]
+      },
+      {
+        "order": 5,
+        "heading": "Airborne holding types",
+        "description_class": 8,
+        "description_name": "Airborne holding types",
+        "main_types": [
+          "HOLDING",
+          "LEAVE_HOLDING",
+          "ORBIT"
+        ],
+        "rows": 3,
+        "used_by": []
+      },
+      {
+        "order": 6,
+        "heading": "Frequency changing and squawk types",
+        "description_class": 6,
+        "description_name": "Frequency changing and Squawk types",
+        "main_types": [
+          "CONTACT",
+          "CONTACT_FREQUENCY",
+          "LEAVE_FREQUENCY",
+          "SQUAWK",
+          "CPDLC"
+        ],
+        "rows": 5,
+        "used_by": [
+          "CONTACT",
+          "SQUAWK"
+        ]
+      },
+      {
+        "order": 7,
+        "heading": "Direction changing types",
+        "description_class": 2,
+        "description_name": "Direction changing types",
+        "main_types": [
+          "CONTINUE",
+          "DIRECT_TO",
+          "FOLLOW_ROUTE",
+          "HEADING",
+          "MAGNETIC_TRACK",
+          "MAINTAIN",
+          "NAVIGATION_OWN",
+          "TRANSITION",
+          "TURN",
+          "TURN_BY"
+        ],
+        "rows": 11,
+        "used_by": [
+          "HEADING",
+          "TURN"
+        ]
+      },
+      {
+        "order": 8,
+        "heading": "Informamtion types",
+        "description_class": 7,
+        "description_name": "Information types",
+        "main_types": [
+          "EXPECT",
+          "EXPECT_ROUTE",
+          "INFORMATION"
+        ],
+        "rows": 11,
+        "used_by": [
+          "TRAFFIC_INFO"
+        ]
+      },
+      {
+        "order": 9,
+        "heading": "Miscellaneous types",
+        "description_class": 15,
+        "description_name": "Miscellaneous types",
+        "main_types": [
+          "CALL_YOU_BACK",
+          "CAUTION",
+          "CORRECTION",
+          "DISREGARD",
+          "SAY_AGAIN",
+          "AFFIRM",
+          "NEGATIVE",
+          "GREETING",
+          "INIT_RESPONSE",
+          "STATION",
+          "NO_CONCEPT",
+          "READY",
+          "TIME_CMD"
+        ],
+        "rows": 14,
+        "used_by": [
+          "WAKE_ADVISORY",
+          "ACK"
+        ]
+      },
+      {
+        "order": 10,
+        "heading": "VFR clearance types",
+        "description_class": 9,
+        "description_name": "VFR clearance types",
+        "main_types": [
+          "VFR_CLEARANCE",
+          "ENTER_CTR",
+          "LEAVE_CTR",
+          "ENTER_CA",
+          "LEAVE_CA",
+          "JOIN_TRAFFIC_CIRCUIT",
+          "DIRECT"
+        ],
+        "rows": 7,
+        "used_by": []
+      },
+      {
+        "order": 11,
+        "heading": "Reporting types",
+        "description_class": 10,
+        "description_name": "Reporting types",
+        "main_types": [
+          "REPORT",
+          "REPORT_NOW",
+          "REPORT_MISCELLANEOUS",
+          "CONFIRM_ACCEPT",
+          "ESTABLISHED",
+          "POSITION",
+          "STATUS",
+          "INFORMATION"
+        ],
+        "rows": 10,
+        "used_by": []
+      },
+      {
+        "order": 12,
+        "heading": "Speed types",
+        "description_class": 4,
+        "description_name": "Speed types",
+        "main_types": [
+          "MAINTAIN",
+          "HIGH_SPEED_APPROVED",
+          "INCREASE",
+          "INCREASE_BY",
+          "NO_SPEED_RESTRICTIONS",
+          "REDUCE",
+          "REDUCE_BY",
+          "REDUCE_FINAL_APPROACH_SPEED",
+          "REDUCE_MIN_APPROACH_SPEED",
+          "REDUCE_MIN_CLEAN_SPEED",
+          "RESUME_NORMAL_SPEED",
+          "SPEED"
+        ],
+        "rows": 13,
+        "used_by": []
+      },
+      {
+        "order": 13,
+        "heading": "Taxi types",
+        "description_class": 12,
+        "description_name": "Taxi types",
+        "main_types": [
+          "CONTINUE",
+          "FOLLOW",
+          "LINEUP",
+          "LINEUP_BEHIND",
+          "TAXI",
+          "BACKTRACK",
+          "VACATE"
+        ],
+        "rows": 7,
+        "used_by": [
+          "FOLLOW",
+          "LINE_UP_AND_WAIT",
+          "TAXI_VIA"
+        ]
+      },
+      {
+        "order": 14,
+        "heading": "Movement progress rules types",
+        "description_class": 11,
+        "description_name": "Movement progress rules types",
+        "main_types": [
+          "CROSS",
+          "GIVE_WAY"
+        ],
+        "rows": 2,
+        "used_by": [
+          "CROSS_RUNWAY",
+          "GIVE_WAY"
+        ]
+      },
+      {
+        "order": 15,
+        "heading": "Vertical types",
+        "description_class": 1,
+        "description_name": "Vertical types",
+        "main_types": [
+          "ALTITUDE",
+          "CLIMB",
+          "DESCEND",
+          "MAINTAIN",
+          "NO_ALTI_RESTRICTIONS",
+          "STOP_ALTITUDE",
+          "STOP_CLIMB",
+          "STOP_DESCEND"
+        ],
+        "rows": 9,
+        "used_by": [
+          "CLIMB",
+          "DESCEND"
+        ]
+      },
+      {
+        "order": 16,
+        "heading": "Vertical speed types",
+        "description_class": 3,
+        "description_name": "Vertical speed types",
+        "main_types": [
+          "RATE_OF_CLIMB",
+          "RATE_OF_DESCENT",
+          "VERTICAL_RATE",
+          "EXPEDITE_PASSING"
+        ],
+        "rows": 7,
+        "used_by": []
+      }
+    ]
+  },
   "entity_types": [
     "Airport",
     "Runway",

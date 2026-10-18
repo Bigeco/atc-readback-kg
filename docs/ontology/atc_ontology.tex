@@ -68,7 +68,7 @@ Helmke et al. (2018), DASC \cite{helmke2018} & 명령 = 콜사인 + 종류(Type)
 Helmke et al. (2021), SID \cite{helmke2021sid}; Kleinert et al. (2021), DASC \cite{kleinert2021} & 유럽 20여 개 기관 합의, 조종사 발화까지 확장, 단어 $\to$ 명령 변환과 JSON 인터페이스 & 논문 공개\\
 Chen et al. (2023), Aerospace \cite{chen2023} & 미국(MITRE)·유럽(DLR) 온톨로지의 어휘·의미 차이(niner/nine, altimeter/QNH, 철자 등) & 논문 공개. MITRE 파일은 없음\\
 \textbf{Helmke, Clarke et al. (2025), DASC} \cite{helmke2025loss} & \textbf{미국 지상관제 교신을 유럽 온톨로지로 표현해도 명령 종류 손실 2.6\%p} (미국·유럽 지상관제 2,000건 이상). 미국 온톨로지는 FAA JO 7110.65와 미국 3개 주요 공항의 운영 표현을 반영해 수정됨 & NASA NTRS 공개\\
-\textbf{Helmke, Kleinert, Ohneiser (2025), DLR-IB-FL-BS-2025-107 v3.00} \cite{dlr2025} & 공식 사양: 15개 명령 부류·약 90개 Main type 목록(별도 PDF 표), Speaker/Reason/Condition 요소, JSON 교환 형식(5장) & elib 공개 PDF. OWL/JSON 파일 없음\\
+\textbf{Helmke, Kleinert, Ohneiser (2025), DLR-IB-FL-BS-2025-107 v3.00} \cite{dlr2025} & 공식 사양: 명령 그룹 16개(표의 제목 줄 기준; 설명서는 Cleared/Cancel을 합쳐 15개)·Main type 91개(별도 PDF 표), Speaker/Reason/Condition 요소, JSON 교환 형식(5장) & elib 공개 PDF. OWL/JSON 파일 없음\\
 FAA JO 7110.65 \cite{faa7110} & 복창 확인 의무(§2-4-3), hold short 복창 요청, 지상 이동 표현(§3-7-2) & 공개\\
 Keller (2017), NASA ATM Ontology \cite{keller2017} & 정적 클래스 이름(Airport, Runway, Taxiway, Facility) & 문서 공개 (data.nasa.gov)\\
 AIXM 5.1 \cite{aixm} & 공항 시설 개념. hold short 지점은 \texttt{TaxiHoldingPosition}에 대응 & 공개\\
@@ -94,8 +94,8 @@ AIXM 5.1 \cite{aixm} & 공항 시설 개념. hold short 지점은 \texttt{TaxiHo
 자원 & 형태 & 내용 & 우리 활용\\\midrule\endhead
 \multicolumn{4}{@{}l}{\textit{유럽 (SESAR / DLR)}}\\
 Helmke et al. 2018 \cite{helmke2018}, SID 2021 \cite{helmke2021sid}, Kleinert 2021 \cite{kleinert2021} & 논문 & 구조 설명과 예시만. 데이터 배포 언급 없음(Kleinert: ``not final yet'') & 구조 참고\\
-\textbf{DLR-IB-FL-BS-2025-107 v3.00} \cite{dlr2025} (2025-07-04, 52쪽) & \textbf{PDF 사양서} & Instruction = Callsign + Command(Type Main/Sub, Value, Unit, Qualifier, Speaker, Reason) + Condition(UNTIL/WHEN/IF/AFTER). 15개 부류, 5장에 JSON 교환 형식 정의 & 이름·구조 대조 기준\\
-\textbf{DLR 명령 표} (같은 elib 기록의 첨부, \texttt{OntologyATC\allowbreak CommandsTable\_\allowbreak v20250704.pdf}) & \textbf{PDF 표 (A1, 2쪽)} & 1쪽: 약 90개 Main type과 Sub type·값·단위·한정어·조건 키워드. 2쪽: 매개변수 형식(예: 활주로 \texttt{RW09L}, 주파수 \texttt{118.300}, TX-Point) & \S\ref{sec:cmd}의 오른쪽 열 확인\\
+\textbf{DLR-IB-FL-BS-2025-107 v3.00} \cite{dlr2025} (2025-07-04, 52쪽) & \textbf{PDF 사양서} & Instruction = Callsign + Command(Type Main/Sub, Value, Unit, Qualifier, Speaker, Reason) + Condition(UNTIL/WHEN/IF/AFTER). 명령 그룹 16개(설명서 표기 15개), 5장에 JSON 교환 형식 정의 & 이름·구조 대조 기준\\
+\textbf{DLR 명령 표} (같은 elib 기록의 첨부, \texttt{OntologyATC\allowbreak CommandsTable\_\allowbreak v20250704.pdf}) & \textbf{PDF 표 (A1, 2쪽)} & 1쪽: 16개 그룹, Main type 91개, 126줄(Sub type·값·단위·한정어·조건 키워드). 2쪽: 매개변수 형식(예: 활주로 \texttt{RW09L}, 주파수 \texttt{118.300}, TX-Point) & \S\ref{sec:cmd}의 오른쪽 열 확인\\
 ATCO2 corpus (GitHub \texttt{idiap/atco2-corpus}) & 주석 데이터 & 콜사인·명령·값 개체명 태그. 1시간 무료, 전체는 ELDA 유료 & (선택) 추출 평가용\\
 EUROCONTROL AIRM / AIRM-O & \textbf{OWL} & ATM 정보 전반(항공기·공역·비행계획) 모델. 음성 명령 개념은 없음 & 정적 계층 이름 참고만\\
 \multicolumn{4}{@{}l}{\textit{미국 (MITRE / NASA / FAA)}}\\

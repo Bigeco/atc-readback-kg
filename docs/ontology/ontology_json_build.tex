@@ -52,7 +52,7 @@
 \toprule
 파일 & 가져오는 내용 & 출처\\\midrule
 \texttt{OntologyATCCommands\allowbreak Description\_v20250704.pdf} (52쪽) & 지시(Instruction)의 구성 요소(2장), JSON 교환 키 정의(5.1장) & DLR-IB-FL-BS-2025-107 v3.00, \url{https://elib.dlr.de/214852}\\
-\texttt{OntologyATCCommands\allowbreak Table\_v20250704.pdf} (2쪽) & 1쪽: 명령 약 90종의 Type (Main/Sub), 값, 단위, 한정어, 조건. 2쪽: 값 형식(매개변수) & 위와 같은 elib 기록의 첨부\\
+\texttt{OntologyATCCommands\allowbreak Table\_v20250704.pdf} (2쪽) & 1쪽: 16개 그룹(제목 줄), Type (Main) 91개, 126줄의 Type (Main/Sub), 값, 단위, 한정어, 조건. 2쪽: 값 형식(매개변수) & 위와 같은 elib 기록의 첨부\\
 \texttt{FAA규정.pdf} (732쪽) & 명령별 표준 문구(phraseology)와 조항, 복창 규정(§2-4-3) & FAA Order JO 7110.65BB (2025-02-20 시행)\\
 \bottomrule
 \end{tabularx}
@@ -105,7 +105,7 @@
 \item 각 줄을 ``공백 2칸 이상''으로 나눈 조각으로 자르고, 조각의 시작 위치로 열을 정한다. 줄마다 1--2글자씩 밀리는 경우가 있어 3글자 여유를 둔다.
 \item \texttt{Taxi types}처럼 ``types''로 끝나는 한 조각 줄은 \textbf{분류(category)}로 기록한다.
 \item Main 칸이 빈 줄은 칸 안에서 \textbf{줄바꿈된 글자}다. 표가 여러 줄 칸을 세로 가운데 정렬하므로 다음 행에 합친다. 예: \texttt{4-digit-squawk-value,} 줄이 아래의 \cmd{SQUAWK} 행 값으로 합쳐진다.
-\item 결과: 명령 행 126개.
+\item 결과: 명령 행 126개, 그룹 제목 줄 16개, 서로 다른 Type (Main) 91개. 이 결과를 \key{dlr\_catalog}에 그대로 저장한다. 그룹은 \textbf{표의 제목 줄 기준 16개}로 센다. 설명서 9쪽은 Cleared types와 Cancel types를 ``Cleared and Cancel types'' 하나로 묶어 15개로 나열하므로, 각 그룹에 설명서 번호(\key{description\_class})를 함께 적고 설명서 목록에 그 번호와 이름이 있는지 확인한다. 표의 오타(\texttt{Informamtion types})는 원문 그대로 둔다.
 \end{enumerate}
 
 \subsection{③ DLR 매개변수 표 파싱 (Table 2쪽)}
@@ -198,7 +198,7 @@ FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK)을 읽어 보면, 복창 요구의 �
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.4cm}@{}}
 \toprule
 파일 & 키 & 근거 & 읽는 모듈\\\midrule
-\texttt{ontology.json} & \key{entity\_types}, \key{relation\_types}, \key{dlr\_instruction\_schema}, \key{command\_types}(\key{state}, \key{targets}, \key{description}, \key{dlr}, \key{faa\_phraseology}), \key{advisory\_types}, \key{non\_instruction\_types}, \key{lexical\_cues} & DLR 설명서·표, FAA 표준 문구(미국에서 쓰는 말인지) & M4 추출, M6 그래프\\
+\texttt{ontology.json} & \key{entity\_types}, \key{relation\_types}, \key{dlr\_instruction\_schema}, \key{dlr\_catalog}, \key{command\_types}(\key{state}, \key{targets}, \key{description}, \key{dlr}, \key{faa\_phraseology}), \key{advisory\_types}, \key{non\_instruction\_types}, \key{lexical\_cues} & DLR 설명서·표, FAA 표준 문구(미국에서 쓰는 말인지) & M4 추출, M6 그래프\\
 \texttt{rules.json} & \key{region\_rules}, \key{readback}(종류별 등급), \key{readback\_required}, \key{readback\_basis}, \key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types} & FAA §2-4-3, ICAO(미검증), KG 설계값 & M6 복창 연결, M7 경고 규칙, E3\\
 \bottomrule
 \end{tabularx}

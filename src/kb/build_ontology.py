@@ -215,6 +215,27 @@ COMMAND_TYPES = [
      "note": "DLR encodes this as Speaker=PILOT with Reason=REQUEST (JSON reas=REQ), not as a command type."},
 ]
 
+# The DLR table (p.1) has 16 group headings; we count groups by these headings. The Description (p.9) lists the same
+# groups as 15 classes because it merges "Cleared types" and "Cancel types". Heading -> (Description number, name).
+DLR_GROUPS = {
+    "Cleared types": (5, "Cleared and Cancel types"),
+    "Cancel types": (5, "Cleared and Cancel types"),
+    "Pushback and startup types": (13, "Pushback and start-up types"),
+    "Ground hold types": (14, "Ground hold types"),
+    "Airborne holding types": (8, "Airborne holding types"),
+    "Frequency changing and squawk types": (6, "Frequency changing and Squawk types"),
+    "Direction changing types": (2, "Direction changing types"),
+    "Informamtion types": (7, "Information types"),  # typo in the table, kept verbatim
+    "Miscellaneous types": (15, "Miscellaneous types"),
+    "VFR clearance types": (9, "VFR clearance types"),
+    "Reporting types": (10, "Reporting types"),
+    "Speed types": (4, "Speed types"),
+    "Taxi types": (12, "Taxi types"),
+    "Movement progress rules types": (11, "Movement progress rules types"),
+    "Vertical types": (1, "Vertical types"),
+    "Vertical speed types": (3, "Vertical speed types"),
+}
+
 ICAO_READBACK_SOURCE = ("ICAO Doc 4444 PANS-ATM, read-back requirements (runway, level, heading, SSR code, frequency). "
                         "Not among data/ontology inputs; not verified by this script.")
 
@@ -413,6 +434,44 @@ def match_rows(rows, main: str, sub):
     return hits
 
 
+def build_catalog(rows, description: str, command_types: dict) -> dict:
+    """16 DLR groups in table order with their Main types; verified against the Description's class list (p.9)."""
+    used = {}
+    for name, ct in command_types.items():
+        for r in ct["dlr"] or []:
+            used.setdefault((r["category"], r["main"]), []).append(name)
+    groups = []
+    for row in rows:
+        if not groups or groups[-1]["heading"] != row["category"]:
+            if row["category"] not in DLR_GROUPS:
+                sys.exit(f"[onto] unknown DLR table heading: {row['category']}")
+            number, name = DLR_GROUPS[row["category"]]
+            if not re.search(rf"{number}\.\s+{re.escape(name)}", description, re.I):
+                sys.exit(f"[onto] Description p.9 does not list '{number}. {name}'")
+            groups.append({"order": len(groups) + 1, "heading": row["category"], "description_class": number,
+                           "description_name": name, "main_types": [], "rows": 0, "used_by": []})
+        g = groups[-1]
+        g["rows"] += 1
+        if row["main"] not in g["main_types"]:
+            g["main_types"].append(row["main"])
+        for name in used.get((row["category"], row["main"]), []):
+            if name not in g["used_by"]:
+                g["used_by"].append(name)
+    if len(groups) != len(DLR_GROUPS):
+        sys.exit(f"[onto] expected {len(DLR_GROUPS)} DLR groups, table has {len(groups)}")
+    mains = {m for g in groups for m in g["main_types"]}
+    return {
+        "source": "OntologyATCCommandsTable_v20250704.pdf p.1 (group headings in table order); "
+                  "description_class = class number in the Description p.9",
+        "counts": {"groups": len(groups), "main_types": len(mains), "table_rows": len(rows),
+                   "main_types_used": len({main for _, main in used})},
+        "note": "We count 16 groups by the table headings. The Description p.9 lists 15 classes because it merges "
+                "'Cleared types' and 'Cancel types' (class 5). Main names such as MAINTAIN, CONTINUE and INFORMATION "
+                "appear in several groups, so the per-group lists sum to more than the distinct count.",
+        "groups": groups,
+    }
+
+
 def build(out_dir: Path):
     description = pdf_text(DLR_DESCRIPTION)
     table_rows = parse_command_table(pdf_text(DLR_TABLE, 1))
@@ -473,6 +532,7 @@ def build(out_dir: Path):
             "Read-back, supersession and validity rules live in configs/rules.json.",
         ],
         "dlr_instruction_schema": DLR_INSTRUCTION_SCHEMA,
+        "dlr_catalog": build_catalog(table_rows, description, command_types),
         "entity_types": ENTITY_TYPES,
         "relation_types": RELATION_TYPES,
         "command_types": command_types,
