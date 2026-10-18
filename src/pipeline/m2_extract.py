@@ -64,10 +64,8 @@ class RuleExtractor:
 
         instructions: List[dict] = []
         consumed = []
-        atis = None
 
         for m in re.finditer(r"\b(?:with\s+)?(?:information|info)[\s,]+([a-z]+)|\bwith\s+(" + "|".join(PHONETIC) + r")\b", low):
-            atis = (m.group(1) or m.group(2)).upper()
             consumed.append((m.start(), m.end()))
 
         for m in re.finditer(r"\bhold short(?: of)?\s*", low):
@@ -165,11 +163,21 @@ class RuleExtractor:
                 instructions.append(_empty_instruction("ACK"))
 
         speaker = role if role in ("ATCO", "PILOT") else ("PILOT" if hits and hits[-1]["end_ratio"] > 0.85 else "UNKNOWN")
-        return {"speaker": speaker, "callsign": callsign, "instructions": instructions, "atis": atis,
-                "normalized_text": norm, "edits": edits, "backend": self.name, "valid_json": True}
+        return {"speaker": speaker, "callsign": callsign, "instructions": instructions,
+                "edits": edits, "backend": self.name, "valid_json": True}
 
     def extract(self, turns: List[dict]) -> List[dict]:
         return [self.extract_one(t["text"], t["role"]) for t in turns]
+
+
+# M2b output (extraction.jsonl) keeps what M3 reads; the extraction record (extraction_log.jsonl) keeps what is
+# only needed to audit or re-validate M2b without calling the LLM again (--revalidate reads raw_generation).
+RESULT_KEYS = ("tx_id", "callsign", "instructions", "speaker", "backend")
+LOG_KEYS = ("tx_id", "edits", "dropped", "rule_added", "valid_json", "raw_generation")
+
+
+def split_extraction(rec: dict):
+    return ({k: rec[k] for k in RESULT_KEYS if k in rec}, {k: rec[k] for k in LOG_KEYS if k in rec})
 
 
 class LLMExtractor:
@@ -230,7 +238,7 @@ class LLMExtractor:
             instructions.append(inst)
 
         return {"speaker": speaker, "callsign": callsign, "instructions": instructions,
-                "normalized_text": norm, "edits": edits, "dropped": dropped,
+                "edits": edits, "dropped": dropped,
                 "backend": self.name, "valid_json": True}
 
     def _merge_with_rules(self, result: dict, turn: dict) -> dict:
@@ -243,7 +251,6 @@ class LLMExtractor:
             result["rule_added"] = [i["type"] for i in added]
         if not result.get("callsign") and rule.get("callsign"):
             result["callsign"] = rule["callsign"]
-        result["atis"] = rule.get("atis")
         return result
 
     def extract(self, turns: List[dict]) -> List[dict]:

@@ -184,11 +184,11 @@ class GraphBuilder:
                 flags.append("LINKED_BY_CONTEXT")
 
         g.add_node(tx_id, "Transmission", tx_id=rec["tx_id"], speaker_id=rec.get("speaker_id"), speaker=speaker, text=rec["text"],
-                   normalized_text=rec.get("normalized_text"), feed=rec["feed"], facility_class=rec["facility_class"],
+                   feed=rec["feed"], facility_class=rec["facility_class"],
                    file=rec["file"], offset_start=rec["start"], offset_end=rec["end"],
                    utc_start_epoch=t0, utc_end_epoch=t1, flight_id=flight_id, callsign_surface=rec["callsign"]["surface"],
                    callsign_candidates=rec["callsign"].get("candidates", []), flags=sorted(set(flags)),
-                   asr_conf=asr_conf, atis=rec.get("atis"), edits=rec.get("edits", []), backend=rec.get("backend"),
+                   asr_conf=asr_conf, backend=rec.get("backend"),
                    layer="dynamic")
         if speaker in ("ATCO", "PILOT"):
             g.add_edge("SPOKEN_BY", tx_id, f"Role:{speaker}", valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])

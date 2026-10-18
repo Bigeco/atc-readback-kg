@@ -224,8 +224,7 @@ async function showEvidence(txId, alert = null) {
       <span>${esc(t.speaker)}</span><span>${esc(t.flight || "")}</span><span>asr ${t.asr_conf ?? "-"}</span></div>
       <div>${esc(t.text)}</div>
       <div class="chips">${(t.instructions || []).filter((i) => !["REQUEST", "ACK"].includes(i.type)).map((i) => `<span class="chip">${esc(insText(i))}</span>`).join("")}
-      ${(t.flags || []).map((f) => `<span class="pill flag">${esc(f)}</span>`).join("")}
-      ${(t.edits || []).map((f) => `<span class="pill flag" title="ASR normalization">✎ ${esc(f)}</span>`).join("")}</div></div>`;
+      ${(t.flags || []).map((f) => `<span class="pill flag">${esc(f)}</span>`).join("")}</div></div>`;
   let diff = "";
   if (rb) {
     const name = (id) => (id || "").split(":").pop();

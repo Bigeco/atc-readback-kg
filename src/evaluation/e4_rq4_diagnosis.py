@@ -87,7 +87,7 @@ def score(args):
             stage = "M3-ground"
         else:
             stage = "OK"
-        if c.get("normalized_text") is not None and "UNSUPPORTED_LANG" in c.get("callsign", {}).get("flags", []):
+        if "UNSUPPORTED_LANG" in c.get("callsign", {}).get("flags", []):
             stage = "M2_LANG"
         failures[stage] += 1
         per_tx.append({"tx_id": g["tx_id"], "m_dagger": stage, "wer": wer, "flight_ok": flight_ok})

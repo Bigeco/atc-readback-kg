@@ -1,7 +1,7 @@
 """KG construction (M2 -> M5): speaker role decision and extraction (M2), canonicalization, temporal KG and anomaly rules.
 
 Input : results/<run>/stt/<feed>/*.jsonl (run_asr.py, Whisper) or --stt-dir data/raw/text (run_asr_moss.py, MOSS)
-Output: results/<run>/{turns,extraction,canonical}.jsonl, speaker_roles.json, kg/graph.json, kg/neo4j/,
+Output: results/<run>/{turns,extraction,extraction_log,canonical}.jsonl, speaker_roles.json, kg/graph.json, kg/neo4j/,
         alerts.json, summary.json
 """
 import argparse
@@ -19,7 +19,7 @@ from common.atc_text import build_callsign_regex
 from common.io_utils import iter_jsonl, load_json, load_jsonl, save_json, write_jsonl
 from common.paths import AIRLINES_PATH, KG_BUILD_PATH, ONTOLOGY_PATH, RULES_PATH, STATIC_KB_ROOT, display_path, run_dir
 from pipeline.m2_role import decide_roles
-from pipeline.m2_extract import LLMExtractor, RuleExtractor
+from pipeline.m2_extract import LLMExtractor, RuleExtractor, split_extraction
 from pipeline.m3_canonicalize import Canonicalizer
 from pipeline.m4_graph import GraphBuilder
 from reasoning.queries import readback_status_counts
@@ -54,6 +54,18 @@ def get_llm(args):
         from pipeline.llm import load_llm
         _LLM["llm"] = load_llm(args.llm_backend, args.llm_model, args.llm_base_url)
     return _LLM["llm"]
+
+
+def save_extractions(extractions, out: Path):
+    """M2b output -> extraction.jsonl (read by M3) + extraction_log.jsonl (audit / --revalidate)."""
+    pairs = [split_extraction(e) for e in extractions]
+    write_jsonl([r for r, _ in pairs], out / "extraction.jsonl")
+    write_jsonl([log for _, log in pairs], out / "extraction_log.jsonl")
+
+
+def unsupported(turn):
+    return {"tx_id": turn["tx_id"], "speaker": turn["role"], "callsign": None, "instructions": [],
+            "backend": "unsupported_lang"}
 
 
 def build_extractor(args, ontology, callsign_re):
@@ -150,20 +162,21 @@ def main():
             shard_secs.append(meta["sec"])
         extractions = []
         for turn in turns:
-            extractions.append(by_turn.get(turn["tx_id"]) or {
-                "tx_id": turn["tx_id"], "speaker": turn["role"], "callsign": None, "instructions": [],
-                "normalized_text": turn["text"], "edits": [], "backend": "unsupported_lang", "valid_json": True})
-        write_jsonl(extractions, ext_path)
+            extractions.append(by_turn.get(turn["tx_id"]) or unsupported(turn))
+        save_extractions(extractions, out)
         extractor_usage = {**usage, "shards": args.merge_shards, "shard_wall_sec": shard_secs}
         print(f"[M2b] merged {args.merge_shards} shards ({len(by_turn)} turns)")
     elif args.reuse_extraction and ext_path.exists():
         extractions = load_jsonl(ext_path)
         if len(extractions) != len(turns):
             raise ValueError("extraction.jsonl does not match the current turns; rerun without --reuse-extraction")
+        log_path = out / "extraction_log.jsonl"
+        if log_path.exists():  # older runs kept the log fields inside extraction.jsonl
+            extractions = [{**log, **e} for e, log in zip(extractions, load_jsonl(log_path))]
         if args.revalidate:
             validator = LLMExtractor(None, ontology, callsign_re)
-            extractions = [{"tx_id": t["tx_id"], **{k: v for k, v in e.items() if k != "turn_id"}} for t, e in zip(turns, validator.revalidate(turns, extractions))]
-            write_jsonl(extractions, ext_path)
+            extractions = [{"tx_id": t["tx_id"], **e} for t, e in zip(turns, validator.revalidate(turns, extractions))]
+        save_extractions(extractions, out)
         print(f"[M2b] reused {display_path(ext_path)}{' (revalidated)' if args.revalidate else ''}")
         extractor_usage = previous_summary.get("llm_usage", {})
     else:
@@ -177,11 +190,9 @@ def main():
                 by_turn[turn["tx_id"]] = ext
         extractions = []
         for turn in turns:
-            ext = by_turn.get(turn["tx_id"]) or {
-                "speaker": turn["role"], "callsign": None, "instructions": [], "normalized_text": turn["text"],
-                "edits": [], "backend": "unsupported_lang", "valid_json": True}
-            extractions.append({"tx_id": turn["tx_id"], **ext})
-        write_jsonl(extractions, ext_path)
+            ext = by_turn.get(turn["tx_id"])
+            extractions.append({"tx_id": turn["tx_id"], **ext} if ext else unsupported(turn))
+        save_extractions(extractions, out)
         extractor_usage = getattr(getattr(extractor, "llm", None), "usage", {})
     timings["m2_extract_sec"] = round(time.perf_counter() - t0, 1)
     if args.reuse_extraction:
