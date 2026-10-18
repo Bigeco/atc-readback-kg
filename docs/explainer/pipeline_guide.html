@@ -175,7 +175,7 @@ details p { margin-top: 8px; }
 <header>
   <div class="eyebrow">Team 6 · XAI616 Knowledge-Based Systems</div>
   <h1>무전 한 마디가 지식 그래프가 되기까지</h1>
-  <p class="lede">이 페이지는 <code>system_module.pdf</code>를 처음 보는 사람을 위한 해설입니다. 실제 애틀랜타 공항(KATL) 지상관제 교신 한 건을 들고, 파이프라인의 10단계(M0–M9)를 차례로 통과시키면서 각 단계가 무엇을 받고, 무엇을 하고, 무엇을 내놓는지 보여줍니다.</p>
+  <p class="lede">이 페이지는 <code>system_module.pdf</code>를 처음 보는 사람을 위한 해설입니다. 실제 애틀랜타 공항(KATL) 지상관제 교신 한 건을 들고, 파이프라인의 10단계(M0–M7)를 차례로 통과시키면서 각 단계가 무엇을 받고, 무엇을 하고, 무엇을 내놓는지 보여줍니다.</p>
 </header>
 
 <!-- ============ 1. background ============ -->
@@ -226,7 +226,7 @@ details p { margin-top: 8px; }
 
 <!-- ============ 4. readback lab ============ -->
 <section id="lab-readback">
-  <div class="eyebrow">실습 1 · M7</div>
+  <div class="eyebrow">실습 1 · M5</div>
   <h2>복창을 바꿔 보면 판정이 어떻게 달라질까</h2>
   <p>관제사 지시는 고정해 두고, 조종사 복창을 여러 방식으로 바꿔 봅니다. 시스템은 단어가 아니라 <b>개념</b>(지시 종류 + 대상 유도로/활주로 + 항공편)을 비교합니다. 평가 E3의 "오류 주입"도 바로 이런 변형을 자동으로 넣어서 탐지율을 잽니다.</p>
   <div class="lab">
@@ -247,13 +247,13 @@ details p { margin-top: 8px; }
       </div>
     </div>
     <div class="verdict" id="verdict" aria-live="polite"></div>
-    <small class="note">이 실습은 시스템의 비교 규칙(<code>src/reasoning/rules.py</code>)을 단순화해 화면에서 재현한 것입니다. 실제 파이프라인에서는 복창 문장에서 개념을 뽑는 M4 단계가 먼저 돌고, 거기서 실수하면 판정도 틀릴 수 있습니다.</small>
+    <small class="note">이 실습은 시스템의 비교 규칙(<code>src/reasoning/rules.py</code>)을 단순화해 화면에서 재현한 것입니다. 실제 파이프라인에서는 복창 문장에서 개념을 뽑는 M2b 단계가 먼저 돌고, 거기서 실수하면 판정도 틀릴 수 있습니다.</small>
   </div>
 </section>
 
 <!-- ============ 5. time lab ============ -->
 <section id="lab-time">
-  <div class="eyebrow">실습 2 · M6 · M8</div>
+  <div class="eyebrow">실습 2 · M4 · M6</div>
   <h2>"지금" 유효한 지시만 골라내기</h2>
   <p>지시에는 <b>유효 기간</b>이 있습니다. "Lima 3 앞에서 멈춰라"는 다음 지시가 와서 대체되거나, 다른 주파수로 넘어갈 때까지만 유효합니다. 그래프는 지시를 지우지 않고 <b>끝난 시각</b>을 기록해 둡니다(무효화). 그래서 "02:44 시점에 Lima 3 앞에서 대기 중인 비행기는?" 같은 질문에 답할 수 있습니다. 시간 막대를 움직여 보세요.</p>
   <div class="lab">
@@ -271,7 +271,7 @@ details p { margin-top: 8px; }
 <!-- ============ 6. evaluation ============ -->
 <section id="evaluation">
   <div class="eyebrow">잘 만들었는지 어떻게 아나</div>
-  <h2>평가 4가지 (M9)</h2>
+  <h2>평가 4가지 (M7)</h2>
   <p>KG 자체를 정답과 대조하는 대규모 평가는 교수님 지침에 따라 하지 않습니다. 대신 "질문에 답할 수 있는가", "뽑은 사실이 근거와 맞는가", "오류를 일부러 넣으면 잡는가", "다른 나라에도 통하는가"를 따로 확인합니다. 아래 숫자는 지상관제 5.84시간으로 돌린 직전 실행 결과이고, 전체 피드 재실행 결과가 나오면 바뀝니다.</p>
   <div class="evals">
     <div class="ev"><div class="id">E1 · 역량 질문</div><p>"이 KG라면 당연히 답해야 할 질문" 8개를 정해 두고, 실제로 답이 나오는지, 그 답을 원음까지 추적할 수 있는지 봅니다. 온톨로지 평가의 표준 방법입니다.</p><div class="num">8 / 8</div></div>
@@ -288,7 +288,7 @@ details p { margin-top: 8px; }
   <details><summary>그냥 받아쓴 글끼리 비교하면 안 되나요?</summary><p>안 됩니다. 조종사는 순서를 바꾸고("hold short Lima 3"을 먼저 말하기도 함), 콜사인을 뒤로 옮기고, 받아쓰기도 틀립니다("hold for the Lima 3", "Lender Ground"). 단어를 비교하면 정상 복창도 틀렸다고 나옵니다. 그래서 의미(개념) 단위로 바꾼 뒤 비교합니다. DLR 연구(Helmke 2021)도 같은 결론입니다.</p></details>
   <details><summary>미국 교신인데 유럽(SESAR) 온톨로지 구조를 써도 되나요?</summary><p>됩니다. NASA와 DLR이 미국·유럽 공항의 지상관제 교신 2,000건 이상을 서로의 온톨로지로 바꿔 본 결과, 미국 교신을 유럽 온톨로지로 표현해도 명령 종류 손실이 2.6%p였습니다(Helmke, Clarke 외, DASC 2025). '무슨 지시를 무엇에 대해'라는 구조는 거의 같고, 차이는 단어(niner, altimeter 등)와 규정에 있습니다. 그래서 구조는 SESAR 논문을 참고하고, 반드시 복창해야 할 지시 목록은 미국 FAA 규정(JO 7110.65)으로 정했습니다. 다만 공식 온톨로지 파일은 공개되어 있지 않아 논문을 보고 직접 정의했고, 조건부 허가("착륙 비행기가 지나간 뒤" 같은 조건)는 아직 표현하지 못합니다.</p></details>
   <details><summary>왜 굳이 그래프(KG)로 만드나요? 표로 저장하면 안 되나요?</summary><p>복창 판정에는 "이 조종사 말이 몇 초 전 어느 관제사 지시에 대한 것인가", "같은 항공편의 이전 지시는 무엇이었나", "Lima 3이 이 공항에 실제로 있나", "지금 이 지시가 아직 유효한가"가 모두 필요합니다. 발화·항공편·공항 시설·시간을 서로 이어 둔 그래프가 이런 질문에 자연스럽습니다. 시간 정보가 핵심이라 그냥 KG가 아니라 Temporal KG입니다.</p></details>
-  <details><summary>콜사인을 "2642"처럼 번호만 부르면 어떻게 아나요?</summary><p>관제사는 이미 대화 중인 비행기를 번호만으로 부르는 경우가 아주 많습니다. M5가 최근 몇 분 안에 활동한 항공편 목록(그래프에 쌓인 것)에서 번호가 같은 항공편을 찾아 연결합니다. 받아쓰기가 "Alpha 265"처럼 항공사 이름을 틀려도, 같은 번호의 활성 항공편(DAL265)이 있으면 교정하고 "교정됨" 표시를 남깁니다.</p></details>
+  <details><summary>콜사인을 "2642"처럼 번호만 부르면 어떻게 아나요?</summary><p>관제사는 이미 대화 중인 비행기를 번호만으로 부르는 경우가 아주 많습니다. M3가 최근 몇 분 안에 활동한 항공편 목록(그래프에 쌓인 것)에서 번호가 같은 항공편을 찾아 연결합니다. 받아쓰기가 "Alpha 265"처럼 항공사 이름을 틀려도, 같은 번호의 활성 항공편(DAL265)이 있으면 교정하고 "교정됨" 표시를 남깁니다.</p></details>
   <details><summary>LLM(언어 모델)이 지어내면 어떻게 하나요?</summary><p>세 겹으로 막습니다. 정해진 지시 종류만 받고, 대상(유도로·활주로)이 원문에 실제로 있어야 하고, 지시마다 원문에 꼭 있어야 하는 단어(예: HOLD_SHORT는 "hold short"나 "hold for")가 없으면 버립니다. 이 단어 검사를 넣기 전에는 지상 주파수에서 "기수를 바꿔라(HEADING)" 같은 엉뚱한 지시가 125건 나왔는데, 넣은 뒤 3건으로 줄었습니다.</p></details>
   <details><summary>신뢰도 HIGH / MEDIUM / LOW는 무슨 뜻인가요?</summary><p>HIGH는 관제사 지시와 조종사 복창이 개념 단위로 일치한 경우입니다. 서로 다른 두 사람이 같은 내용을 말했으니 그 사실은 교차 확인된 셈입니다. MEDIUM은 한쪽 발화만 있는 경우, LOW는 받아쓰기 확신도가 낮거나 콜사인 교정이 들어간 경우입니다. Team 2가 "두 출처에 다 나오면 신뢰도 높음"으로 정한 것과 같은 발상입니다.</p></details>
   <details><summary>경보가 뜨면 진짜 복창 실수인가요?</summary><p>아닐 수 있습니다. 경보는 "사람이 확인해 볼 대상"입니다. 받아쓰기나 의미 추출이 틀려도 경보가 뜰 수 있어서, 데모는 경보마다 근거 발화와 원음 구간을 같이 보여줍니다. 실제로 지금 불일치 경보 중 일부는 추출 잡음으로 생긴 거짓 경보입니다.</p></details>
@@ -339,7 +339,7 @@ const STEPS = [
     numbers: "활주로 5개(양 끝 10개), 유도로 102개, 주파수 12개",
   },
   {
-    code: "M1", name: "녹음 정리·자르기", short: "녹음 정리",
+    code: "M1a", name: "녹음 정리·자르기", short: "녹음 정리",
     plain: "30분짜리 녹음 파일들을 찾아서 어느 공항·어느 주파수·몇 시 녹음인지 읽고, 말소리가 있는 구간만 잘라냅니다.",
     what: ["파일 이름 'KATL-Gnd-All-Aug-26-2024-0230Z.mp3'에서 공항(KATL), 주파수 종류(Ground), 시작 시각(02:30 UTC)을 읽습니다.", "관제사가 없는 비관제 주파수(CTAF), 자동 방송(ATIS), 항공사 내부 통신은 뺍니다.", "음성 구간 검출기(VAD)로 말소리가 있는 부분만 잘라 각 조각에 절대 시각을 붙입니다."],
     why: ["무음 구간을 음성 인식에 넣으면 'Thank you.' 같은 없는 말을 지어냅니다. 샘플에서 실제로 확인했습니다. (C1)", "여러 주파수를 같은 UTC 시계로 맞춰야 나중에 '지상 → 출발 관제'처럼 이어 붙일 수 있습니다. (C9, C10)"],
@@ -357,55 +357,55 @@ const STEPS = [
     input: "말소리 구간 (5초)",
     output: '<span class="c">// 실제 출력 (오류 포함)</span>\n"2642, <span class="x">Lender</span> Ground, taxi via Mike, <span class="x">hold for</span> the Lima 3"\n확신도(평균 로그확률) -0.37',
     formula: "w_i = argmax P_θ(w | x_i, prompt(𝒱_dom, 활성 콜사인))",
-    code_path: "src/pipeline/m2_asr.py · src/run_asr.py",
+    code_path: "src/pipeline/m1_asr.py · src/run_asr.py",
     numbers: "30분 파일 하나에 약 41초 (GPU 1장). 지상관제 5.84시간에서 환각 의심 11건",
   },
   {
-    code: "M3", name: "누가 말했나", short: "화자 구분",
+    code: "M2a", name: "누가 말했나", short: "화자 구분",
     plain: "받아쓴 문장이 관제사 말인지 조종사 말인지 정하고, 한 조각에 두 사람 말이 섞여 있으면 나눕니다.",
     what: ["관제사는 콜사인을 문장 앞에 두고 지시 동사(taxi, hold short …)를 씁니다 → ATCO", "조종사는 복창 끝에 콜사인을 붙입니다('…, Delta 2642') → PILOT", "'Good evening, Delta 2642 …'처럼 인사로 시작하면 조종사의 첫 호출입니다."],
     why: ["복창 판정은 '관제사 지시'와 '조종사 복창'을 짝지어야 가능합니다. 화자를 모르면 시작도 못 합니다. (C3)", "무전 간격이 0.1–0.5초로 짧아 음성만으로는 화자 경계가 잘 안 나뉩니다."],
     input: '"2642, Lender Ground, taxi via Mike, hold for the Lima 3"',
     output: '화자 <span class="tag a">ATCO</span>\n근거: 콜사인(번호만)이 맨 앞 + 지시 동사 taxi',
     formula: "r_i ∈ {ATCO, PILOT}",
-    code_path: "src/pipeline/m3_role.py",
+    code_path: "src/pipeline/m2_role.py",
     numbers: "규칙만으로는 51%가 '모름'으로 남고, 다음 단계 LLM이 0.2%까지 줄입니다",
   },
   {
-    code: "M4", name: "의미 뽑기", short: "의미 추출",
+    code: "M2b", name: "의미 뽑기", short: "의미 추출",
     plain: "문장에서 '어떤 지시를, 어디에 대해' 했는지를 정해 둔 형식(온톨로지)에 맞춰 뽑습니다. 로컬 언어 모델(Qwen3-4B)이 하고, 규칙으로 검증·보충합니다.",
     what: ["언어 모델에게 예시 몇 개를 보여 주고 JSON 형식으로 답하게 합니다(few-shot).", "정해진 지시 종류만 받고, 대상이 원문에 실제로 있어야 하고, 지시마다 꼭 있어야 하는 단어가 있어야 통과합니다.", "언어 모델이 놓친 지시는 규칙 문법으로 보충합니다(하이브리드)."],
     why: ["복창은 순서·표현이 달라서 단어가 아니라 개념으로 비교해야 합니다. (C6)", "'heavy departed' 같은 정보성 발언은 지시가 아니라서 복창 대상에서 빼야 합니다. (C7)", "언어 모델의 지어내기를 막아야 합니다. (C13)"],
     input: '"2642, Lender Ground, taxi via Mike, hold for the Lima 3"',
     output: '{ <span class="k">"speaker"</span>: <span class="v">"ATCO"</span>, <span class="k">"callsign"</span>: <span class="v">"2642"</span>,\n  <span class="k">"instructions"</span>: [\n    { <span class="k">"type"</span>: <span class="v">"TAXI_VIA"</span>, <span class="k">"route"</span>: [<span class="v">"M"</span>] },\n    { <span class="k">"type"</span>: <span class="v">"HOLD_SHORT"</span>, <span class="k">"target"</span>: <span class="v">"L3"</span> } ] }',
     formula: "u_i = (ĉ_i, I_i),  ι = (κ 종류, v 값, μ 단위, q 한정어, g 대상)",
-    code_path: "src/pipeline/m4_extract.py · src/prompt/prompt.py",
+    code_path: "src/pipeline/m2_extract.py · src/prompt/prompt.py",
     numbers: "필수 단어 검사로 지상 주파수의 엉뚱한 HEADING 지시 125건 → 3건",
   },
   {
-    code: "M5", name: "이름 맞추기", short: "정규화",
+    code: "M3", name: "이름 맞추기", short: "정규화",
     plain: "같은 것을 가리키는 여러 표현을 하나의 정식 이름으로 맞추고, 공항 지도(M0)의 실제 항목에 연결합니다.",
     what: ["콜사인: '2642' → 최근 활동한 항공편 중 번호가 같은 DAL2642 (번호만 부름 = ABBREVIATED)", "받아쓰기 오류 교정: 'Alpha 265' → 같은 번호의 활성 항공편 DAL265 (ASR_CORRECTED)", "대상: 'Lima 3' → Taxiway:KATL:L3. 공항에 없는 이름이면 KB_VIOLATION 표시", "표기 통일: '9 or left' → 9L, 'Fox shot' → Foxtrot, '19-1' → 119.1"],
     why: ["같은 비행기가 'Delta 2642', '26-42', '2642'로 다르게 불립니다. 하나로 묶어야 이력이 쌓입니다. (C4, C5)", "애틀랜타는 콜사인의 88%가 Delta라서 숫자만 다른 콜사인이 많습니다. 한 자리만 다른 활성 항공편이 있으면 '유사 콜사인'으로 표시합니다."],
     input: '콜사인 "2642"\n대상 "L3", 경로 ["M"]',
     output: '항공편 <span class="v">DAL2642</span> <span class="tag w">ABBREVIATED</span>\n대상 <span class="v">Taxiway:KATL:L3</span> ✓ 공항 지도에 있음\n경로 <span class="v">Taxiway:KATL:M</span> ✓',
     formula: "f_i = argmax_f [β·sim(ĉ_i, tel(f)) + (1-β)·ctx(f, i)],  ℓ(g) ∈ V_S ∪ {⊥}",
-    code_path: "src/pipeline/m5_canonicalize.py",
+    code_path: "src/pipeline/m3_canonicalize.py",
     numbers: "번호만 부른 콜사인 처리 513회, 유사 콜사인 표시 78회 (지상관제 실행 기준)",
   },
   {
-    code: "M6", name: "그래프 쌓기", short: "그래프",
+    code: "M4", name: "그래프 쌓기", short: "그래프",
     plain: "정리된 내용을 시간 순서대로 그래프에 쌓습니다. 각 사실에 '언제부터 언제까지 유효한지'와 '어느 발화에서 나왔는지'를 붙이고, 조종사 복창을 해당 관제사 지시에 연결합니다.",
     what: ["발화 하나 = Transmission 노드, 지시 하나 = Instruction 노드 (사건으로 저장)", "조종사 발화가 20초 안에 같은 항공편에게 한 관제사 지시를 가리키면 READBACK_OF 간선을 만듭니다.", "새 지시가 이전 지시를 대체하면 이전 지시를 지우지 않고 '끝난 시각'만 기록합니다(무효화).", "복창으로 교차 확인된 지시는 신뢰도 HIGH가 됩니다."],
     why: ["지시–복창–이관은 여러 발화에 걸친 관계라서 그래프가 필요합니다. (C8)", "'지금 유효한 지시'를 물으려면 시간 정보가 필요합니다. (C10)", "모든 사실이 원음 구간까지 추적되어야 사람이 검증할 수 있습니다. (C12)"],
     input: "정리된 관제사 지시 + 조종사 복창 (02:43:20, 02:43:24)",
     output: "GRAPH",
     formula: "𝒢 = (V, E, λ, τ 유효구간, prov 출처, conf 신뢰도)",
-    code_path: "src/pipeline/m6_graph.py",
+    code_path: "src/pipeline/m4_graph.py",
     numbers: "지상관제 5.84시간 → 노드 4,789개, 간선 7,717개, 항공편 513개",
   },
   {
-    code: "M7", name: "판정·경보", short: "판정",
+    code: "M5", name: "판정·경보", short: "판정",
     plain: "연결된 지시–복창 쌍을 개념 단위로 비교해 일치(MATCH)·부분(PARTIAL)·불일치(MISMATCH)를 정하고, 규칙 7가지로 확인이 필요한 상황을 경보로 띄웁니다.",
     what: ["ρ1 복창 불일치·부분 복창", "ρ2 복창이 아예 없음 (20초 안에)", "ρ3 콜사인 없이 복창 (FAA 규정 위반 소지)", "ρ4 같은 활주로에 다른 항공편 허가가 겹침", "ρ5 다른 주파수로 넘긴 뒤에도 지시가 나감", "ρ6 공항 지도에 없는 유도로·활주로", "ρ7 한 자리만 다른 유사 콜사인"],
     why: ["복창 오류는 활주로 침범 같은 사고로 이어질 수 있습니다(미국 2023 회계연도 활주로 침범 1,756건).", "규칙은 규정에서 바로 나오므로 학습 데이터가 필요 없고, 왜 경보가 떴는지 설명할 수 있습니다."],
@@ -416,7 +416,7 @@ const STEPS = [
     numbers: "지상관제 실행: 복창 연결 105건 (일치 71 / 부분 14 / 불일치 20), 경보 312건",
   },
   {
-    code: "M8", name: "질문하기·화면", short: "질의·데모",
+    code: "M6", name: "질문하기·화면", short: "질의·데모",
     plain: "완성된 그래프에 시간을 지정해 질문하고, 웹 데모로 보여줍니다.",
     what: ["시점 스냅샷: 't 시각에 유효한 지시만' 남긴 그래프로 공항 상태를 보여줍니다.", "항공편 이력: 한 비행기가 받은 지시와 복창을 시간순으로 나열합니다.", "웹 데모: flight strip 보드, 시간 막대, 2열 교신 기록, 사건 그래프, 경보 근거와 원음 재생"],
     why: ["상황 인식(지금 누가 어디서 대기 중인가)은 시점을 지정한 질문입니다. (C10)", "경보마다 근거를 보여줘야 사람이 거짓 경보를 걸러낼 수 있습니다. (C12)"],
@@ -427,7 +427,7 @@ const STEPS = [
     numbers: "웹 데모: bigeco.github.io/atc-readback-kg",
   },
   {
-    code: "M9", name: "평가", short: "평가",
+    code: "M7", name: "평가", short: "평가",
     plain: "파이프라인이 각 단계에서 얼마나 잘 했는지, 어디서 틀렸는지를 측정합니다. 아래 '평가 4가지'에 자세히 정리했습니다.",
     what: ["E1 역량 질문 8개에 답하는지", "E2 그래프 사실이 원문과 맞는지 (사람 라벨)", "E3 일부러 넣은 복창 오류를 잡는지", "E4 한국·일본 교신에서 처음 실패하는 단계는 어디인지"],
     why: ["데모만 보여주면 '좋은 사례만 골랐다'는 반론을 막기 어렵습니다.", "실제 복창 오류는 1% 미만으로 드물어서 일부러 넣어 봐야 탐지 능력을 잴 수 있습니다."],

@@ -15,7 +15,7 @@ On that graph it then checks **controller–pilot readbacks** and answers **time
 and a web demo presents the results.
 
 - Problem definition and literature: `docs/problem_definition/`
-- Formal module specification (M0–M9): `docs/system_design/system_module.pdf`
+- Formal module specification (M0–M7): `docs/system_design/system_module.pdf`
 - Presentation write-up (Team 2 structure): `docs/report/team6_kg_report.pdf`
 
 ## Pipeline
@@ -24,17 +24,17 @@ and a web demo presents the results.
 |---|---|---|---|
 | M0 | Static airport KB (OurAirports + OpenStreetMap) | `src/kb/build_static_kb.py` | `data/static_kb/<icao>.json` |
 | KB | Ontology + rule base from DLR v3.00 spec/table and FAA JO 7110.65BB (PDFs in `data/ontology/`, not redistributed) | `src/kb/build_ontology.py` | `configs/ontology.json`, `configs/rules.json` |
-| M1 | Archive discovery, context from file names, facility filter, VAD | `src/pipeline/m1_ingest.py` | archive records |
-| M2 | Context-biased Whisper large-v3 + hallucination filter + language id | `src/pipeline/m2_asr.py`, `src/run_asr.py` | `results/<run>/stt/` |
-| M3 | Text-based speaker role and turn splitting | `src/pipeline/m3_role.py` | `turns.jsonl` |
-| M4 | Ontology-grounded extraction (LLM few-shot + rule grammar, hybrid) | `src/pipeline/m4_extract.py`, `src/prompt/prompt.py` | `extraction.jsonl` |
-| M5 | Callsign resolution (incl. number-only and misrecognized airlines), KB grounding | `src/pipeline/m5_canonicalize.py` | `canonical.jsonl` |
-| M6 | Incremental bi-temporal event graph, readback linking, invalidation | `src/pipeline/m6_graph.py` | `kg/graph.json`, `kg/neo4j/` |
-| M7 | Concept-level readback comparison and anomaly rules ρ1–ρ7 | `src/reasoning/rules.py` | `alerts.json` |
-| M8 | Snapshot / timeline / competency queries | `src/reasoning/queries.py` | API + demo |
-| M9 | Evaluation harness E1–E4 | `src/evaluation/` | `results/<run>/eval/` |
+| M1a | **M1 STT** — archive discovery, context from file names, facility filter, VAD | `src/pipeline/m1_ingest.py` | archive records |
+| M1b | **M1 STT** — context-biased Whisper large-v3 + hallucination filter + language id (alternative: MOSS-ATC joint transcription + diarization of whole archives, which replaces M1a's VAD) | `src/pipeline/m1_asr.py`, `src/run_asr.py`, `src/run_asr_moss.py` | `results/<run>/stt/`, `data/raw/text/` |
+| M2a | **M2 extraction** — text-based speaker role and turn splitting | `src/pipeline/m2_role.py` | `turns.jsonl` |
+| M2b | **M2 extraction** — ontology-grounded extraction (LLM few-shot + rule grammar, hybrid; also decides speaker role) | `src/pipeline/m2_extract.py`, `src/prompt/prompt.py` | `extraction.jsonl` |
+| M3 | Callsign resolution (incl. number-only and misrecognized airlines), KB grounding | `src/pipeline/m3_canonicalize.py` | `canonical.jsonl` |
+| M4 | Incremental bi-temporal event graph, readback linking, invalidation | `src/pipeline/m4_graph.py` | `kg/graph.json`, `kg/neo4j/` |
+| M5 | Concept-level readback comparison and anomaly rules ρ1–ρ7 | `src/reasoning/rules.py` | `alerts.json` |
+| M6 | Snapshot / timeline / competency queries | `src/reasoning/queries.py` | API + demo |
+| M7 | Evaluation harness E1–E4 | `src/evaluation/` | `results/<run>/eval/` |
 
-`src/build_kg.py` runs M3–M7; `src/run_asr.py` runs M1–M2.
+`src/run_asr.py` (or `src/run_asr_moss.py`) runs M1; `src/build_kg.py` runs M2–M5. Modules were renumbered on 2026-10-18 (old M1–M2 → M1, M3–M4 → M2, M5–M9 → M3–M7).
 
 ## Layout
 
@@ -68,7 +68,7 @@ To view the demo from a laptop when it runs on a remote server: `ssh -L 8800:127
 Rebuild and publish with `RUN_NAME=katl_gnd PUBLISH=1 bash scripts/export_site.sh`. The static site has no audio (LiveATC terms); playback works only in the local server mode.
 
 Useful switches
-- `build_kg.py --extractor rule` runs a GPU-free baseline. `--stt-from <run>` reuses another run's ASR output. `--reuse-extraction` skips M4.
+- `build_kg.py --extractor rule` runs a GPU-free baseline. `--stt-from <run>` reuses another run's ASR output. `--reuse-extraction` skips M2b.
 - `run_asr.py --language auto --segment-lang` enables language identification for RQ4 (non-English segments become `UNSUPPORTED_LANG`).
 - `build_kg.py --llm-backend openai --llm-base-url http://host:8000/v1` uses an OpenAI-compatible server instead.
   **Restricted recordings (e.g. Korean data) must use the local `hf` backend.**

@@ -199,9 +199,9 @@ FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK, 79쪽)은 두 부분으로 되어 �
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.4cm}@{}}
 \toprule
 파일 & 키 & 근거 & 읽는 모듈\\\midrule
-\texttt{ontology.json} & \key{entity\_types}, \key{relation\_types}, \key{dlr\_instruction\_schema}, \key{dlr\_catalog}, \key{command\_types}(\key{state}, \key{targets}, \key{description}, \key{dlr}, \key{faa\_phraseology}), \key{advisory\_types}, \key{non\_instruction\_types}, \key{lexical\_cues} & DLR 설명서·표, FAA 표준 문구(미국에서 쓰는 말인지) & M4 추출, M6 그래프\\
-\texttt{rules.json} & \key{region\_rules}, \key{readback}(종류별 등급), \key{readback\_required}, \key{readback\_basis}, \key{supersedes}, \key{runway\_state\_types} & FAA §2-4-3, ICAO(미검증), 지시의 의미 & M6 복창 연결·상태 종료, M7 경고 규칙, E3\\
-\texttt{kg\_build.json} & \key{readback\_window\_sec}(20초), \key{max\_validity\_sec}, \key{default\_max\_validity\_sec}(600초) & 데이터 처리 설정 (사람이 작성, 생성 코드 대상 아님) & M6, M7\\
+\texttt{ontology.json} & \key{entity\_types}, \key{relation\_types}, \key{dlr\_instruction\_schema}, \key{dlr\_catalog}, \key{command\_types}(\key{state}, \key{targets}, \key{description}, \key{dlr}, \key{faa\_phraseology}), \key{advisory\_types}, \key{non\_instruction\_types}, \key{lexical\_cues} & DLR 설명서·표, FAA 표준 문구(미국에서 쓰는 말인지) & M2b 추출, M4 그래프\\
+\texttt{rules.json} & \key{region\_rules}, \key{readback}(종류별 등급), \key{readback\_required}, \key{readback\_basis}, \key{supersedes}, \key{runway\_state\_types} & FAA §2-4-3, ICAO(미검증), 지시의 의미 & M4 복창 연결·상태 종료, M5 경고 규칙, E3\\
+\texttt{kg\_build.json} & \key{readback\_window\_sec}(20초), \key{max\_validity\_sec}, \key{default\_max\_validity\_sec}(600초) & 데이터 처리 설정 (사람이 작성, 생성 코드 대상 아님) & M4, M5\\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -209,7 +209,7 @@ FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK, 79쪽)은 두 부분으로 되어 �
 \noindent 시간 값(복창 연결 시간 창, 최대 유효시간)은 도메인 규칙이 아니라 녹음 누락 등에 대비한 \textbf{데이터 처리 설정}이므로 \texttt{configs/kg\_build.json}에 따로 둔다. KATL 전체 KG에서 관제사 상태형 지시 2{,}993개 중 2{,}251개가 다음 지시 없이 최대 유효시간으로 종료되었고, 복창 연결 404건 중 351건이 5초 이내였다(95\% 지점 12.4초). 이렇게 나누면 RQ4(한국·일본)에서 \textbf{온톨로지는 그대로 두고 규칙만 ICAO로 바꾼다}는 실험 조건을 파일 단위로 보여 줄 수 있다. 두 파일 모두 \key{generated}에 생성 코드, 날짜, 입력 PDF의 MD5를 기록한다.
 
 \subsection*{\texttt{dlr\_instruction\_schema}: DLR 지시 구조}
-설명서 Figure 2-1(7쪽)의 구조를 그대로 중첩해 담았다. 각 요소에는 한 문장 설명, JSON 키(5.1장, 20쪽), 우리 M4 필드(\key{ours}), 필수 여부와 빈 값, 우리와 다른 점(\key{note})을 적었다.
+설명서 Figure 2-1(7쪽)의 구조를 그대로 중첩해 담았다. 각 요소에는 한 문장 설명, JSON 키(5.1장, 20쪽), 우리 M2b 필드(\key{ours}), 필수 여부와 빈 값, 우리와 다른 점(\key{note})을 적었다.
 \begin{center}\small
 \begin{tabularx}{\textwidth}{@{}ll l>{\raggedright\arraybackslash}X@{}}
 \toprule
@@ -275,7 +275,7 @@ python src/kb/build_ontology.py --out-dir /tmp/kb   # 다른 폴더로 시험 �
 \begin{caveat}
 \begin{itemize}[leftmargin=12pt]
 \item \textbf{매개변수 표 원문의 빈 칸:} DLR 표 2쪽 일부 매개변수는 원문 자체가 비어 있거나 짧다(예: \texttt{4-digit-squawk-value}는 값 칸이 비어 있음, \texttt{altitude}는 ``or none''만 있음, \texttt{CA}는 값 없이 설명 열에만 ``controlled airspace''). 설명(Comments) 열은 옮기지 않았다. 여러 줄로 나뉜 값(예: \texttt{Frequency} = ``3 digits decimal 3 digits \ldots'')은 다음 이름 줄에 합쳐 온전히 가져온다.
-\item \textbf{조건·단위 미추출:} DLR의 Condition(UNTIL/WHEN/IF/AFTER)과 Unit은 표에서 옮겨 적기만 했고, M4 추출에서는 아직 쓰지 않는다.
+\item \textbf{조건·단위 미추출:} DLR의 Condition(UNTIL/WHEN/IF/AFTER)과 Unit은 표에서 옮겨 적기만 했고, M2b 추출에서는 아직 쓰지 않는다.
 \item \textbf{ICAO 미검증:} ICAO 복창 목록은 Doc 4444를 입력으로 넣지 않아 자동 검증 대상이 아니다.
 \item \textbf{TAXI TO/VIA 묶음:} DLR은 ``taxi to A4 via L N7''을 TAXI TO와 TAXI VIA 두 Instruction으로 나누지만(설명서 8쪽 예시), 우리 \cmd{TAXI\_VIA}는 하나에 경로(\key{route})와 목적지(\key{target})를 함께 담는다. \key{dlr\_instruction\_schema}의 Value(s) 항목에 명시했다.
 \item \textbf{매핑은 사람이 정함:} 우리 종류와 DLR 행의 대응(예: \cmd{TAXI\_VIA} $\to$ TAXI VIA/TO)은 사람이 판단했다. 코드는 그 행이 존재하는지만 확인한다.

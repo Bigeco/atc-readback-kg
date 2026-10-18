@@ -193,7 +193,7 @@ Source type & 1차 원천, 원본 VHF 음성(MP3)\\
 Files & 11개, 2024-08-26 00:00--05:30Z (5.84\,h)\\
 STT & Whisper large-v3 + 도메인 프롬프트, 30분 파일당 약 41\,s\\
 Segments & 1,860 (환각 의심 11 제외, 파일 겹침 제거 후 1,771)\\
-Turns (M3) & 1,775 (ATCO 1,027 / PILOT 745)\\
+Turns (M2a) & 1,775 (ATCO 1,027 / PILOT 745)\\
 Extractor & Qwen3-4B-Instruct (로컬) + 규칙 문법, 약 17분\\
 Flights & 513 (번호만 부른 콜사인 513회 해소 시도)\\
 ATCO instructions & 1,088\\
@@ -532,7 +532,7 @@ E4 RQ4 & 정답 템플릿 20개 생성 (\texttt{data/gold/katl\_gnd\_gold\_templ
 \end{itemize}
 \end{keybox}
 
-\noindent\textbf{실제 KG의 질의 결과 (DAL2642).} 관제사는 콜사인을 번호만으로 불렀다(``2642, ... taxi via Mike, hold for the Lima 3''). M5가 직전 조종사 요청을 통해 이를 DAL2642로 해소했다. 조종사 복창(``Mike, hold short Lima 3, Delta 2642'')과 개념 단위로 비교한 결과는 \cmd{MATCH}이고, 두 지시 모두 신뢰도 \textbf{HIGH}(교차 확인)를 받았다. \texttt{hold for}는 \cmd{HOLD\_SHORT}로 정규화되었다. 같은 구간을 다른 실행에서 전사하면 \texttt{on the ground} / \texttt{Lender Ground}처럼 달라지는데, 이것이 \ch{C2}·\ch{C5}가 실제로 반복된다는 증거다.
+\noindent\textbf{실제 KG의 질의 결과 (DAL2642).} 관제사는 콜사인을 번호만으로 불렀다(``2642, ... taxi via Mike, hold for the Lima 3''). M3가 직전 조종사 요청을 통해 이를 DAL2642로 해소했다. 조종사 복창(``Mike, hold short Lima 3, Delta 2642'')과 개념 단위로 비교한 결과는 \cmd{MATCH}이고, 두 지시 모두 신뢰도 \textbf{HIGH}(교차 확인)를 받았다. \texttt{hold for}는 \cmd{HOLD\_SHORT}로 정규화되었다. 같은 구간을 다른 실행에서 전사하면 \texttt{on the ground} / \texttt{Lender Ground}처럼 달라지는데, 이것이 \ch{C2}·\ch{C5}가 실제로 반복된다는 증거다.
 
 \begin{figure}[h!]
 \centering

@@ -1,0 +1,309 @@
+<title>ATC 복창 KG 시스템 설계</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column, airfield-sign tags for modules; page 1 = input→system→output flow, page 2 = module I/O ladder */
+:root{
+  --bg:#f3f4f1; --panel:#ffffff; --ink:#1d2228; --muted:#5d6670; --line:#d9ddd8;
+  --accent:#1f4e79; --accent-soft:#e3ecf5; --sign:#f2c230; --sign-ink:#16191c;
+  --in:#e9f1e6; --in-ink:#2f5a24; --kb:#f6eedd; --kb-ink:#6b4a10; --out:#ece9f6; --out-ink:#41367a;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14171a; --panel:#1c2024; --ink:#e7eaec; --muted:#9aa4ad; --line:#2f353b;
+  --accent:#8db8e3; --accent-soft:#1f2c39; --sign:#f2c230; --sign-ink:#16191c;
+  --in:#1f2a1d; --in-ink:#a9d39a; --kb:#2c2618; --kb-ink:#e6c582; --out:#25223a; --out-ink:#c1b8f2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14171a; --panel:#1c2024; --ink:#e7eaec; --muted:#9aa4ad; --line:#2f353b;
+  --accent:#8db8e3; --accent-soft:#1f2c39; --sign:#f2c230; --sign-ink:#16191c;
+  --in:#1f2a1d; --in-ink:#a9d39a; --kb:#2c2618; --kb-ink:#e6c582; --out:#25223a; --out-ink:#c1b8f2; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-size:24px;font-weight:600;margin:0;text-wrap:balance}
+h2{font-size:18px;font-weight:600;margin:0;text-wrap:balance}
+h3{font-size:15px;font-weight:600;margin:0}
+p{margin:0}
+.sub{color:var(--muted);font-size:14px}
+.mono{font-family:var(--f-mono)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tab{all:unset;cursor:pointer;padding:10px 14px;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.tab:focus-visible,.pick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.flow{display:grid;grid-template-columns:minmax(0,1.35fr) 28px minmax(0,1fr) 28px minmax(0,0.9fr);gap:10px;align-items:stretch}
+.col{border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.col.in{background:var(--in)} .col.sys{background:var(--panel);border:1px solid var(--line)} .col.out{background:var(--out)}
+.role{font-size:12px;letter-spacing:.06em;font-weight:600}
+.in .role{color:var(--in-ink)} .sys .role{color:var(--accent)} .out .role{color:var(--out-ink)}
+.grp{display:flex;flex-direction:column;gap:6px}
+.glab{font-size:12.5px;color:var(--muted)}
+.pick{all:unset;cursor:pointer;display:block;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.pick:hover{border-color:var(--accent)}
+.pick[aria-pressed="true"]{border:2px solid var(--accent);padding:7px 9px;background:var(--accent-soft)}
+.pick .s{font-family:var(--f-mono);font-size:13px;font-weight:500}
+.pick .n{font-size:12.5px;color:var(--muted)}
+.arrow{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:22px}
+.steps{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.steps span{display:flex;gap:8px;align-items:center}
+.tag{font-family:var(--f-mono);font-size:11.5px;font-weight:500;background:var(--sign-ink);color:var(--sign);border:1.5px solid var(--sign);border-radius:3px;padding:0 5px;line-height:1.5;flex:none}
+.detail{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.dl{display:grid;grid-template-columns:120px minmax(0,1fr);gap:6px 14px;font-size:14px}
+.dl dt{color:var(--muted)} .dl dd{margin:0;min-width:0}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:7px 8px;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;border-top:none;font-size:12.5px}
+td.sym{font-family:var(--f-mono);white-space:nowrap}
+.note{font-size:13px;color:var(--muted)}
+.mods{display:flex;flex-direction:column;gap:8px}
+.mod{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+.mod.off{background:transparent;border-style:dashed}
+.mhead{display:flex;flex-direction:column;gap:4px}
+.mhead .nm{font-weight:600;font-size:14px}
+.io h4{font-size:12px;font-weight:600;letter-spacing:.04em;margin:0 0 3px}
+.io.i h4{color:var(--in-ink)} .io.o h4{color:var(--out-ink)}
+.io ul{margin:0;padding-left:18px;font-size:13.5px}
+.io li{margin:1px 0}
+.ex{grid-column:2 / span 2;font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:6px}
+.ex b{color:var(--ink);font-weight:500}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+@media (max-width:760px){
+  .flow{grid-template-columns:minmax(0,1fr)}
+  .arrow{transform:rotate(90deg);height:24px}
+  .mod{grid-template-columns:minmax(0,1fr)}
+  .ex{grid-column:auto}
+  .dl{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:no-preference){.pick,.tab{transition:border-color .15s,background .15s}}
+</style>
+
+<div class="wrap">
+  <header style="display:flex;flex-direction:column;gap:6px">
+    <h1>ATC 복창 KG 시스템 설계</h1>
+    <p class="sub">미국 지상관제 교신(KATL) 녹음에서 시간 지식 그래프를 만들고, 복창 검사와 상황 인식에 쓰는 시스템. XAI616 Team 6.</p>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-input" aria-controls="input" aria-selected="true">1. 입력 데이터 구성</button>
+    <button class="tab" role="tab" id="tab-modules" aria-controls="modules" aria-selected="false">2. 시스템 모듈 설계</button>
+  </nav>
+
+  <!-- PAGE 1 -->
+  <section id="input" role="tabpanel" aria-labelledby="tab-input" style="display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <h2>입력 → 모델 → 출력</h2>
+      <p class="sub mono">F : ( a, C ; O, K<sub>S</sub>, K<sub>R</sub>, Θ<sub>kg</sub> ) ↦ ( G, Y, Q )</p>
+      <p class="note">세미콜론 왼쪽은 녹음 파일마다 바뀌는 입력, 오른쪽은 미리 만들어 두고 재사용하는 입력이다. 항목을 누르면 아래에 정의가 나온다.</p>
+    </div>
+
+    <div class="flow">
+      <div class="col in">
+        <p class="role">입력 · 입력 데이터</p>
+        <div class="grp">
+          <p class="glab">① 녹음 파일마다 바뀌는 입력</p>
+          <button class="pick" data-k="a" aria-pressed="false"><div class="s">a</div><div class="n">교신 음성</div></button>
+          <button class="pick" data-k="C" aria-pressed="false"><div class="s">C = (α, φ, τ₀)</div><div class="n">녹음 맥락 (파일 이름)</div></button>
+        </div>
+        <div class="grp">
+          <p class="glab">② 미리 만들어 둔 입력 (재사용)</p>
+          <button class="pick" data-k="O" aria-pressed="false"><div class="s">O · ontology.json</div><div class="n">온톨로지 (어휘·구조)</div></button>
+          <button class="pick" data-k="KS" aria-pressed="false"><div class="s">K<sub>S</sub> · katl.json, airlines.json</div><div class="n">정적 KB (공항·항공사)</div></button>
+          <button class="pick" data-k="KR" aria-pressed="false"><div class="s">K<sub>R</sub> · rules.json</div><div class="n">규칙 베이스</div></button>
+          <button class="pick" data-k="TH" aria-pressed="false"><div class="s">Θ<sub>kg</sub> · kg_build.json</div><div class="n">구축 설정</div></button>
+        </div>
+      </div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="col sys">
+        <p class="role">모델 · KG 구축 시스템 F</p>
+        <div class="steps">
+          <span><i class="tag">M1a</i>송신 분할</span>
+          <span><i class="tag">M1b</i>STT (Whisper)</span>
+          <span><i class="tag">M2a</i>화자 역할·턴 분리</span>
+          <span><i class="tag">M2b</i>지시 추출 (LLM)</span>
+          <span><i class="tag">M3</i>정규화·개체 해소</span>
+          <span><i class="tag">M4</i>Temporal KG 구축</span>
+          <span><i class="tag">M5</i>규칙 추론·경고</span>
+          <span><i class="tag">M6</i>시점 질의</span>
+        </div>
+        <p class="note">모듈별 입출력은 2페이지.</p>
+      </div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="col out">
+        <p class="role">출력</p>
+        <button class="pick" data-k="G" aria-pressed="false"><div class="s">G</div><div class="n">Temporal KG</div></button>
+        <button class="pick" data-k="Y" aria-pressed="false"><div class="s">Y</div><div class="n">복창 검사 경고</div></button>
+        <button class="pick" data-k="Q" aria-pressed="false"><div class="s">Q</div><div class="n">시점 질의 (상황 인식)</div></button>
+      </div>
+    </div>
+
+    <div class="detail" id="detail" aria-live="polite"></div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h3>입력 데이터 한눈에 보기</h3>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>기호</th><th>입력</th><th>파일</th><th>근거·출처</th><th>쓰는 모듈</th></tr></thead>
+        <tbody>
+          <tr><td class="sym">a</td><td>교신 음성</td><td class="mono">data/raw/liveatc/katl/*.mp3</td><td>LiveATC 녹음 (재배포 금지)</td><td>M1a, M1b</td></tr>
+          <tr><td class="sym">C</td><td>녹음 맥락: 공항, 관제 위치, 시작 시각</td><td>파일 이름</td><td>LiveATC 파일 이름 규칙</td><td>M1a, M1b, M3, M5</td></tr>
+          <tr><td class="sym">O</td><td>온톨로지: 개념·관계 유형, 명령 20종, 제약</td><td class="mono">configs/ontology.json</td><td>DLR 온톨로지 사양 v3.00, FAA 표준 문구</td><td>M2b, M4</td></tr>
+          <tr><td class="sym">K<sub>S</sub></td><td>정적 KB: 활주로·유도로·관제 시설·항공사</td><td class="mono">data/static_kb/katl.json, configs/airlines.json</td><td>OurAirports, OpenStreetMap, FAA JO 7340.2</td><td>M1b, M3, M4</td></tr>
+          <tr><td class="sym">K<sub>R</sub></td><td>규칙 베이스: 복창 필수, 지시 대체, 활주로 점유</td><td class="mono">configs/rules.json</td><td>FAA JO 7110.65BB §2-4-3, 지시 의미</td><td>M4, M5</td></tr>
+          <tr><td class="sym">Θ<sub>kg</sub></td><td>구축 설정: 복창 시간창, 최대 유효시간</td><td class="mono">configs/kg_build.json</td><td>설계값 (KATL 실측 참고)</td><td>M4, M5</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">O, K<sub>R</sub>은 <span class="mono">src/kb/build_ontology.py</span>가 DLR·FAA PDF 원문과 대조해 생성하고, K<sub>S</sub>는 <span class="mono">src/kb/build_static_kb.py</span>가 만든다(M0, 오프라인). Θ<sub>kg</sub>와 항공사 표는 사람이 작성한다.</p>
+    </div>
+  </section>
+
+  <!-- PAGE 2 -->
+  <section id="modules" role="tabpanel" aria-labelledby="tab-modules" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <h2>모듈별 입출력 정의</h2>
+      <p class="note">송신 i 하나가 M1부터 M5까지 차례로 처리되며 그래프 G가 커진다. 각 모듈 아래 회색 줄은 같은 교신 예시가 그 모듈에서 어떻게 바뀌는지 보여준다.</p>
+      <p class="note mono">예시 교신 — ATCO: "Delta twenty six forty two, runway two six left, taxi via alpha bravo, hold short of runway two six right" / PILOT: "taxi via alpha bravo, hold short two six right, Delta twenty six forty two"</p>
+    </div>
+    <div class="legend"><span><i class="dot" style="background:var(--in-ink)"></i>입력</span><span><i class="dot" style="background:var(--out-ink)"></i>출력</span><span><i class="tag">M#</i> 모듈</span></div>
+
+    <div class="mods">
+      <article class="mod off">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M0</i><span class="nm">정적 자원 구축</span><span class="note">오프라인, 한 번</span></div>
+        <div class="io i"><h4>입력</h4><ul>
+          <li>D<sub>onto</sub>: DLR 사양서·명령 표 PDF</li>
+          <li>D<sub>reg</sub>: FAA JO 7110.65BB PDF</li>
+          <li>D<sub>apt</sub>, D<sub>fac</sub>: OurAirports, OpenStreetMap</li>
+          <li>D<sub>tel</sub>: FAA JO 7340.2 항공사 호출 이름</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul>
+          <li>O → ontology.json</li><li>K<sub>R</sub> → rules.json</li>
+          <li>K<sub>S</sub> → katl.json, airlines.json</li>
+          <li>V<sub>dom</sub>: STT 프롬프트 어휘</li></ul></div>
+        <p class="ex">생성 코드가 PDF 원문과 대조해 근거가 없으면 생성을 멈춘다. 예: HOLD_SHORT ↔ DLR 표 Ground hold types 줄, FAA §2-4-3 b항.</p>
+      </article>
+
+      <article class="mod">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M1a</i><span class="nm">송신 분할 (M1 STT)</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>a: 피드별 음성</li><li>C: 파일 이름에서 읽은 공항·위치·시각</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>s<sub>i</sub> = [t<sup>s</sup><sub>i</sub>, t<sup>e</sup><sub>i</sub>): 송신 구간 (UTC)</li><li>x<sub>i</sub>: 송신 음성 조각</li></ul></div>
+        <p class="ex">VAD로 무음 0.3초 기준 분할, 30분 파일 사이 겹침은 UTC로 중복 제거. 예: <b>관제사 송신 02:31:05–02:31:11</b>, <b>조종사 송신 02:31:12–02:31:16</b></p>
+      </article>
+
+      <article class="mod">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M1b</i><span class="nm">맥락 바이어싱 STT</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>x<sub>i</sub>: 송신 음성 조각</li><li>V<sub>dom</sub>: 공항·항공사 어휘 (K<sub>S</sub>)</li><li>F<sub>act</sub>: 직전에 나온 콜사인</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>w<sub>i</sub>: 전사 텍스트</li><li>c<sub>i</sub>: 인식 신뢰도</li><li>lang<sub>i</sub>: 언어</li></ul></div>
+        <p class="ex">Whisper large-v3 + 환각 필터. 예: <b>"Delta twenty six forty two, runway two six left, taxi via alpha bravo, hold short of runway two six right"</b></p>
+      </article>
+
+      <article class="mod">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M2a</i><span class="nm">화자 역할·턴 분리</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>w<sub>i</sub>와 앞뒤 송신</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>r<sub>i</sub> ∈ {ATCO, PILOT}: 화자 역할</li><li>한 송신에 두 사람 말이 붙어 있으면 턴으로 분리</li></ul></div>
+        <p class="ex">콜사인 위치(앞이면 관제사, 뒤면 조종사)와 시설 이름 규칙. 예: <b>첫 송신 = ATCO, 둘째 송신 = PILOT</b></p>
+      </article>
+
+      <article class="mod">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M2b</i><span class="nm">온톨로지 기반 지시 추출</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>(w<sub>i</sub>, r<sub>i</sub>): 텍스트와 역할</li><li>O: 명령 종류·값 형식 (ontology.json)</li><li>E: 예시</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>u<sub>i</sub> = (ĉ<sub>i</sub>, I<sub>i</sub>): 콜사인 언급, 지시 목록</li><li>지시 ι = (κ 종류, v 값, μ 단위, q 한정어, g 대상)</li></ul></div>
+        <p class="ex">Qwen3-4B(로컬) + 규칙 문법 보충, 어휘 단서로 환각 검증. 예: <b>ĉ = "Delta 2642", I = {TAXI_VIA 경로 A,B 목적지 26L; HOLD_SHORT 26R}</b></p>
+      </article>
+
+      <article class="mod">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M3</i><span class="nm">정규화·grounding·개체 해소</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>u<sub>i</sub></li><li>K<sub>S</sub>: 활주로·유도로·항공사 목록</li><li>G<sub>&lt;t</sub>: 지금까지의 그래프</li><li>C<sub>i</sub>: 맥락</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>f<sub>i</sub>: 항공편 노드</li><li>Ĩ<sub>i</sub>: 대상이 K<sub>S</sub> 노드로 연결된 지시 (없으면 ⊥)</li><li>A<sub>i</sub>: 플래그 (ASR_CORRECTED 등)</li></ul></div>
+        <p class="ex">예: <b>"Delta 2642" → Flight DAL2642</b>, <b>"two six right" → Runway KATL 26R</b>. 목록에 없는 유도로면 KB_VIOLATION.</p>
+      </article>
+
+      <article class="mod">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M4</i><span class="nm">증분 Temporal KG 구축</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>G<sub>t-1</sub>, (f<sub>i</sub>, Ĩ<sub>i</sub>), 송신 정보</li><li>K<sub>R</sub>: 대체 관계, 복창 필수 (rules.json)</li><li>Θ<sub>kg</sub>: 복창 시간창 20초, 최대 유효시간 (kg_build.json)</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>G<sub>t</sub>: 송신·지시 노드 추가</li><li>READBACK_OF 간선 (복창 연결)</li><li>지시의 유효 구간 τ</li></ul></div>
+        <p class="ex">예: <b>HOLD_SHORT 26R 유효 [02:31:05, …)</b>, 조종사 송신 –READBACK_OF→ 관제사 송신. 이후 "cross runway 26R"이 오면 그 시각에 종료.</p>
+      </article>
+
+      <article class="mod">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M5</i><span class="nm">규칙 추론·이상 탐지</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>G<sub>t</sub></li><li>K<sub>R</sub>: 복창 필수 13종, 활주로 점유 4종</li><li>규칙 ρ1–ρ7</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>Y = {(y, π, γ)}: 경고 라벨, 근거 부분그래프, 신뢰도</li><li>복창 상태: MATCH / PARTIAL / MISMATCH</li></ul></div>
+        <p class="ex">예: 조종사가 "two six left"로 복창하면 <b>MISMATCH (26R ≠ 26L)</b>. 20초 안에 복창이 없으면 NO_READBACK.</p>
+      </article>
+
+      <article class="mod">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M6</i><span class="nm">시점 질의·시각화</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>G, 시각 t, 질의 템플릿 q</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>Q(G, t, q): 답과 근거 부분그래프</li><li>웹 데모 화면</li></ul></div>
+        <p class="ex">예: <b>"02:32에 26R 앞에서 대기 중인 항공편은?" → DAL2642</b></p>
+      </article>
+
+      <article class="mod off">
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M7</i><span class="nm">진단 하네스</span><span class="note">RQ4 전용</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>J: M1a–M5 중간 산출물 로그</li><li>국가별 15–20개 송신의 정답</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>CSR: 콜사인 인식률</li><li>CmdF1: 명령 인식 F1</li><li>m†: 처음 실패한 모듈</li></ul></div>
+        <p class="ex">한국·일본 교신에서 어느 모듈 때문에 실패하는지 찾는다. ICAO 규칙(rules.json)은 아직 원문 미검증.</p>
+      </article>
+    </div>
+  </section>
+</div>
+
+<script>
+const D = {
+  a: {t:"a — 교신 음성", def:"녹음 파일 하나의 음성. 시스템에 매번 넣는 입력이다.",
+      rows:[["구성","관제 주파수 하나를 30분 단위로 녹음한 mp3 (관제사와 여러 조종사의 말이 섞여 있음)"],
+            ["시각","파일 안의 위치를 녹음 시작 시각 τ₀에 더하면 각 발화의 실제 시각(UTC)이 된다"],
+            ["KATL 예","KATL-Gnd-Aug-26-2024-0230Z.mp3 (애틀랜타 지상관제)"],
+            ["파일","data/raw/liveatc/katl/*.mp3 · LiveATC, 재배포 금지"]]},
+  C: {t:"C = (α_apt, φ_pos, τ₀) — 녹음 맥락", def:"음성과 함께 따라오는 정보로, 파일 이름에서 읽는다.",
+      rows:[["α_apt","공항 ICAO 코드 → 어느 공항의 정적 KB를 쓸지 정함 (예: KATL)"],
+            ["φ_pos","관제 위치 = 주파수 종류 → STT 프롬프트 \"Atlanta Ground\", 이관 규칙 판정 (예: GND)"],
+            ["τ₀","녹음 시작 시각 → 발화 시각 계산 (예: 2024-08-26 02:30Z)"]]},
+  O: {t:"O = (T, R, Σ) — 온톨로지", def:"교신을 어떤 개념과 관계로 적을지 정한 어휘·구조. 모든 지역에서 같다.",
+      rows:[["T","개념 유형: 개체 11종(Flight, Runway, Instruction 등) + 명령 20종(TAXI_VIA, HOLD_SHORT, CLEARED_FOR_TAKEOFF 등)"],
+            ["R","관계 유형 10종: TARGET, VIA, READBACK_OF, CONTAINS 등"],
+            ["Σ","제약: 예) CLEARED_TO_LAND의 대상은 Runway, 지시는 정확히 하나의 송신에 속함"],
+            ["근거","DLR 온톨로지 사양 v3.00(명령 이름·값 형식, 예: 활주로 RW26R) + FAA 표준 문구(미국에서 쓰는 명령인지)"],
+            ["파일","configs/ontology.json · build_ontology.py가 PDF 원문과 대조해 생성"]]},
+  KS: {t:"K_S = (V_S, E_S) — 정적 KB", def:"공항과 항공사에 대해 바뀌지 않는 사실. 교신에 나온 이름이 실제로 있는지 확인한다.",
+      rows:[["V_S","활주로 5개(이름 10개: 8L…28), 유도로 102개, 관제 시설 12개, 항공사 호출 이름 44개(\"DELTA\" → DAL)"],
+            ["E_S","정적 관계: 예) Runway 26R –PART_OF→ Airport KATL"],
+            ["주의","이름 목록이며 좌표·연결 정보는 없다"],
+            ["파일","data/static_kb/katl.json (OurAirports + OpenStreetMap), configs/airlines.json (FAA JO 7340.2)"]]},
+  KR: {t:"K_R = (T_req^ρ, sup, T_rwy) — 규칙 베이스", def:"적어 놓은 지시로 무엇을 판단할지 정한 규칙. 지역(ρ)에 따라 바꿀 수 있다.",
+      rows:[["T_req^ρ","복창 필수 명령. 미국(FAA §2-4-3) 13종 = 관제사 의무(HOLD_SHORT) + 권고(활주로·숫자) + 팀 규칙(CROSS 등)"],
+            ["sup","대체 관계: 새 지시가 이전 지시를 끝냄. 예) CROSS_RUNWAY → HOLD_SHORT 종료"],
+            ["T_rwy","활주로 점유 명령 4종: CROSS, LINE UP AND WAIT, 이륙·착륙 허가"],
+            ["파일","configs/rules.json · ICAO(한국·일본) 목록은 원문 미검증"]]},
+  TH: {t:"Θ_kg = (Δ_rb, T_max) — 구축 설정", def:"도메인 지식이 아니라 녹음 누락에 대비한 데이터 처리 설정.",
+      rows:[["Δ_rb","복창으로 인정하는 시간창 20초 (KATL 복창 404건 중 351건이 5초 이내)"],
+            ["T_max","다음 지시가 없을 때 지시의 최대 유효시간. HOLD_SHORT 900초, CROSS_RUNWAY 180초, 기본 600초"],
+            ["파일","configs/kg_build.json · 사람이 작성"]]},
+  G: {t:"G — Temporal KG", def:"항공편·지시·대상이 시간과 함께 연결된 그래프. G = (V, E, λ, τ, prov, conf).",
+      rows:[["구성","노드·간선마다 유형 λ, 유효 구간 τ, 근거 송신 prov, 신뢰도 conf"],
+            ["KATL","노드 42,954개, 간선 65,016개, 항공편 4,135개"]]},
+  Y: {t:"Y — 복창 검사 경고", def:"Y = {(y, π, γ)}: 경고 라벨, 근거 부분그래프, 신뢰도.",
+      rows:[["라벨","MISMATCH, PARTIAL, NO_READBACK, NO_CALLSIGN, RWY_OVERLAP, POST_HANDOFF, KB_VIOLATION, SIMILAR_CALLSIGN"],
+            ["KATL","복창 연결 404건(일치 232, 부분 138, 불일치 34)"]]},
+  Q: {t:"Q — 시점 질의", def:"Q(G, t, q): 시각 t에 유효한 사실을 질의 템플릿 q로 묻고 답한다. 상황 인식에 해당.",
+      rows:[["예","\"02:32에 26R 앞에서 대기 중인 항공편은?\""],["화면","웹 데모 시간 스크러버, 시점 스냅샷"]]}
+};
+const det = document.getElementById('detail');
+function show(k){
+  const d = D[k];
+  document.querySelectorAll('.pick').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === k ? 'true' : 'false'));
+  det.innerHTML = '<h3 class="mono">' + d.t + '</h3><p>' + d.def + '</p><dl class="dl">' +
+    d.rows.map(r => '<dt class="mono">' + r[0] + '</dt><dd>' + r[1] + '</dd>').join('') + '</dl>';
+}
+document.querySelectorAll('.pick').forEach(b => b.addEventListener('click', () => show(b.dataset.k)));
+show('O');
+
+const tabs = [...document.querySelectorAll('.tab')];
+function openTab(id){
+  tabs.forEach(t => { const on = t.getAttribute('aria-controls') === id; t.setAttribute('aria-selected', on); document.getElementById(t.getAttribute('aria-controls')).hidden = !on; });
+  try { history.replaceState(null, '', '#' + id); } catch (e) {}
+}
+tabs.forEach(t => t.addEventListener('click', () => openTab(t.getAttribute('aria-controls'))));
+if (location.hash === '#modules') openTab('modules');
+</script>

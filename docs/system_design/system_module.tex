@@ -53,7 +53,7 @@
 
 \begin{abstract}
 \noindent 이 문서는 \emph{문제정의.md}에서 세운 연구 질문 RQ1--RQ4와, 공유 샘플(248초)에서 \emph{측정·관찰}한 기술적 문제 \ch{C1}--\ch{C15}를 개발 시스템의 입출력 명세로 옮긴다.
-시스템은 구축 모듈 \md{M0}--\md{M8}과 RQ4 진단 모듈 \md{M9}로 구성된다. 구축 데이터는 HF LiveATC 원본 아카이브(KATL)로 확정했다(\S\ref{sec:data}).
+시스템은 구축 모듈 \md{M0}--\md{M6}과 RQ4 진단 모듈 \md{M7}로 구성된다. \md{M1} STT는 송신 분할(\md{M1a})과 전사(\md{M1b})로, \md{M2} 지시 추출은 화자 역할·턴 분리(\md{M2a})와 의미 추출(\md{M2b})로 이루어진다. STT를 MOSS-ATC(30분 통녹음의 전사·송신 경계·화자 번호를 한 번에 출력)로 쓰면 \md{M1a}의 음성 구간 분할은 모델이 대신한다. 구축 데이터는 HF LiveATC 원본 아카이브(KATL)로 확정했다(\S\ref{sec:data}).
 각 모듈마다 (i) \textbf{해결하는 기술적 문제}, (ii) \textbf{입력·출력의 형식 정의}, (iii) \textbf{방법과 적합성 근거}(선행연구)를 명시한다.
 마지막에 문제 $\leftrightarrow$ 모듈 \textbf{추적성 행렬}(\S\ref{sec:trace})과 샘플 실행 예(\S\ref{sec:example})를 제시하여, 문제정의와 제안 방법이 빠짐없이 1:1 이상 대응됨을 보인다.
 \end{abstract}
@@ -72,15 +72,15 @@
 \toprule
 모듈 & 설계 & 구현 (이유)\\\midrule
 M0 & FAA NASR 또는 OurAirports & 활주로·주파수는 OurAirports, 유도로 102개는 OpenStreetMap에서 가져온다 (NASR에는 유도로 이름이 없다). 결과 \texttt{data/static\_kb/katl.json}은 \textbf{이름 목록}이며 좌표·연결 정보는 없다. \texttt{kb/build\_static\_kb.py}\\
-M1 & 에너지 문턱 + VAD & faster-whisper에 내장된 Silero VAD만 쓴다(최소 무음 300\,ms). 원본 아카이브는 디지털 무음이 0\%이기 때문이다. 30분 파일끼리 약 2분 겹치는 부분은 UTC 기준으로 중복 제거한다.\\
-M2 & 맥락 프롬프트 & 같다. 직전 파일의 활성 콜사인을 다음 파일의 프롬프트에 넣는다(KG$\to$STT 되먹임). 도시명은 \texttt{municipality}에서 가져온다(``Atlanta Ground'').\\
-M3 & 콜사인 위치 규칙 & 같다. 추가로 \textbf{번호만 부른 콜사인}(``1606, Atlanta Ground'')을 인식한다. 규칙만으로는 역할 미정이 51\%였고, M4 LLM이 이를 0.2\%로 줄였다.\\
-M4 & JSON Schema 제약 디코딩 & \textbf{사후 검증 + 하이브리드}로 바꿨다. (1) LLM이 JSON을 출력한다(Qwen3-4B-Instruct, 로컬). (2) 온톨로지 유형, 대상 형태, 원문 근거, \textbf{명령별 어휘 단서}(\texttt{ontology.json: lexical\_cues})로 검증한다. (3) LLM이 놓친 유형은 규칙 문법으로 보충한다. 어휘 단서가 없으면 지상 주파수에서 HEADING·CLEARED\_FOR\_TAKEOFF 같은 환각이 125·33건 나왔고, 단서 적용 후 3·0건으로 줄었다. 원 출력은 저장해 두어 재검증(\texttt{--revalidate})할 수 있다.\\
-M5 & 콜사인 해소, KB 연결 & 같다. 추가로 \cmd{ABBREVIATED}(번호만 부름)를 최근 활성 항공편과 대조해 해소한다. \texttt{Alpha+번호} 오인식은 같은 번호의 활성 항공편으로 교정한다(\cmd{ASR\_CORRECTED}). ``Delta''는 음성 알파벳과 겹치므로 예외로 처리한다.\\
-M6 & Neo4j 저장, SHACL 검증 & \textbf{파이썬 이중 시간 그래프(JSON)}가 주 저장소이고, Neo4j는 CSV + \texttt{import.cypher} \emph{내보내기}로 지원한다. 제약은 SHACL 대신 코드로 검사한다(데모·평가를 설치 없이 실행하기 위해). 개념이 겹치지 않는 조종사 잡담은 복창으로 연결하지 않는다.\\
-M7 & $\rho_1$--$\rho_7$ & 같다. 경로 비교는 \emph{일부 생략은 허용, 치환은 불일치}로 정의했다. $\rho_4$에서 동시 활주로 횡단(CROSS--CROSS)은 정상 운영이라 제외한다.\\
-M8 & 시점 질의 & 같다. FastAPI 웹 데모(\texttt{src/demo/}): strip board, 시간 스크러버, 시점 스냅샷, 2열 교신 기록, 사건 그래프, 근거 원음 재생.\\
-M9 & 진단 하네스 & E1--E4 스크립트(\texttt{src/evaluation/}). E2 LLM 판정은 추출과 다른 모델(Qwen3.5-9B)을 쓴다.\\
+M1a & 에너지 문턱 + VAD & faster-whisper에 내장된 Silero VAD만 쓴다(최소 무음 300\,ms). 원본 아카이브는 디지털 무음이 0\%이기 때문이다. 30분 파일끼리 약 2분 겹치는 부분은 UTC 기준으로 중복 제거한다.\\
+M1b & 맥락 프롬프트 & 같다. 직전 파일의 활성 콜사인을 다음 파일의 프롬프트에 넣는다(KG$\to$STT 되먹임). 도시명은 \texttt{municipality}에서 가져온다(``Atlanta Ground'').\\
+M2a & 콜사인 위치 규칙 & 같다. 추가로 \textbf{번호만 부른 콜사인}(``1606, Atlanta Ground'')을 인식한다. 규칙만으로는 역할 미정이 51\%였고, M2b LLM이 이를 0.2\%로 줄였다.\\
+M2b & JSON Schema 제약 디코딩 & \textbf{사후 검증 + 하이브리드}로 바꿨다. (1) LLM이 JSON을 출력한다(Qwen3-4B-Instruct, 로컬). (2) 온톨로지 유형, 대상 형태, 원문 근거, \textbf{명령별 어휘 단서}(\texttt{ontology.json: lexical\_cues})로 검증한다. (3) LLM이 놓친 유형은 규칙 문법으로 보충한다. 어휘 단서가 없으면 지상 주파수에서 HEADING·CLEARED\_FOR\_TAKEOFF 같은 환각이 125·33건 나왔고, 단서 적용 후 3·0건으로 줄었다. 원 출력은 저장해 두어 재검증(\texttt{--revalidate})할 수 있다.\\
+M3 & 콜사인 해소, KB 연결 & 같다. 추가로 \cmd{ABBREVIATED}(번호만 부름)를 최근 활성 항공편과 대조해 해소한다. \texttt{Alpha+번호} 오인식은 같은 번호의 활성 항공편으로 교정한다(\cmd{ASR\_CORRECTED}). ``Delta''는 음성 알파벳과 겹치므로 예외로 처리한다.\\
+M4 & Neo4j 저장, SHACL 검증 & \textbf{파이썬 이중 시간 그래프(JSON)}가 주 저장소이고, Neo4j는 CSV + \texttt{import.cypher} \emph{내보내기}로 지원한다. 제약은 SHACL 대신 코드로 검사한다(데모·평가를 설치 없이 실행하기 위해). 개념이 겹치지 않는 조종사 잡담은 복창으로 연결하지 않는다.\\
+M5 & $\rho_1$--$\rho_7$ & 같다. 경로 비교는 \emph{일부 생략은 허용, 치환은 불일치}로 정의했다. $\rho_4$에서 동시 활주로 횡단(CROSS--CROSS)은 정상 운영이라 제외한다.\\
+M6 & 시점 질의 & 같다. FastAPI 웹 데모(\texttt{src/demo/}): strip board, 시간 스크러버, 시점 스냅샷, 2열 교신 기록, 사건 그래프, 근거 원음 재생.\\
+M7 & 진단 하네스 & E1--E4 스크립트(\texttt{src/evaluation/}). E2 LLM 판정은 추출과 다른 모델(Qwen3.5-9B)을 쓴다.\\
 온톨로지 & SESAR 온톨로지 재사용 & \textbf{DLR 공식 사양 v3.00(설명서·명령 표 PDF)} \cite{dlr2025}과 \textbf{FAA JO 7110.65BB} \cite{faa7110}를 입력으로 \texttt{kb/build\_ontology.py}가 생성한다. 사람이 정한 대응(20개 종류 $\leftrightarrow$ DLR 표의 행, FAA 조항·표준 문구)을 코드가 PDF 원문과 대조하고, 하나라도 원문에 없으면 생성을 멈춘다. 기계 판독 공식 파일(OWL/JSON)은 없다. 18개 종류가 DLR 행에 대응하고, \cmd{MONITOR}(FAA §2-1-17)와 \cmd{REQUEST}(DLR의 Reason 속성)는 대응 행이 없다. 미국 적용 근거는 NASA--DLR 실증(명령 종류 손실 2.6\%, 값 포함 4.6\%) \cite{helmke2025loss}.\\
 지식 파일 & 온톨로지 $\Ont$ 하나 & 성격별로 세 파일로 나눴다. \texttt{configs/ontology.json}(어휘·구조, DLR 근거), \texttt{configs/rules.json}(규칙 베이스 $\KR$: 복창 규칙·지시 대체·활주로 점유, FAA 근거와 지시 의미), \texttt{configs/kg\_build.json}(구축 설정 $\Cfg$: 복창 시간창 20\,s, 최대 유효시간). 항공사 호출부호는 \texttt{configs/airlines.json}. RQ4에서는 온톨로지를 그대로 두고 $\KR$의 복창 규칙만 지역 규정으로 바꾼다.\\
 \bottomrule
@@ -92,7 +92,7 @@ M9 & 진단 하네스 & E1--E4 스크립트(\texttt{src/evaluation/}). E2 LLM �
 \begin{tabular}{@{}lrr@{}}
 \toprule
 지표 & LLM 하이브리드 & 규칙 기준선\\\midrule
-송신 턴 (M3) & 1,775 & 1,775\\
+송신 턴 (M2a) & 1,775 & 1,775\\
 역할 미정 (UNKNOWN) & 3 & 873\\
 항공편 노드 & 513 & 431\\
 관제 지시 & 1,088 & 441\\
@@ -103,7 +103,7 @@ E1 역량 질문 (답변·근거) & 8/8 & 8/8 (CQ5 빈 답)\\
 E3 대조군 오경보 & 0\% (n=71) & 0\% (n=41)\\
 E3 콜사인 숫자 변경 / 누락 & 95.5\% / 91.2\% & 97.6\% / 97.2\%\\
 E3 유도로 치환 & 56.1\% & 90.0\%\\
-처리 시간 (ASR / M4) & 7.5분 / 17분 & 7.5분 / 1초 미만\\
+처리 시간 (ASR / M2b) & 7.5분 / 17분 & 7.5분 / 1초 미만\\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -188,7 +188,7 @@ $\KR$ & 규칙 베이스 (\texttt{rules.json}) & $\Cfg$ & 구축 설정 (\texttt
 \subsection{구축용 데이터 $D_{\mathrm{US}}$: HF LiveATC 원본 아카이브}
 \begin{itemize}
 \item \textbf{출처}: Hugging Face \texttt{nyuuzyou/liveatc} \cite{hfliveatc}. LiveATC.net의 30분 단위 MP3 아카이브이며, 2024-08-26 하루분이다. 수집 한도 때문에 일부만 들어 있다.
-\item \textbf{규모·구성 (직접 확인)}: 213개 공항 아카이브, 45.5\,GB. \textbf{전사가 없는 음성 전용} 데이터라 M1--M2의 STT 단계가 필수다.
+\item \textbf{규모·구성 (직접 확인)}: 213개 공항 아카이브, 45.5\,GB. \textbf{전사가 없는 음성 전용} 데이터라 M1a--M1b의 STT 단계가 필수다.
 \item \textbf{국가 구성과 공항 범위}: 미국·캐나다·유럽 공항이 섞여 있다(내용 있는 파일 20,742개 중 미국 117개 피드 10,029개 48\%, 캐나다 31.5\%, 유럽 9개국 19.2\%, 레위니옹·마다가스카르 0.9\%). 미국 공항은 코드 알파벳 앞쪽 일부만 들어 있어 KSFO, KJFK 같은 주요 공항이 없고, 일본(\texttt{RJ*})·한국(\texttt{RK*}) 공항도 없다. 그래서 구축 대상 공항을 KSFO에서 \textbf{KATL(애틀랜타)}로 바꾼다.
 \item \textbf{KATL 피드}: \cmd{Gnd-All}, \cmd{Del}, \cmd{Dep-North/South}, \cmd{App-Final}(3개), \cmd{ATIS-Arr/Dep}, \cmd{Company}. \textbf{Tower 피드는 없다}.
 \item \textbf{결손}: \cmd{Gnd-All}은 48개 파일 중 \textbf{11개만 실제 음성}이다(00:00--05:30Z, 약 5.5시간). 나머지는 0바이트다. 다른 피드는 24시간이 모두 있다.
@@ -233,7 +233,7 @@ $\KR$ & 규칙 베이스 (\texttt{rules.json}) & $\Cfg$ & 구축 설정 (\texttt
 \item[\textbf{R4}] \textbf{맥락 메타데이터}: 공항·주파수·절대 시각(\ch{C9}). 감시 데이터(ADS-B)가 있으면 더 좋음(RQ2, \cite{nigmatulina2022}).
 \item[\textbf{R5}] \textbf{즉시·무료 확보}: 학기 일정 안에 바로 쓸 수 있어야 함.
 \item[\textbf{R6}] \textbf{RQ4 연계}: 비교 지역(일본) 데이터와 출처가 같으면 교란 요인이 줄어듦.
-\item[\textbf{R7}] (선택) \textbf{정답 전사}: 진단(\md{M9})과 점검에 유용하나, 소량은 직접 달 수 있으므로 필수는 아님.
+\item[\textbf{R7}] (선택) \textbf{정답 전사}: 진단(\md{M7})과 점검에 유용하나, 소량은 직접 달 수 있으므로 필수는 아님.
 \end{itemize}
 
 \begin{center}\footnotesize
@@ -268,9 +268,9 @@ YouTube-ATC \cite{youtubeatc} & VATSIM/IVAO 스트림 2{,}000\,h+, 17개국, 자
 
 \paragraph{남는 한계와 보완.}
 \begin{itemize}
-\item \textbf{감시 데이터 없음 (R4 부분)}: OpenSky 과거 데이터로 같은 시각의 KATL 주변 항적을 붙일 수 있다(연구용 접근 신청 필요, 선택). 붙이지 않으면 $\mathcal{F}_{\mathrm{act}}$는 그래프 내부 콜사인으로만 구성한다(\md{M2}, \md{M5}).
+\item \textbf{감시 데이터 없음 (R4 부분)}: OpenSky 과거 데이터로 같은 시각의 KATL 주변 항적을 붙일 수 있다(연구용 접근 신청 필요, 선택). 붙이지 않으면 $\mathcal{F}_{\mathrm{act}}$는 그래프 내부 콜사인으로만 구성한다(\md{M1b}, \md{M3}).
 \item \textbf{Tower 부재}: 착륙 허가 시나리오가 필요하면 TartanAviation KAGC Tower(ADS-B 포함) 또는 LiveATC 아카이브의 Tower 피드를 보조로 쓴다. KAGC는 소형기 공항이라 콜사인 형태(\texttt{November 123AB})와 교통 유형이 KATL과 다르다는 점을 명시해야 한다.
-\item \textbf{정답 없음 (R7)}: \md{M9} 진단용으로 국가별 15--20개 송신에 직접 정답을 단다. 학교가 LDC 회원이면 ATC0 전사를 정답 비교용으로 일부 쓸 수 있다.
+\item \textbf{정답 없음 (R7)}: \md{M7} 진단용으로 국가별 15--20개 송신에 직접 정답을 단다. 학교가 LDC 회원이면 ATC0 전사를 정답 비교용으로 일부 쓸 수 있다.
 \end{itemize}
 
 \subsection{검증용 데이터 (RQ4)}
@@ -341,8 +341,8 @@ D10 & \textbf{속성 그래프(Neo4j)} + 온톨로지 IRI 매핑 & RDF 트리플
 \paragraph{프레임워크 정합성.}
 제안 구조는 두 가지 기존 틀과 대응된다.
 \begin{itemize}
-\item \textbf{LLM-KGC 서베이의 3단계} \cite{llmkgc2025}: 온톨로지 공학 = \md{M0}, 지식 추출 = \md{M4}, 지식 융합 = \md{M5}--\md{M6}.
-\item \textbf{Endsley의 상황 인식 3단계} \cite{endsley1995}: 지각(Level 1) = \md{M1}--\md{M4}, 이해(Level 2) = \md{M5}--\md{M7}, 예측(Level 3, 제한적) = \md{M8}.
+\item \textbf{LLM-KGC 서베이의 3단계} \cite{llmkgc2025}: 온톨로지 공학 = \md{M0}, 지식 추출 = \md{M2b}, 지식 융합 = \md{M3}--\md{M4}.
+\item \textbf{Endsley의 상황 인식 3단계} \cite{endsley1995}: 지각(Level 1) = \md{M1a}--\md{M2b}, 이해(Level 2) = \md{M3}--\md{M5}, 예측(Level 3, 제한적) = \md{M6}.
 \end{itemize}
 Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}과도 대응된다. 송신(\cmd{Transmission})은 episode, 항공편·지시는 semantic 노드에 해당한다.
 
@@ -363,17 +363,17 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 ]
 % row 1
 \node[io]  (in) at (0,0) {\textbf{입력}\\$a,\;\Ctx$};
-\node[mod] (m1) at (3.3,0) {\textbf{M1}\\송신 분할};
-\node[mod] (m2) at (6.6,0) {\textbf{M2}\\맥락 바이어싱\\ASR + 환각필터};
-\node[mod] (m3) at (9.9,0) {\textbf{M3}\\화자 역할·\\턴 분리};
-\node[mod] (m4) at (13.2,0) {\textbf{M4}\\온톨로지 기반\\LLM 의미추출};
+\node[mod] (m1) at (3.3,0) {\textbf{M1a}\\송신 분할};
+\node[mod] (m2) at (6.6,0) {\textbf{M1b}\\맥락 바이어싱\\ASR + 환각필터};
+\node[mod] (m3) at (9.9,0) {\textbf{M2a}\\화자 역할·\\턴 분리};
+\node[mod] (m4) at (13.2,0) {\textbf{M2b}\\온톨로지 기반\\LLM 의미추출};
 % row 2
-\node[mod] (m5) at (13.2,-3.4) {\textbf{M5}\\정규화·grounding\\·개체 해소};
-\node[mod] (m6) at (9.9,-3.4) {\textbf{M6}\\증분 Temporal\\KG 구축};
-\node[mod] (m7) at (6.6,-3.4) {\textbf{M7}\\규칙 추론·\\이상 탐지};
-\node[mod] (m8) at (3.3,-3.4) {\textbf{M8}\\시점 질의·\\시각화};
+\node[mod] (m5) at (13.2,-3.4) {\textbf{M3}\\정규화·grounding\\·개체 해소};
+\node[mod] (m6) at (9.9,-3.4) {\textbf{M4}\\증분 Temporal\\KG 구축};
+\node[mod] (m7) at (6.6,-3.4) {\textbf{M5}\\규칙 추론·\\이상 탐지};
+\node[mod] (m8) at (3.3,-3.4) {\textbf{M6}\\시점 질의·\\시각화};
 \node[io]  (out) at (0,-3.4) {\textbf{출력}\\$\G,\;\Yset,\;Q$};
-\node[mod, dashed, fill=gray!8] (m9) at (3.3,-7.6) {\textbf{M9}\\진단 하네스\\(RQ4)};
+\node[mod, dashed, fill=gray!8] (m9) at (3.3,-7.6) {\textbf{M7}\\진단 하네스\\(RQ4)};
 \node[io] (out2) at (0,-7.6) {\textbf{RQ4 진단}\\$\mathrm{CSR},\mathrm{CmdF1},m^\dagger$};
 % resources
 \node[resb] (m0) at (17.9,-1.7) {\textbf{M0}\\정적 자원\\(오프라인)\\[3pt]$\Ont=(\mathcal{T},\mathcal{R},\Sigma)$\\$\KS=(V_S,E_S)$\\$\KR,\ \Cfg,\ \Vdom$};
@@ -396,7 +396,7 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 \draw[arr, violet] (m0.west |- m5) -- node[lab,above]{$\KS$} (m5.east);
 \draw[arr, violet] (m0.south) |- ++(0,-2.05) -| node[lab,pos=0.25,below]{$\Sigma$, $\Tst$, $\KR$ (rules.json), $\Cfg$ (kg\_build.json)} ($(m6.south)+(-0.7,0)$);
 
-\draw[arr, dashed, gray] (m8.south) -- node[lab,right=2pt,pos=0.72]{중간 산출물 로그 $\mathcal{J}$ (M1--M7)} (m9.north);
+\draw[arr, dashed, gray] (m8.south) -- node[lab,right=2pt,pos=0.72]{중간 산출물 로그 $\mathcal{J}$ (M1a--M5)} (m9.north);
 \draw[arr, dashed, gray] (m9) -- (out2);
 \node[chl, anchor=west] at ($(m9.east)+(0.1,0)$) {C14, C15};
 % challenge annotations
@@ -422,10 +422,10 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 
 전체 처리는 송신 단위 스트림으로 진행된다. $i=1,\dots,n$에 대해
 \begin{equation}
-\G_{t_i} \;=\; \mathrm{M6}\Big(\G_{t_{i-1}},\; \mathrm{M5}\big(\mathrm{M4}(\mathrm{M3}(\mathrm{M2}(x_i))),\; \KS,\; \G_{t_{i-1}}\big)\Big),
+\G_{t_i} \;=\; \mathrm{M4}\Big(\G_{t_{i-1}},\; \mathrm{M3}\big(\mathrm{M2b}(\mathrm{M2a}(\mathrm{M1b}(x_i))),\; \KS,\; \G_{t_{i-1}}\big)\Big),
 \qquad \G_{t_0} = \KS,
 \end{equation}
-이고, 이상 집합은 $\Yset = \mathrm{M7}(\G_{t_n})$이다.
+이고, 이상 집합은 $\Yset = \mathrm{M5}(\G_{t_n})$이다.
 
 %==========================================================
 \section{모듈 정의}\label{sec:modules}
@@ -484,7 +484,9 @@ $D_{\mathrm{tel}}$ & \texttt{configs/airlines.json} & 호출 이름 $\to$ ICAO �
 \textbf{[방법·근거]} 명령 구조와 이름은 DLR 공식 사양 v3.00 \cite{dlr2025}을 기준으로 하고, 미국 지상·타워 교신에 필요한 20종을 골라 정형화했다. 공개된 기계 판독 파일(OWL/JSON)이 없으므로, 사람이 정한 대응을 생성 코드가 PDF 원문과 자동 대조한다(조건부 허가는 범위 제외). 유럽 온톨로지로 미국 지상관제 교신을 표현했을 때 명령 종류 손실이 2.6\%(값 포함 4.6\%)라는 실증 \cite{helmke2025loss}이 이 선택을 뒷받침한다. 복창 규정은 FAA JO 7110.65 \cite{faa7110}, 미국 어휘는 MITRE--DLR 비교 \cite{chen2023}를 따른다. 노드 라벨은 atmonto IRI(예: \texttt{atm:Runway})에 매핑한다 \cite{keller2017,keller2019}. $\Sigma$는 SHACL shape로 기술한다 \cite{shacl}. 예: ``\cmd{Instruction}은 정확히 하나의 \cmd{Transmission}에 포함된다'', ``\cmd{CLEARED\_TO\_LAND}의 대상은 \cmd{Runway}이다''.
 
 %----------------------------------------------------------
-\subsection{M1. 송신 분할 (Transmission Segmentation)}
+\paragraph{M1. STT (M1a + M1b).} 교신 음성을 송신 단위 전사 텍스트로 바꾼다. Whisper 경로는 M1a(음성 구간 분할) $\to$ M1b(전사)로, MOSS-ATC 경로는 한 모델이 분할·전사·화자 구분을 함께 한다. 어느 경로든 파일 이름의 녹음 맥락(공항·주파수·시작 시각)은 M1a가 풀어 송신마다 꼬리표로 붙인다.
+
+\subsection{M1a. 송신 분할 (Transmission Segmentation)}
 \textbf{[해결 문제]} \ch{C1} 무음 구간 환각의 원천 차단, \ch{C9} 클립 단위 맥락 부여.
 
 \textbf{[입력]} 피드별 음성과 맥락 $\{(a^{\varphi},\Ctx^{\varphi})\}_{\varphi\in\Phi}$. $\Ctx^{\varphi}$는 파일명 \texttt{\{ICAO\}-\{Facility\}-\{Date\}-\{Time\}Z}에서 파싱한다. 시설 필터 $\varphi\in\Phi_{\mathrm{use}}$를 적용한다(\S\ref{sec:data}).
@@ -504,7 +506,7 @@ E_k = 10\log_{10}\Big(\frac{1}{L}\sum_{n\in\mathrm{frame}_k} a[n]^2\Big)\ [\math
 \textbf{[방법·근거]} 편집된 유튜브 샘플은 57.5\%가 디지털 무음이라 에너지 문턱이 효과적이었다. 반면 LiveATC 원본(KATL \cmd{Gnd-All})은 디지털 무음이 \textbf{0\%}로, 송신 사이가 잡음으로 채워져 있다. 따라서 원본에서는 \textbf{신경망 VAD(Silero VAD)를 주 판정}으로 하고, 에너지 문턱은 편집 음원에서만 보조로 쓴다. 무음 구간을 ASR에 넣지 않는 것이 환각을 막는 가장 직접적인 방법이다 \cite{koenecke2024}. 샘플에서 VAD 사용 시 환각이 사라짐을 확인했다.
 
 %----------------------------------------------------------
-\subsection{M2. 맥락 바이어싱 ASR + 환각 필터}
+\subsection{M1b. 맥락 바이어싱 ASR + 환각 필터}
 \textbf{[해결 문제]} \ch{C2} 도메인 어휘 오인식, \ch{C1} 잔여 환각, \ch{C11} 라벨 없이 적응.
 
 \textbf{[입력]} $x_i$, $\Vdom(\alpha_{\mathrm{apt}})$, 활성 콜사인 목록 $\mathcal{F}_{\mathrm{act}}(t_i) \subseteq V_{\cmd{Flight}}(\G_{<t_i})$.
@@ -517,12 +519,14 @@ w_i &= \arg\max_{w}\; P_\theta\big(w \mid x_i,\ \mathrm{prompt}(\Vdom,\mathcal{F
 \mathrm{keep}(i) &= \mathbb{1}\big[p^{\mathrm{ns}}_i < \delta_{\mathrm{ns}}\big]\cdot\mathbb{1}\big[\bar\ell_i > \delta_{\ell}\big]\cdot\mathbb{1}\big[w_i\notin\mathcal{B}\big],
 \end{align}
 여기서 $\mathcal{B}$는 알려진 환각 문구 집합이다 (예: \texttt{"thanks for watching"}, \texttt{"you"}).
-\emph{비영어 발화 처리 (\ch{C14})}: $\mathrm{lang}_i\neq\texttt{en}$이고 언어 확률이 $\delta_{\mathrm{lang}}$ 이상이면, 송신 노드를 \cmd{UNSUPPORTED\_LANG}으로 표시해 \textbf{그래프에는 남기되} M3--M5 처리는 건너뛴다. 출처 보존(P2)을 지키면서, 자국어 혼용 빈도를 RQ4 실패 원인으로 집계할 수 있다.
+\emph{비영어 발화 처리 (\ch{C14})}: $\mathrm{lang}_i\neq\texttt{en}$이고 언어 확률이 $\delta_{\mathrm{lang}}$ 이상이면, 송신 노드를 \cmd{UNSUPPORTED\_LANG}으로 표시해 \textbf{그래프에는 남기되} M2a--M3 처리는 건너뛴다. 출처 보존(P2)을 지키면서, 자국어 혼용 빈도를 RQ4 실패 원인으로 집계할 수 있다.
 
 \textbf{[방법·근거]} Whisper large-v3 \cite{whisper}에 초기 프롬프트로 도메인 어휘와 활성 콜사인을 넣는다. 감시 데이터로 콜사인 n-gram을 부스팅해 콜사인 인식을 크게 개선한 연구 \cite{nigmatulina2022}의 \emph{라벨 없이 쓸 수 있는} 경량 근사다. 그래프 $\G_{<t_i}$에서 활성 콜사인을 공급하므로 KG가 ASR을 돕는 되먹임이 생긴다. ATC 미세조정 모델 \cite{vandoorn}은 유럽 데이터로 학습되어 미국 억양에서 성능이 떨어진다는 보고가 있어 \cite{usatc2025}, 비교 실험으로만 둔다.
 
 %----------------------------------------------------------
-\subsection{M3. 화자 역할 판별과 턴 분리}
+\paragraph{M2. 지시 추출 (M2a + M2b).} 송신 텍스트에서 화자 역할(관제사/조종사)을 정하고 지시를 온톨로지 형식으로 뽑는다. 구현에서는 M2b의 LLM이 역할도 함께 출력해 M2a의 규칙 판정을 보완한다(규칙만으로 역할 미정 51\% $\to$ 0.2\%).
+
+\subsection{M2a. 화자 역할 판별과 턴 분리}
 \textbf{[해결 문제]} \ch{C3} 화자 경계·역할 불명 (병합된 세그먼트 포함).
 
 \textbf{[입력]} $w_i$, 인접 문맥 $(w_{i-1}, w_{i+1})$.
@@ -539,7 +543,7 @@ $\mathrm{pos}_{\mathrm{cs}}$는 콜사인의 상대 위치다. 관제사는 콜�
 \textbf{[방법·근거]} 음향 기반 화자 분리보다 텍스트 기반 화자 역할·화자 전환 동시 판별이 ATC에서 더 효과적이라는 결과 \cite{bertraffic}에 따른다. 규칙 특징 $\phi$로 먼저 판정하고, 불확실하면 LLM에 턴 분리와 역할 판정을 맡긴다.
 
 %----------------------------------------------------------
-\subsection{M4. 온톨로지 기반 LLM 의미 추출}
+\subsection{M2b. 온톨로지 기반 LLM 의미 추출}
 \textbf{[해결 문제]} \ch{C6} 개념 단위 표현, \ch{C7} 지시와 정보 구분, \ch{C11} 라벨 부족, \ch{C13} 형식 오류.
 
 \textbf{[입력]} $(w_i, r_i)$, $\Ont$, few-shot 예시 $\mathcal{E}=\{(w^{(e)},u^{(e)})\}_{e=1}^{k}$.
@@ -571,7 +575,7 @@ u_i = \arg\max_{u\,\in\,\mathcal{L}(\mathrm{JSchema}(\Ont))}\; P_{\mathrm{LLM}}\
 \end{itemize}
 
 %----------------------------------------------------------
-\subsection{M5. 정규화·Grounding·개체 해소}
+\subsection{M3. 정규화·Grounding·개체 해소}
 \textbf{[해결 문제]} \ch{C4} 콜사인 오인식·생략, \ch{C5} 표기 변이, \ch{C9} 정적 지식 검증, \ch{C2} 잔여 오인식 교정.
 
 \textbf{[입력]} $u_i$, $\KS$, $\G_{<t_i}$, $\Ctx_i$.
@@ -611,7 +615,7 @@ f_i = \arg\max_{f\in\mathcal{F}_{\mathrm{act}}(t_i)\cup\{f_{\mathrm{new}}\}}\;\B
 예: \texttt{Alpha 2398}에서 \texttt{Alpha}는 telephony 사전에 없고 편명 \texttt{2398}이 일치하며, 직후 복창이 \texttt{Delta 2398}이다. 따라서 $f=\cmd{DAL2398}$로 해소하고 $\mathcal{A}_i \ni \cmd{ASR\_CORRECTED}$를 남긴다.
 
 %----------------------------------------------------------
-\subsection{M6. 증분 사건 중심 Temporal KG 구축}
+\subsection{M4. 증분 사건 중심 Temporal KG 구축}
 \textbf{[해결 문제]} \ch{C8} 발화 간 관계, \ch{C10} 시간 유효성, \ch{C12} 출처·신뢰도, \ch{C13} 스키마 검증.
 
 \textbf{[입력]} $\G_{t_{i-1}}$, $\tilde u_i$, $(s_i, r_i, w_i, c_i)$, $\Sigma$, $\KR$, $\Cfg$.
@@ -656,7 +660,7 @@ $f_i=\bot$이면 직전 관제사 송신의 수신자와의 개념 중복도 $\m
 \end{itemize}
 
 %----------------------------------------------------------
-\subsection{M7. 규칙 기반 추론과 이상 탐지}
+\subsection{M5. 규칙 기반 추론과 이상 탐지}
 \textbf{[해결 문제]} \ch{C6} 개념 단위 복창 검증, \ch{C4} 콜사인 누락, \ch{C7} 정보형 제외, \ch{C12} 근거 제시.
 
 \textbf{[입력]} $\G_{t}$, 규칙 집합 $\mathcal{R}=\{\rho_1,\dots,\rho_7\}$, $\KR$의 $\Treq^{\rho}$와 $\mathcal{T}_{\mathrm{rwy}}$.
@@ -698,10 +702,10 @@ m(\tilde\iota,\tilde\iota') &= \mathbb{1}\big[\kappa=\kappa'\ \wedge\ \ell(g)=\e
 \end{equation}
 이다. ASR 오류로 인한 거짓 경보와 실제 복창 오류를 사용자가 구분할 수 있게 한다 (\ch{C12}).
 
-\textbf{[방법·근거]} 개념 수준 비교는 복창 오류 탐지 연구의 핵심 결론이다 \cite{helmke2021}. 규칙은 규정에서 직접 도출하므로 학습 데이터가 필요 없고 설명 가능하다 (D8). 기호적 KG와 LLM의 상호 보완 관점 \cite{pan2024}에 따라 LLM은 추출(\md{M4})에만 쓰고 판정은 기호 규칙으로 한다.
+\textbf{[방법·근거]} 개념 수준 비교는 복창 오류 탐지 연구의 핵심 결론이다 \cite{helmke2021}. 규칙은 규정에서 직접 도출하므로 학습 데이터가 필요 없고 설명 가능하다 (D8). 기호적 KG와 LLM의 상호 보완 관점 \cite{pan2024}에 따라 LLM은 추출(\md{M2b})에만 쓰고 판정은 기호 규칙으로 한다.
 
 %----------------------------------------------------------
-\subsection{M8. 시점 질의와 시각화}
+\subsection{M6. 시점 질의와 시각화}
 \textbf{[해결 문제]} \ch{C10} 시점 기반 상황 인식, \ch{C12} 근거 시각화.
 
 \textbf{[입력]} $\G$, 시각 $t$, 질의 $q\in\mathcal{Q}$.
@@ -721,14 +725,14 @@ m(\tilde\iota,\tilde\iota') &= \mathbb{1}\big[\kappa=\kappa'\ \wedge\ \ell(g)=\e
 \textbf{[방법·근거]} Cypher 시간 필터로 구현하고 Neo4j Browser로 시각화한다. Level 3 ``예측''은 활성 상태 구간의 잔여 시간 정도로 제한한다. TKG 기반 미래 예측 \cite{cai2024tkg}은 범위 밖이다 (D7).
 
 %----------------------------------------------------------
-\subsection{M9. 파이프라인 진단 하네스 (RQ4 전용)}
+\subsection{M7. 파이프라인 진단 하네스 (RQ4 전용)}
 \textbf{[해결 문제]} \ch{C14} 지역 전이의 원인 분석, \ch{C15} 보고 범위 통제, \ch{C12} 오류 전파 추적.
 
 \textbf{[입력]} 모든 모듈의 중간 산출물 로그 $\mathcal{J}=\{(i, k, \mathrm{out}_{\mathrm{M}k}(i))\}_{k=1}^{7}$, 소량 정답 $\{\mathrm{gold}_{\mathrm{M}k}(i)\}$. 정답은 국가별 15--20개 송신에만 단다.
 
 \textbf{[출력]} 지역·조건별 지표 $(\mathrm{CSR}_\rho,\ \mathrm{CmdF1}_\rho)$와 처음 실패한 모듈의 분포 $P_\rho(m^\dagger)$ (\S\ref{sec:rq4}). 보안 자료에 대해서는 \textbf{집계 수치만} 내보낸다.
 
-\textbf{[정의]} 각 모듈 출력을 송신 ID $i$를 키로 기록하므로, $\mathrm{prov}$(P2)와 같은 키로 추적할 수 있다. 정답 비교 함수는 M7의 개념 일치 $m(\cdot,\cdot)$을 그대로 재사용한다.
+\textbf{[정의]} 각 모듈 출력을 송신 ID $i$를 키로 기록하므로, $\mathrm{prov}$(P2)와 같은 키로 추적할 수 있다. 정답 비교 함수는 M5의 개념 일치 $m(\cdot,\cdot)$을 그대로 재사용한다.
 
 \textbf{[방법·근거]} KG 자체의 정량 평가가 아니라 \emph{모듈 단위 오류 귀속}이다. 범위 결정(KG 평가 생략)과 충돌하지 않으면서, 지역 간 비교의 원인을 설명한다. 계단식 구조(D1)이기 때문에 이런 귀속이 가능하다.
 
@@ -813,7 +817,7 @@ $\bullet$ = 주 해결 모듈, $\circ$ = 보조 모듈. 모든 행에 $\bullet$�
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{@{}l l c c c c c c c c c c@{}}
 \toprule
-& 문제 & M0 & M1 & M2 & M3 & M4 & M5 & M6 & M7 & M8\& M9 \\midrule
+& 문제 & M0 & M1a & M1b & M2a & M2b & M3 & M4 & M5 & M6\& M7 \\midrule
 \multirow{4}{*}{\rotatebox{90}{\scriptsize RQ}}
 & RQ1 표현 (지시–복창–이관 + 유효시간) & $\bullet$ &  &  & $\circ$ & $\bullet$ &  & $\bullet$ &  & &  \\
 & RQ2 교정·연결 (STT 오류 탐지·교정) & $\circ$ &  & $\bullet$ &  &  & $\bullet$ & $\circ$ & $\circ$ & &  \\
@@ -847,19 +851,19 @@ $\bullet$ = 주 해결 모듈, $\circ$ = 보조 모듈. 모든 행에 $\bullet$�
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X@{}}
 \toprule
 모듈 & 출력 인스턴스\\\midrule
-M1 & $s_1=[46.9, 53.4)$, $s_2=[54.0, 59.0)$. 이 앞의 0--46.9\,s 무음은 제거된다. VAD 없이 돌렸을 때는 이 구간에서 \texttt{"Thanks for watching."}이 환각으로 생성되었다 (\ch{C1}).\\
-M2 & $w_1=$\,\texttt{"Alpha 2398, turn right at Juliet, cross runway two two right, and continue via Alpha to your left"}\\
+M1a & $s_1=[46.9, 53.4)$, $s_2=[54.0, 59.0)$. 이 앞의 0--46.9\,s 무음은 제거된다. VAD 없이 돌렸을 때는 이 구간에서 \texttt{"Thanks for watching."}이 환각으로 생성되었다 (\ch{C1}).\\
+M1b & $w_1=$\,\texttt{"Alpha 2398, turn right at Juliet, cross runway two two right, and continue via Alpha to your left"}\\
 & $w_2=$\,\texttt{"All right, right turn Juliet, cross runway two two right at Juliet, Alpha to your left, Delta 2398"}\\
-M3 & $r_1=\ATCO$ (콜사인이 문장 앞), $r_2=\PILOT$ (콜사인이 문장 뒤)\\
-M4 & $u_1=(\hat c_1, I_1)$, $\hat c_1=\texttt{"Alpha 2398"}$,\\
+M2a & $r_1=\ATCO$ (콜사인이 문장 앞), $r_2=\PILOT$ (콜사인이 문장 뒤)\\
+M2b & $u_1=(\hat c_1, I_1)$, $\hat c_1=\texttt{"Alpha 2398"}$,\\
 & $I_1=\{(\cmd{TURN},-,-,\cmd{RIGHT}{\wedge}\cmd{AT}{:}\texttt{Juliet},\texttt{Juliet}),$\\
 & $\phantom{I_1=\{}(\cmd{CROSS\_RUNWAY},-,-,-,\texttt{"two two right"}),\ (\cmd{TAXI\_VIA},-,-,-,\texttt{Alpha})\}$\\
 & $u_2=(\texttt{"Delta 2398"},\{\text{같은 3개 개념}\})$\\
-M5 & $\nu(\texttt{"two two right"})=\cmd{22R}$, $\ell(\cdot)=\cmd{Runway\_22R}$\\
+M3 & $\nu(\texttt{"two two right"})=\cmd{22R}$, $\ell(\cdot)=\cmd{Runway\_22R}$\\
 & $\hat c_1$의 \texttt{Alpha}는 telephony에 없고 숫자가 일치하며 $\mathrm{ctx}$가 높음 $\Rightarrow f_1=f_2=\cmd{DAL2398}$, $\mathcal{A}_1\ni\cmd{ASR\_CORRECTED}$ (\ch{C4})\\
-M6 & $\cmd{Transmission}_2\xrightarrow{\cmd{READBACK\_OF}}\cmd{Transmission}_1$ ($t^s_2-t^e_1=0.6\,\mathrm{s}\le\Delta_{\mathrm{rb}}$). $\tau(\cmd{CROSS\_RUNWAY}) = [46.9, t^{\mathrm{to}})$\\
-M7 & $\mathrm{Req}=\{\cmd{CROSS\_RUNWAY}\}$, $\mathrm{Miss}=\mathrm{Conf}=\emptyset\Rightarrow\cmd{MATCH}$. 단어 단위로는 순서·표현이 다르지만 개념 단위로는 일치한다 (\ch{C6}). 근거 $\pi$에는 \cmd{ASR\_CORRECTED} 표시가 포함된다.\\
-M8 & $q_2(\cmd{DAL2398}) = \langle\cmd{TURN}\prec\cmd{CROSS\_RUNWAY}\prec\cmd{TAXI\_VIA}\rangle$\\
+M4 & $\cmd{Transmission}_2\xrightarrow{\cmd{READBACK\_OF}}\cmd{Transmission}_1$ ($t^s_2-t^e_1=0.6\,\mathrm{s}\le\Delta_{\mathrm{rb}}$). $\tau(\cmd{CROSS\_RUNWAY}) = [46.9, t^{\mathrm{to}})$\\
+M5 & $\mathrm{Req}=\{\cmd{CROSS\_RUNWAY}\}$, $\mathrm{Miss}=\mathrm{Conf}=\emptyset\Rightarrow\cmd{MATCH}$. 단어 단위로는 순서·표현이 다르지만 개념 단위로는 일치한다 (\ch{C6}). 근거 $\pi$에는 \cmd{ASR\_CORRECTED} 표시가 포함된다.\\
+M6 & $q_2(\cmd{DAL2398}) = \langle\cmd{TURN}\prec\cmd{CROSS\_RUNWAY}\prec\cmd{TAXI\_VIA}\rangle$\\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -871,7 +875,7 @@ M8 & $q_2(\cmd{DAL2398}) = \langle\cmd{TURN}\prec\cmd{CROSS\_RUNWAY}\prec\cmd{TA
 
 \textbf{[해결 문제]} \ch{C14} 지역 전이.
 
-\textbf{[왜 학습이 필요 없는가]} 시스템은 사전학습 STT(\md{M2}), LLM few-shot(\md{M4}), 규칙(\md{M7})으로 구성되어 학습 단계가 없다. 지역에 따라 달라지는 것은 \md{M0}의 자원뿐이다. 따라서 시스템을 지역 $\rho$에 대해 다음처럼 쓸 수 있다.
+\textbf{[왜 학습이 필요 없는가]} 시스템은 사전학습 STT(\md{M1b}), LLM few-shot(\md{M2b}), 규칙(\md{M5})으로 구성되어 학습 단계가 없다. 지역에 따라 달라지는 것은 \md{M0}의 자원뿐이다. 따라서 시스템을 지역 $\rho$에 대해 다음처럼 쓸 수 있다.
 \begin{equation}
 F_{\rho} = F\big(\,\cdot\,;\ \Ont_{\rho},\ \KS^{\rho},\ \Vdom^{\rho},\ \mathcal{E}_{\rho}\big),\qquad \rho\in\{\mathrm{US},\mathrm{KR},\mathrm{JP}\}.
 \end{equation}
@@ -888,14 +892,14 @@ F_{\rho} = F\big(\,\cdot\,;\ \Ont_{\rho},\ \KS^{\rho},\ \Vdom^{\rho},\ \mathcal{
 \begin{align}
 \mathrm{CSR}_\rho &= \frac{1}{n_\rho}\sum_{i}\mathbb{1}\big[f_i = f^*_i\big] &&\text{(콜사인 인식률)}\\
 \mathrm{CmdF1}_\rho &= \mathrm{F1}\Big(\textstyle\bigcup_i \tilde I_i,\ \bigcup_i I^*_i\Big) &&\text{(개념 단위 명령 인식, $m(\cdot,\cdot)$ 기준 일치)}\\
-m^\dagger(i) &= \min\big\{k\in\{1,\dots,7\} : \mathrm{out}_{\mathrm{M}k}(i)\neq \mathrm{gold}_{\mathrm{M}k}(i)\big\} &&\text{(처음 실패한 모듈)}
+m^\dagger(i) &= \text{첫 } k\in(\mathrm{M1},\mathrm{M2a},\mathrm{M2b},\mathrm{M3}) \text{ s.t. } \mathrm{out}_{k}(i)\neq \mathrm{gold}_{k}(i) &&\text{(처음 실패한 단계)}
 \end{align}
-계산은 \md{M9}이 담당한다. $m^\dagger$의 분포로 \textbf{모듈별 실패 원인 표}를 만든다. $\mathrm{lang}_i\neq\texttt{en}$인 송신은 $m^\dagger=2$의 별도 범주(\cmd{UNSUPPORTED\_LANG})로 센다. 예: 억양 때문에 M2에서 실패했는지, 용어 차이 때문에 M4에서 실패했는지, 공항 지식이 없어 M5에서 실패했는지. 이 측정은 KG 자체의 평가가 아니라 \emph{파이프라인 진단}이므로, KG 평가를 생략한다는 범위 결정과 충돌하지 않는다.
+계산은 \md{M7}이 담당한다. $m^\dagger$의 분포로 \textbf{모듈별 실패 원인 표}를 만든다. $\mathrm{lang}_i\neq\texttt{en}$인 송신은 $m^\dagger=\mathrm{M1}$의 별도 범주(\cmd{UNSUPPORTED\_LANG})로 센다. 예: 억양 때문에 M1(STT)에서 실패했는지, 용어 차이 때문에 M2b에서 실패했는지, 공항 지식이 없어 M3에서 실패했는지. 이 측정은 KG 자체의 평가가 아니라 \emph{파이프라인 진단}이므로, KG 평가를 생략한다는 범위 결정과 충돌하지 않는다.
 
 \textbf{[해석]}
 \begin{itemize}
 \item (b)에서 (a) 대비 회복되면: ``지역 자원만 교체하면 확장된다''는 모듈화 설계(\md{M0} 분리)가 실험으로 뒷받침된다.
-\item 회복되지 않는 실패($m^\dagger=2$의 억양 오류, 자국어 혼용)는 지역 데이터 미세조정이 필요한 부분으로, 향후 과제의 근거가 된다 \cite{usatc2025,chen2023}.
+\item 회복되지 않는 실패($m^\dagger=\mathrm{M1}$의 억양 오류, 자국어 혼용)는 지역 데이터 미세조정이 필요한 부분으로, 향후 과제의 근거가 된다 \cite{usatc2025,chen2023}.
 \end{itemize}
 
 \textbf{[타당성 위협]}
@@ -913,20 +917,20 @@ m^\dagger(i) &= \min\big\{k\in\{1,\dots,7\} : \mathrm{out}_{\mathrm{M}k}(i)\neq 
 \toprule
 모듈 & 입력 & 출력 & 구현 후보\\\midrule
 M0 & $D_{\mathrm{apt}},D_{\mathrm{tel}},D_{\mathrm{fac}},D_{\mathrm{onto}},D_{\mathrm{reg}}$ & $\Ont,\ \KS,\ \KR,\ \Vdom$ (+ 설정 $\Cfg$) & Python, pdftotext (\texttt{kb/})\\
-M1 & $\{(a^{\varphi},\Ctx^{\varphi})\}_{\varphi}$ & $\{(s_i,x_i,\Ctx_i)\}$ (UTC 병합) & ffmpeg, Silero VAD, 파일명 파서\\
-M2 & $x_i,\Vdom,\mathcal{F}_{\mathrm{act}}$ & $(w_i,c_i,\mathrm{lang}_i)$ & faster-whisper large-v3 (RTX 4090에서 동작 확인)\\
-M3 & $w_{i-1:i+1}$ & $\{(w_{i,m},r_{i,m})\}$ & 규칙 + LLM\\
-M4 & $w_i,r_i,\Ont,\mathcal{E}$ & $u_i=(\hat c_i,I_i)$ & LLM(API 또는 로컬) + JSON Schema 구조화 출력\\
-M5 & $u_i,\KS,\G_{<t_i},\Ctx_i$ & $\tilde u_i=(f_i,\tilde I_i,\mathcal{A}_i)$ & rapidfuzz, Double Metaphone, 규칙\\
-M6 & $\G_{t_{i-1}},\tilde u_i,\Sigma,\KR,\Cfg$ & $\G_{t_i}$ & Neo4j + Cypher MERGE (Graphiti 참고)\\
-M7 & $\G_t,\mathcal{R},\KR$ & $\Yset$ & Cypher 규칙 질의\\
-M8 & $\G,t,q$ & $Q(\G,t,q)$ & Neo4j Browser / Streamlit\\
-M9 & $\mathcal{J}$, 소량 정답 & $\mathrm{CSR}_\rho,\mathrm{CmdF1}_\rho,P_\rho(m^\dagger)$ & Python 로그 + 간단한 주석 시트\\
+M1a & $\{(a^{\varphi},\Ctx^{\varphi})\}_{\varphi}$ & $\{(s_i,x_i,\Ctx_i)\}$ (UTC 병합) & ffmpeg, Silero VAD, 파일명 파서\\
+M1b & $x_i,\Vdom,\mathcal{F}_{\mathrm{act}}$ & $(w_i,c_i,\mathrm{lang}_i)$ & faster-whisper large-v3 (RTX 4090에서 동작 확인)\\
+M2a & $w_{i-1:i+1}$ & $\{(w_{i,m},r_{i,m})\}$ & 규칙 + LLM\\
+M2b & $w_i,r_i,\Ont,\mathcal{E}$ & $u_i=(\hat c_i,I_i)$ & LLM(API 또는 로컬) + JSON Schema 구조화 출력\\
+M3 & $u_i,\KS,\G_{<t_i},\Ctx_i$ & $\tilde u_i=(f_i,\tilde I_i,\mathcal{A}_i)$ & rapidfuzz, Double Metaphone, 규칙\\
+M4 & $\G_{t_{i-1}},\tilde u_i,\Sigma,\KR,\Cfg$ & $\G_{t_i}$ & Neo4j + Cypher MERGE (Graphiti 참고)\\
+M5 & $\G_t,\mathcal{R},\KR$ & $\Yset$ & Cypher 규칙 질의\\
+M6 & $\G,t,q$ & $Q(\G,t,q)$ & Neo4j Browser / Streamlit\\
+M7 & $\mathcal{J}$, 소량 정답 & $\mathrm{CSR}_\rho,\mathrm{CmdF1}_\rho,P_\rho(m^\dagger)$ & Python 로그 + 간단한 주석 시트\\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\paragraph{범위 밖 (명시).} TKG 임베딩·완성·예측, 실시간 스트리밍, 한국·일본 데이터로 학습·미세조정, 자국어 발화 인식(\cmd{UNSUPPORTED\_LANG}으로 기록만 함), ADS-B 실시간 연동은 제외한다. ADS-B는 \md{M2}/\md{M5}의 $\mathcal{F}_{\mathrm{act}}$를 대체하는 확장점으로만 남긴다 \cite{nigmatulina2022}. 정량적 KG 평가는 교수 지시에 따라 데모로 대체한다.
+\paragraph{범위 밖 (명시).} TKG 임베딩·완성·예측, 실시간 스트리밍, 한국·일본 데이터로 학습·미세조정, 자국어 발화 인식(\cmd{UNSUPPORTED\_LANG}으로 기록만 함), ADS-B 실시간 연동은 제외한다. ADS-B는 \md{M1b}/\md{M3}의 $\mathcal{F}_{\mathrm{act}}$를 대체하는 확장점으로만 남긴다 \cite{nigmatulina2022}. 정량적 KG 평가는 교수 지시에 따라 데모로 대체한다.
 
 %==========================================================
 \begin{thebibliography}{99}\small
