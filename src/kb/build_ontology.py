@@ -43,19 +43,81 @@ DLR_DESCRIPTION = REF_ROOT / "OntologyATCCommandsDescription_v20250704.pdf"
 DLR_TABLE = REF_ROOT / "OntologyATCCommandsTable_v20250704.pdf"
 FAA_ORDER = REF_ROOT / "FAA규정.pdf"
 
-# Instruction elements of the DLR ontology (Description ch. 2) and their JSON keys (ch. 5.1), mapped to our M4 fields.
-DLR_ELEMENTS = [
-    {"element": "Callsign", "json_key": "csgn", "ours": "callsign"},
-    {"element": "Type (Main)", "json_key": "type", "ours": "type"},
-    {"element": "Type (Sub)", "json_key": "sndT", "ours": "type"},
-    {"element": "Value(s)", "json_key": "valu", "ours": "target | value"},
-    {"element": "Value(s) beyond the first", "json_key": "vare", "ours": "route"},
-    {"element": "Unit", "json_key": "unit", "ours": None},
-    {"element": "Qualifier", "json_key": "qual", "ours": "qualifier"},
-    {"element": "Speaker", "json_key": "speaker", "ours": "speaker"},
-    {"element": "Reason", "json_key": "reas", "ours": "type=REQUEST"},
-    {"element": "Condition", "json_key": "cond", "ours": None},
-]
+# DLR instruction structure (Description Figure 2-1, p.7; JSON keys from table 5.1, p.20), mapped to our M4 fields.
+# "verify" lists terms that must appear in the Description text; json keys are verified as well.
+DLR_INSTRUCTION_SCHEMA = {
+    "source": "DLR-IB-FL-BS-2025-107 v3.00, Figure 2-1 (p.7) and key-value table 5.1 (p.20)",
+    "Instruction": {
+        "description": "한 항공기에게 내려진 지시 하나. 한 번의 교신에 지시가 여러 개면 Instruction도 여러 개로 나눈다.",
+        "Callsign": {
+            "description": "지시를 받는(또는 말하는) 항공기의 호출부호. 항공사 코드와 편명 번호를 붙여 적고, 말하지 않았으면 NO_CALLSIGN.",
+            "json_key": "csgn", "required": True, "empty_value": "NO_CALLSIGN", "example": "DLH498",
+            "ours": "callsign", "verify": ["Callsign", "NO_CALLSIGN"],
+        },
+        "Command": {
+            "description": "항공기에게 시키는 행동 자체를 담는 묶음. 아래 6개 칸으로 구성된다.",
+            "Speaker": {
+                "description": "말한 사람이 관제사(ATCO)인지 조종사(PILOT)인지. 비워 두면 ATCO.",
+                "json_key": "speaker", "values": ["ATCO", "PILOT"], "default": "ATCO",
+                "ours": "speaker", "verify": ["Speaker", "ATCO", "PILOT"],
+                "note": "Figure 2-1에서는 Command 안에 있지만 5.1 JSON에서는 commands 바깥(화자 단위)에 한 번 적는다. 우리도 송신 단위로 한 번 기록한다.",
+            },
+            "Reason": {
+                "description": "조종사가 말한 경우에만 쓰며, 요청(REQUEST)인지 상태 보고(REPORTING)인지 구분한다.",
+                "json_key": "reas", "values": ["REQUEST", "REPORTING"], "json_values": ["REQ", "REP"],
+                "ours": None, "verify": ["Reason", "REQUEST", "REPORTING"],
+                "note": "우리는 요청을 명령 종류 REQUEST로 단순화했고 REPORTING은 구분하지 않는다.",
+            },
+            "Type": {
+                "description": "어떤 행동을 시키는지 나타내는 명령 이름. 필요하면 큰 분류(Main)와 세부 분류(Sub) 두 단어로 적는다.",
+                "json_key": ["type", "sndT"], "required": True, "empty_value": "NO_CONCEPT", "example": "TAXI VIA",
+                "ours": "type", "verify": ["Type", "NO_CONCEPT"],
+                "note": "우리는 Main+Sub를 이름 하나로 합친다 (CLEARED + TAKEOFF -> CLEARED_FOR_TAKEOFF). 대응은 command_types.*.dlr.",
+            },
+            "Value(s)": {
+                "description": "명령이 적용되는 대상이나 숫자. 명령에 따라 없거나 하나거나 여러 개다.",
+                "json_key": ["valu", "vare"], "example": "L N7, RW26R, 180",
+                "ours": "target | value | route", "verify": ["Value(s)"],
+                "note": "DLR은 TAXI TO(목적지)와 TAXI VIA(경로)를 별개 Instruction으로 나누지만, 우리 TAXI_VIA는 하나에 route(VIA 값)와 target(TO 값)을 함께 담는다.",
+            },
+            "Unit": {
+                "description": "값이 숫자일 때 그 단위.",
+                "json_key": "unit", "example": "kt, FL", "ours": None, "verify": ["Unit"],
+                "note": "지상관제 명령에는 거의 쓰이지 않아 추출하지 않는다.",
+            },
+            "Qualifier": {
+                "description": "방향이나 방식처럼 값만으로는 부족한 정보를 덧붙인다.",
+                "json_key": "qual", "example": "LEFT, RIGHT", "ours": "qualifier", "verify": ["Qualifier"],
+            },
+        },
+        "Condition(s)": {
+            "description": "명령이 언제부터 또는 언제까지 유효한지 정하는 조건. 말해진 경우에만 채운다.",
+            "json_key": "cond", "ours": None, "verify": ["Condition", "Conjunction", "Requirement"],
+            "note": "조건부 허가는 이번 범위에서 제외했다.",
+            "Conjunction": {
+                "description": "조건의 종류: UNTIL(~까지), WHEN(~일 때), IF(~이면), AFTER(~ 이후에).",
+                "values": ["UNTIL", "WHEN", "IF", "AFTER"], "verify": ["UNTIL", "WHEN", "IF", "AFTER"],
+            },
+            "Requirement": {
+                "description": "조건이 만족되었는지 판단하는 기준이 되는 사건이나 위치 (명령 또는 Conditional-Keyword).",
+                "example": "5 NM FINAL",
+            },
+        },
+    },
+}
+
+
+def schema_terms(node) -> set:
+    """All json keys and verify terms in the schema tree."""
+    terms = set()
+    if isinstance(node, dict):
+        for key in ("json_key", "verify", "json_values"):
+            value = node.get(key)
+            terms.update([value] if isinstance(value, str) else value or [])
+        for child in node.values():
+            terms |= schema_terms(child)
+    return terms
+
 
 # FAA JO 7110.65BB 2-4-3 read-back levels. Each level is verified against the section text.
 FAA_READBACK_BASIS = {
@@ -351,9 +413,10 @@ def build(out_dir: Path):
     faa = parse_faa_sections(pdf_text(FAA_ORDER))
     print(f"[onto] DLR table: {len(table_rows)} command rows, {len(params)} parameters; FAA: {len(faa)} sections")
 
-    for el in DLR_ELEMENTS:
-        if not re.search(rf"\b{re.escape(el['json_key'])}\b", description):
-            raise ValueError(f"DLR description does not define JSON key '{el['json_key']}'")
+    missing = sorted(t for t in schema_terms(DLR_INSTRUCTION_SCHEMA)
+                     if not re.search(rf"(?<!\w){re.escape(t)}(?!\w)", description))
+    if missing:
+        sys.exit(f"[onto] DLR description does not contain: {missing}")
     readback_basis = {level: faa_evidence(faa, sec, pat) for level, (sec, pat) in FAA_READBACK_BASIS.items()}
 
     command_types, readback, errors = {}, {}, []
@@ -402,7 +465,7 @@ def build(out_dir: Path):
             "DLR Condition (UNTIL/WHEN/IF/AFTER) and Unit are not extracted.",
             "Read-back, supersession and validity rules live in configs/rules.json.",
         ],
-        "dlr_instruction_schema": DLR_ELEMENTS,
+        "dlr_instruction_schema": DLR_INSTRUCTION_SCHEMA,
         "entity_types": ENTITY_TYPES,
         "relation_types": RELATION_TYPES,
         "command_types": command_types,
