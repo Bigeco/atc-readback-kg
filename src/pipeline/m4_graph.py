@@ -140,7 +140,7 @@ class GraphBuilder:
     def _add_static_layer(self):
         g = self.graph
         airport = f"Airport:{self.icao}"
-        g.add_node(airport, "Airport", icao=self.icao, name=self.kb.get("name"), layer="static",
+        g.add_node(airport, "Airport", location_indicator=self.icao, name=self.kb.get("name"), country=self.kb.get("country"), layer="static",
                    iri="atm:Airport")
         for end in self.kb.get("runway_ends", []):
             nid = f"Runway:{self.icao}:{end}"
@@ -199,7 +199,7 @@ class GraphBuilder:
             g.add_node(fid, "Flight", callsign=flight_id, airline=airline, layer="dynamic")
             g.add_edge("ADDRESSES", tx_id, fid, valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])
             if airline and airline not in ("N",):
-                g.add_node(f"Airline:{airline}", "Airline", icao=airline, country=self.airline_country.get(airline),
+                g.add_node(f"Airline:{airline}", "Airline", designator=airline, country=self.airline_country.get(airline),
                            layer="static")
                 g.add_edge("OPERATED_BY", fid, f"Airline:{airline}")
             if rec["callsign"]["surface"]:

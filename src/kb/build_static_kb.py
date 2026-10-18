@@ -106,6 +106,7 @@ def build_kb(icao: str, half_deg: float) -> dict:
         "icao": icao,
         "name": airport["name"],
         "city": airport.get("municipality", ""),
+        "country": airport.get("iso_country", ""),
         "location": {"lat": lat, "lon": lon},
         "runways": runways,
         "runway_ends": sorted({end for rw in runways for end in rw["ends"]}),

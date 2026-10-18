@@ -2,6 +2,7 @@
   "icao": "KATL",
   "name": "Hartsfield Jackson Atlanta International Airport",
   "city": "Atlanta",
+  "country": "US",
   "location": {
     "lat": 33.6367,
     "lon": -84.428101
