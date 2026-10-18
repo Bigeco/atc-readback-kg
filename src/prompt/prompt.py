@@ -1,3 +1,5 @@
+import json
+
 ########################## M2: ontology-grounded extraction ###########################
 
 EXTRACTION_SYS_PROMPT = """
@@ -20,10 +22,7 @@ the speaker role, the callsign, and every ATC instruction it contains, using onl
 - callsign: the callsign as spoken, e.g. "Delta 2642" (digits only, drop hyphens). Controllers often abbreviate to the
   number only ("1606, Atlanta Ground, ...") -> return just "1606". Use null if no callsign is spoken.
 - A pilot readback repeats the controller's instructions: extract them with the same types as the controller would.
-- target: the runway ("8R", "26L"), taxiway ("L3", "M", "F1"), ramp ("Ramp 5") or facility ("Tower") the instruction refers to.
-  Write taxiways as letter + optional number (Lima 3 -> "L3", Foxtrot -> "F"). Write runways as number + L/R/C.
-- route: for TAXI_VIA only, the ordered list of taxiways (e.g. ["M", "L3"]). Otherwise [].
-- value: frequency for CONTACT/MONITOR ("119.1"), traffic description for GIVE_WAY/FOLLOW, else null.
+{value_formats}
 - Recognition errors to repair: "fox shot"/"fox tractor" = Foxtrot, "9 or left" = 9 left, "hold for the Lima 3" = hold short of Lima 3,
   "19-1" after monitor/contact tower = 119.1. Repair only these kinds of obvious errors.
 - REQUEST is only for a pilot asking for something (ready to taxi, request ...). A controller question is not an instruction.
@@ -44,6 +43,23 @@ speaker hint: {role_hint}
 transmission: {text}
 output:
 """.strip()
+
+
+def render_value_formats(vf: dict) -> str:
+    """Prompt lines for target/route/value notation, rendered from ontology.json value_formats."""
+    t = vf["target"]
+    q = lambda xs: ", ".join(f'"{x}"' for x in xs)
+    spoken = ", ".join(f'{k} -> "{v}"' for k, v in t["Taxiway"]["spoken"].items())
+    route, value = vf["route"], vf["value"]
+    return "\n".join([
+        f'- target: the runway ({q(t["Runway"]["examples"])}), taxiway ({q(t["Taxiway"]["examples"])}), '
+        f'ramp ({q(t["Ramp"]["examples"])}) or facility ({q(t["Facility"]["examples"])}) the instruction refers to.',
+        f'  Write taxiways as {t["Taxiway"]["format"]} ({spoken}). Write runways as {t["Runway"]["format"]}.',
+        f'- route: for {"/".join(route["applies_to"])} only, the {route["format"]} (e.g. {json.dumps(route["example"])}). '
+        f'Otherwise {json.dumps(route["otherwise"])}.',
+        f'- value: {value["CONTACT/MONITOR"].replace(" (", " for CONTACT/MONITOR (", 1)}, '
+        f'{value["GIVE_WAY/FOLLOW"]} for GIVE_WAY/FOLLOW, else null.',
+    ])
 
 
 # Few-shot examples are verbatim controller/pilot phraseology from FAA JO 7110.65BB EXAMPLE blocks

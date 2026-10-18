@@ -2,7 +2,7 @@
   "version": "1.1",
   "generated": {
     "by": "src/kb/build_ontology.py",
-    "date": "2026-10-18",
+    "date": "2026-10-19",
     "inputs": {
       "data/ontology/OntologyATCCommandsDescription_v20250704.pdf": "bf25cd79008ff0060963109c89ec0554",
       "data/ontology/OntologyATCCommandsTable_v20250704.pdf": "9511123029c3fc434f33c6104850f3f2",

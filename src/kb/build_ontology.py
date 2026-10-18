@@ -295,6 +295,25 @@ LEXICAL_CUES = {
 }
 
 
+# How extracted values are written (M2b prompt rules are rendered from this; M3 grounds these strings in the static KB).
+# Runways drop the DLR "RW" prefix; the DLR form is kept under "dlr" and checked against the command table.
+VALUE_FORMATS = {
+    "target": {
+        "Runway": {"format": "number + L/R/C", "examples": ["8R", "26L"], "dlr": "RW01L",
+                   "dlr_note": "DLR writes RW26L; the RW prefix is omitted here and M3 maps 26L to Runway:<ICAO>:26L."},
+        "Taxiway": {"format": "letter + optional number", "examples": ["L3", "M", "F1"],
+                    "spoken": {"Lima 3": "L3", "Foxtrot": "F"}, "dlr": "B1",
+                    "dlr_note": "Same as the DLR TX-Point name (A for alfa, B1)."},
+        "Ramp": {"examples": ["Ramp 5"]},
+        "Facility": {"examples": ["Tower"]},
+    },
+    "route": {"applies_to": ["TAXI_VIA"], "format": "ordered list of taxiways", "example": ["M", "L3"],
+              "otherwise": [],
+              "note": "TAXI_VIA holds the VIA values in route and the TO value in target (DLR splits TAXI VIA / TAXI TO)."},
+    "value": {"CONTACT/MONITOR": "frequency (\"119.1\")", "GIVE_WAY/FOLLOW": "traffic description", "other": None},
+}
+
+
 def pdf_text(path: Path, first: int = None, last: int = None) -> str:
     if not path.exists():
         sys.exit(f"[onto] missing input: {display_path(path)}")
@@ -515,6 +534,10 @@ def build(out_dir: Path):
     if missing:
         sys.exit(f"[onto] DLR description does not contain: {missing}")
     verify_fewshot_examples(faa)
+    dlr_params = pdf_text(DLR_TABLE, 2)
+    for name, spec in VALUE_FORMATS["target"].items():
+        if spec.get("dlr") and spec["dlr"] not in dlr_params:
+            sys.exit(f"[onto] value format {name}: DLR example {spec['dlr']} not in the parameter table")
     readback_basis = {level: {**faa_evidence(faa, sec, pat), "part": part}
                       for level, (sec, part, pat) in FAA_READBACK_BASIS.items()}
 
@@ -571,6 +594,7 @@ def build(out_dir: Path):
         "command_types": command_types,
         "advisory_types": [c["name"] for c in COMMAND_TYPES if c.get("advisory")],
         "non_instruction_types": [c["name"] for c in COMMAND_TYPES if c.get("non_instruction")],
+        "value_formats": VALUE_FORMATS,
         "lexical_cues": LEXICAL_CUES,
     }
 

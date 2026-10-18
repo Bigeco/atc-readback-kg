@@ -2,7 +2,7 @@
   "version": "1.1",
   "generated": {
     "by": "src/kb/build_ontology.py",
-    "date": "2026-10-18",
+    "date": "2026-10-19",
     "inputs": {
       "data/ontology/OntologyATCCommandsDescription_v20250704.pdf": "bf25cd79008ff0060963109c89ec0554",
       "data/ontology/OntologyATCCommandsTable_v20250704.pdf": "9511123029c3fc434f33c6104850f3f2",
@@ -1014,6 +1014,60 @@
     "ACK",
     "REQUEST"
   ],
+  "value_formats": {
+    "target": {
+      "Runway": {
+        "format": "number + L/R/C",
+        "examples": [
+          "8R",
+          "26L"
+        ],
+        "dlr": "RW01L",
+        "dlr_note": "DLR writes RW26L; the RW prefix is omitted here and M3 maps 26L to Runway:<ICAO>:26L."
+      },
+      "Taxiway": {
+        "format": "letter + optional number",
+        "examples": [
+          "L3",
+          "M",
+          "F1"
+        ],
+        "spoken": {
+          "Lima 3": "L3",
+          "Foxtrot": "F"
+        },
+        "dlr": "B1",
+        "dlr_note": "Same as the DLR TX-Point name (A for alfa, B1)."
+      },
+      "Ramp": {
+        "examples": [
+          "Ramp 5"
+        ]
+      },
+      "Facility": {
+        "examples": [
+          "Tower"
+        ]
+      }
+    },
+    "route": {
+      "applies_to": [
+        "TAXI_VIA"
+      ],
+      "format": "ordered list of taxiways",
+      "example": [
+        "M",
+        "L3"
+      ],
+      "otherwise": [],
+      "note": "TAXI_VIA holds the VIA values in route and the TO value in target (DLR splits TAXI VIA / TAXI TO)."
+    },
+    "value": {
+      "CONTACT/MONITOR": "frequency (\"119.1\")",
+      "GIVE_WAY/FOLLOW": "traffic description",
+      "other": null
+    }
+  },
   "lexical_cues": {
     "TAXI_VIA": "\\b(taxi|via|join|continue|ramp|down|on|to)\\b|\\b(alpha|bravo|charlie|delta|echo|fox\\w*|golf|hotel|juliet\\w*|kilo|lima|mike|november|papa|romeo|sierra|tango|uniform|victor|whiskey|yankee|zulu)\\b",
     "HOLD_SHORT": "hold\\s+short|hold\\s+for|short\\s+of",

@@ -17,7 +17,7 @@ from common.atc_text import (
     normalize_text,
 )
 from pipeline.llm import extract_json_block
-from prompt.prompt import EXTRACTION_EXAMPLES, EXTRACTION_PROMPT, EXTRACTION_SYS_PROMPT
+from prompt.prompt import EXTRACTION_EXAMPLES, EXTRACTION_PROMPT, EXTRACTION_SYS_PROMPT, render_value_formats
 
 
 STOP_WORDS = r"(?:hold short|hold position|give way|monitor|contact|follow|pass behind|behind|cross|turn|then|and then)"
@@ -197,7 +197,9 @@ class LLMExtractor:
             f"speaker hint: {ex['role_hint']}\ntransmission: {ex['text']}\noutput: {json.dumps(ex['output'])}"
             for ex in EXTRACTION_EXAMPLES
         )
-        self.template = EXTRACTION_PROMPT.replace("{command_types}", types).replace("{examples}", examples)
+        self.template = (EXTRACTION_PROMPT.replace("{command_types}", types)
+                         .replace("{value_formats}", render_value_formats(ontology["value_formats"]))
+                         .replace("{examples}", examples))
 
     def _prompt(self, turn: dict) -> str:
         return self.template.replace("{role_hint}", turn["role"]).replace("{text}", turn["text"])
