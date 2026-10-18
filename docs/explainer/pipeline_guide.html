@@ -389,7 +389,7 @@ const STEPS = [
     why: ["같은 비행기가 'Delta 2642', '26-42', '2642'로 다르게 불립니다. 하나로 묶어야 이력이 쌓입니다. (C4, C5)", "애틀랜타는 콜사인의 88%가 Delta라서 숫자만 다른 콜사인이 많습니다. 한 자리만 다른 활성 항공편이 있으면 '유사 콜사인'으로 표시합니다."],
     input: '콜사인 "2642"\n대상 "L3", 경로 ["M"]',
     output: '항공편 <span class="v">DAL2642</span> <span class="tag w">ABBREVIATED</span>\n대상 <span class="v">Taxiway:KATL:L3</span> ✓ 공항 지도에 있음\n경로 <span class="v">Taxiway:KATL:M</span> ✓',
-    formula: "f_i = argmax_f [β·sim(ĉ_i, tel(f)) + (1-β)·ctx(f, i)],  ℓ(g) ∈ V_S ∪ {⊥}",
+    formula: "c_i = argmax_c [β·sim(ĉ_i, tel(c)) + (1-β)·ctx(c, i)],  ℓ(g) ∈ V_S ∪ {⊥}",
     code_path: "src/pipeline/m3_canonicalize.py",
     numbers: "번호만 부른 콜사인 처리 513회, 유사 콜사인 표시 78회 (지상관제 실행 기준)",
   },

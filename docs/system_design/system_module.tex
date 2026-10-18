@@ -170,10 +170,10 @@ $F$는 다음을 만족해야 한다.
 \toprule
 기호 & 의미 & 기호 & 의미\\\midrule
 $s_i=[t^s_i,t^e_i)$ & $i$번째 송신(transmission) 구간 & $x_i$ & 송신 $i$의 음성 클립\\
-$w_i$ & 전사 단어열 & $c_i$ & ASR 신뢰도 벡터\\
-$r_i\in\{\ATCO,\PILOT\}$ & 화자 역할 & $\hat c_i$ & 콜사인 언급(문자열, 생략 시 $\varepsilon$)\\
+$w_i$ & 전사 단어열 & $c_i\in V_{\mathrm{Flight}}\cup\{\bot\}$ & 확정된 항공편 콜사인 (예: \cmd{DAL1489})\\
+$r_i\in\{\ATCO,\PILOT\}$ & 화자 역할 & $\hat c_i$ & 콜사인 원 표면형(말한 그대로, 예: ``Delta 1489'', 생략 시 $\varepsilon$)\\
 $\iota=(\kappa,v,\mu,q,g)$ & 지시 개념(유형·값·단위·한정어·대상) & $I_i$ & 송신 $i$의 지시 집합\\
-$f_i \in V_{\mathrm{Flight}}$ & 해석된 항공편 노드 & $\Tcmd$ & 지시 유형 집합\\
+$\Tcmd$ & 지시 유형 집합 & $\mathcal{F}_{\mathrm{act}}(t)$ & 시각 $t$에 활성인 항공편 콜사인 집합\\
 $\Treq\subseteq\Tcmd$ & 복창 필수 유형 & $\Tst\subseteq\Tcmd$ & 상태형(유효 구간을 가지는) 유형\\
 $\Tadv$ & 정보·권고(advisory) 유형 & $\G_{<t}$ & 시각 $t$ 이전까지 누적된 그래프\\
 $\G|_t$ & 시각 $t$의 스냅샷 & $\Delta_{\mathrm{rb}}$ & 복창 허용 시간창\\
@@ -381,7 +381,7 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 % main arrows
 \draw[arr] (in) -- node[lab,above=2pt]{$a,\Ctx$} (m1);
 \draw[arr] (m1) -- node[lab,above=2pt]{$\{(s_i,x_i)\}$} (m2);
-\draw[arr] (m2) -- node[lab,above=2pt]{$(w_i,c_i)$} (m3);
+\draw[arr] (m2) -- node[lab,above=2pt]{$w_i$} (m3);
 \draw[arr] (m3) -- node[lab,above=2pt]{$(w_i,r_i)$} (m4);
 \draw[arr] ($(m4.south)+(0.95,0)$) -- node[lab,right=2pt]{$u_i$} ($(m5.north)+(0.95,0)$);
 \draw[arr] (m5) -- node[lab,above=2pt]{$\tilde u_i$} (m6);
@@ -511,7 +511,7 @@ E_k = 10\log_{10}\Big(\frac{1}{L}\sum_{n\in\mathrm{frame}_k} a[n]^2\Big)\ [\math
 
 \textbf{[입력]} $x_i$, $\Vdom(\alpha_{\mathrm{apt}})$, 활성 콜사인 목록 $\mathcal{F}_{\mathrm{act}}(t_i) \subseteq V_{\cmd{Flight}}(\G_{<t_i})$.
 
-\textbf{[출력]} $(w_i, c_i, \mathrm{lang}_i)$. $w_i\in\Sigma^*$이고, $c_i = (\bar\ell_i,\ p^{\mathrm{ns}}_i)$는 평균 토큰 로그확률과 무음 확률, $\mathrm{lang}_i$는 Whisper 언어 식별 결과다(RQ4). 선택적으로 $N$-best $\{(w_i^{(k)},P^{(k)})\}_{k=1}^{K}$를 낸다.
+\textbf{[출력]} $(w_i, \mathrm{lang}_i)$. $w_i\in\Sigma^*$이고, $\mathrm{lang}_i$는 Whisper 언어 식별 결과다(RQ4). 선택적으로 $N$-best $\{(w_i^{(k)},P^{(k)})\}_{k=1}^{K}$를 낸다.
 
 \textbf{[정의]}
 \begin{align}
@@ -584,8 +584,8 @@ u_i = \arg\max_{u\,\in\,\mathcal{L}(\mathrm{JSchema}(\Ont))}\; P_{\mathrm{LLM}}\
 
 \textbf{[출력]}
 \begin{itemize}
-\item $\tilde u_i = (f_i,\ \tilde I_i,\ \mathcal{A}_i)$.
-\item $f_i\in V_{\cmd{Flight}}\cup\{\bot\}$: 해석된 항공편.
+\item $\tilde u_i = (c_i,\ \tilde I_i,\ \mathcal{A}_i)$.
+\item $c_i\in V_{\cmd{Flight}}\cup\{\bot\}$: 확정된 항공편 콜사인 (Flight 노드 ID, 예: \cmd{DAL1489}). $\hat c_i$(말한 그대로)를 해소한 결과다.
 \item $\tilde\iota = (\kappa,\ \nu(v),\ \mu,\ q,\ \ell(g))$, 여기서 $\ell(g)\in V_S\cup\{\bot\}$.
 \item $\mathcal{A}_i$: 교정·연결 실패 기록 (예: \cmd{ASR\_CORRECTED}, \cmd{KB\_VIOLATION}).
 \end{itemize}
@@ -597,14 +597,14 @@ u_i = \arg\max_{u\,\in\,\mathcal{L}(\mathrm{JSchema}(\Ont))}\; P_{\mathrm{LLM}}\
 \begin{equation}
 \ell(g) = \begin{cases}\arg\max_{v\in V_S,\ v\sqsubseteq \alpha_{\mathrm{apt}}}\ \mathrm{sim}(\nu(g), \mathrm{name}(v)) & \text{if } \max \ge \theta_\ell\\ \bot & \text{otherwise (}\cmd{KB\_VIOLATION}\text{)}\end{cases}
 \end{equation}
-\item \emph{콜사인 해소}: 활성 항공편 집합을 $\mathcal{F}_{\mathrm{act}}(t_i) = \{f : \exists x\in\G_{<t_i},\ \mathrm{flight}(x)=f,\ t_i - t(x) \le W\}$로 둔다.
+\item \emph{콜사인 해소}: 활성 항공편 집합을 $\mathcal{F}_{\mathrm{act}}(t_i) = \{c : \exists x\in\G_{<t_i},\ \mathrm{flight}(x)=c,\ t_i - t(x) \le W\}$로 둔다.
 \begin{equation}
-f_i = \arg\max_{f\in\mathcal{F}_{\mathrm{act}}(t_i)\cup\{f_{\mathrm{new}}\}}\;\Big[\beta\,\mathrm{sim}_{\mathrm{ph}}\big(\hat c_i, \mathrm{tel}(f)\big) + (1-\beta)\,\mathrm{ctx}(f, i)\Big],
+c_i = \arg\max_{c\in\mathcal{F}_{\mathrm{act}}(t_i)\cup\{c_{\mathrm{new}}\}}\;\Big[\beta\,\mathrm{sim}_{\mathrm{ph}}\big(\hat c_i, \mathrm{tel}(c)\big) + (1-\beta)\,\mathrm{ctx}(c, i)\Big],
 \end{equation}
   \begin{itemize}
   \item $\mathrm{sim}_{\mathrm{ph}}$: 발음 기반 유사도. 항공사 telephony와 편명 숫자를 따로 비교한다.
-  \item $\mathrm{ctx}(f,i)$: 문맥 점수. $i$가 $f$에게 내려진 직전 지시의 개념을 반복하면(복창 후보) 높다.
-  \item $f_{\mathrm{new}}$는 $\mathrm{tel}^{-1}(\hat c_i)$로 새로 만든 항공편이다. $\hat c_i=\varepsilon$이면 $\mathrm{ctx}$만으로 결정한다.
+  \item $\mathrm{ctx}(c,i)$: 문맥 점수. $i$가 $c$에게 내려진 직전 지시의 개념을 반복하면(복창 후보) 높다.
+  \item $c_{\mathrm{new}}$는 $\mathrm{tel}^{-1}(\hat c_i)$로 새로 만든 항공편이다. $\hat c_i=\varepsilon$이면 $\mathrm{ctx}$만으로 결정한다.
   \end{itemize}
 \end{itemize}
 
@@ -620,14 +620,14 @@ f_i = \arg\max_{f\in\mathcal{F}_{\mathrm{act}}(t_i)\cup\{f_{\mathrm{new}}\}}\;\B
 \subsection{M4. 증분 사건 중심 Temporal KG 구축}
 \textbf{[해결 문제]} \ch{C8} 발화 간 관계, \ch{C10} 시간 유효성, \ch{C12} 출처·신뢰도, \ch{C13} 스키마 검증.
 
-\textbf{[입력]} $\G_{t_{i-1}}$, $\tilde u_i$, $(s_i, r_i, w_i, c_i)$, $\Sigma$, $\KR$, $\Cfg$.
+\textbf{[입력]} $\G_{t_{i-1}}$, $\tilde u_i$, $(s_i, r_i, w_i)$, $\Sigma$, $\KR$, $\Cfg$.
 
 \textbf{[출력]} $\G_{t_i} = \G_{t_{i-1}} \oplus \Delta_i$.
 
 \textbf{[정의] 사건 reification.} 송신 노드 $n^{T}_i$, 지시 노드 $n^{I}_{ij}$를 만들고 다음 간선을 추가한다.
 \begin{align}
-\Delta_i = \{\,& (n^{T}_i,\cmd{SPOKEN\_BY},r_i),\ (n^{T}_i,\cmd{ADDRESSES},f_i),\ (n^{T}_i,\cmd{CONTAINS},n^{I}_{ij}),\nonumber\\
-& (n^{I}_{ij},\cmd{TARGET},\ell(g_{ij})),\ (n^{I}_{ij},\cmd{NEXT},n^{I}_{\mathrm{prev}(f_i)})\,\} \;\cup\; \Delta^{\mathrm{rb}}_i \;\cup\; \Delta^{\mathrm{inv}}_i .
+\Delta_i = \{\,& (n^{T}_i,\cmd{SPOKEN\_BY},r_i),\ (n^{T}_i,\cmd{ADDRESSES},c_i),\ (n^{T}_i,\cmd{CONTAINS},n^{I}_{ij}),\nonumber\\
+& (n^{I}_{ij},\cmd{TARGET},\ell(g_{ij})),\ (n^{I}_{ij},\cmd{NEXT},n^{I}_{\mathrm{prev}(c_i)})\,\} \;\cup\; \Delta^{\mathrm{rb}}_i \;\cup\; \Delta^{\mathrm{inv}}_i .
 \end{align}
 
 \textbf{[정의] 이중 시간 (bi-temporal).} 모든 동적 원소 $x$에 대해 다음을 둔다.
@@ -639,7 +639,7 @@ f_i = \arg\max_{f\in\mathcal{F}_{\mathrm{act}}(t_i)\cup\{f_{\mathrm{new}}\}}\;\B
 상태형 지시 $\iota\in\Tst$의 유효 구간은
 \begin{equation}
 \tau(\iota) = \big[t^s_i,\ t^{\mathrm{to}}\big),\quad
-t^{\mathrm{to}} = \min\Big(\{t^s_k : k>i,\ f_k=f_i,\ \exists\iota'\in \tilde I_k,\ \mathrm{sup}(\iota',\iota)\} \cup \{t^s_i + T_{\max}(\kappa)\}\Big)
+t^{\mathrm{to}} = \min\Big(\{t^s_k : k>i,\ c_k=c_i,\ \exists\iota'\in \tilde I_k,\ \mathrm{sup}(\iota',\iota)\} \cup \{t^s_i + T_{\max}(\kappa)\}\Big)
 \end{equation}
 이다. $\mathrm{sup}(\iota',\iota)$는 대체(supersede) 관계로, $\KR$(\texttt{rules.json})에 표로 정의한다. 예: \cmd{CROSS\_RUNWAY}는 \cmd{HOLD\_SHORT}·\cmd{HOLD\_POSITION}을, \cmd{CLEARED\_FOR\_TAKEOFF}는 \cmd{LINE\_UP\_AND\_WAIT}·\cmd{HOLD\_SHORT}를 종료하고, \cmd{CONTACT}·\cmd{MONITOR}는 그 항공편의 모든 상태를 종료한다. 이 관계는 규정 문장이 아니라 지시의 의미에서 정했다. $T_{\max}(\kappa)$는 대체 지시가 녹음에 없을 때의 상한으로 $\Cfg$(\texttt{kg\_build.json})에 둔다(예: \cmd{HOLD\_SHORT} 900\,s, \cmd{CROSS\_RUNWAY} 180\,s, 기본 600\,s). KATL 전체 KG에서 관제사 상태형 지시 2{,}993개 중 2{,}251개가 이 상한으로 종료되었다. 비상태형 지시는 $\tau(\iota)=[t^s_i,t^e_i)$이다.
 
@@ -647,9 +647,9 @@ t^{\mathrm{to}} = \min\Big(\{t^s_k : k>i,\ f_k=f_i,\ \exists\iota'\in \tilde I_k
 
 \textbf{[정의] 복창 연결.}
 \begin{equation}
-\Delta^{\mathrm{rb}}_i = \Big\{(n^T_i,\cmd{READBACK\_OF},n^T_j)\ :\ r_i=\PILOT,\ r_j=\ATCO,\ f_i=f_j,\ 0 < t^s_i - t^e_j \le \Delta_{\mathrm{rb}},\ j=\max\{j'<i\}\Big\},
+\Delta^{\mathrm{rb}}_i = \Big\{(n^T_i,\cmd{READBACK\_OF},n^T_j)\ :\ r_i=\PILOT,\ r_j=\ATCO,\ c_i=c_j,\ 0 < t^s_i - t^e_j \le \Delta_{\mathrm{rb}},\ j=\max\{j'<i\}\Big\},
 \end{equation}
-$f_i=\bot$이면 직전 관제사 송신의 수신자와의 개념 중복도 $\mathrm{ovl}(\tilde I_i,\tilde I_j)\ge\theta_{\mathrm{ovl}}$로 대신 판정한다. $\Delta_{\mathrm{rb}}=20$\,s는 $\Cfg$에 둔다. KATL에서 연결된 복창 404건 중 351건이 5\,s 이내, 95\%가 12.4\,s 이내였다(20\,s 창 안에서 측정).
+$c_i=\bot$이면 직전 관제사 송신의 수신자와의 개념 중복도 $\mathrm{ovl}(\tilde I_i,\tilde I_j)\ge\theta_{\mathrm{ovl}}$로 대신 판정한다. $\Delta_{\mathrm{rb}}=20$\,s는 $\Cfg$에 둔다. KATL에서 연결된 복창 404건 중 351건이 5\,s 이내, 95\%가 12.4\,s 이내였다(20\,s 창 안에서 측정).
 
 \textbf{[정의] 검증.} 적재 후 $\G_{t_i}\models\Sigma$를 검사한다. 위반하면 해당 $\Delta$를 \cmd{quarantine} 라벨로 격리한다.
 
@@ -692,7 +692,7 @@ m(\tilde\iota,\tilde\iota') &= \mathbb{1}\big[\kappa=\kappa'\ \wedge\ \ell(g)=\e
 \item[$\rho_2$] \cmd{NO\_READBACK}: $\mathrm{Req}(j)\neq\emptyset$이고 $\nexists i$ with $(i,\cmd{READBACK\_OF},j)$.
 \item[$\rho_3$] \cmd{NO\_CALLSIGN}: $(i,\cmd{READBACK\_OF},j)\wedge \hat c_i=\varepsilon$ (FAA JO 7110.65 §2-4-3 \cite{faa7110}).
 \item[$\rho_4$] \cmd{RWY\_OVERLAP}: 다음을 만족하는 $\tilde\iota_a,\tilde\iota_b$가 존재 (Allen 관계 \cite{allen1983}).
-\[\kappa_a,\kappa_b\in\mathcal{T}_{\mathrm{rwy}},\quad \ell(g_a)=\ell(g_b),\quad f_a\neq f_b,\quad \tau(\tilde\iota_a)\ \mathsf{overlaps}\ \tau(\tilde\iota_b),\]
+\[\kappa_a,\kappa_b\in\mathcal{T}_{\mathrm{rwy}},\quad \ell(g_a)=\ell(g_b),\quad c_a\neq c_b,\quad \tau(\tilde\iota_a)\ \mathsf{overlaps}\ \tau(\tilde\iota_b),\]
 \[\mathcal{T}_{\mathrm{rwy}}=\{\cmd{CLEARED\_TO\_LAND},\cmd{CLEARED\_FOR\_TAKEOFF},\cmd{LINE\_UP\_AND\_WAIT},\cmd{CROSS\_RUNWAY}\}.\] 실제 운영에서는 예상 분리 허가 등이 허용되므로 위반이 아니라 \emph{주의 힌트}로 표시한다.
 \item[$\rho_5$] \cmd{POST\_HANDOFF}: $(f,\cmd{CONTACT})$의 $t^{\mathrm{from}}$ 이후 같은 위치 $\phi_{\mathrm{pos}}$에서 $f$에게 새 지시가 나감.
 \item[$\rho_6$] \cmd{KB\_VIOLATION}: $\ell(g)=\bot$. 공항에 없는 활주로·유도로이며, ASR 오류 또는 맥락 오설정을 시사한다.
@@ -755,12 +755,12 @@ m(\tilde\iota,\tilde\iota') &= \mathbb{1}\big[\kappa=\kappa'\ \wedge\ \ell(g)=\e
 \node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s_i, w_i$}};
 \node[dyn] (tx2) at (0,-3.2) {\textbf{Transmission}\\{\scriptsize (PILOT)}};
 \node[sta] (role) at (-4.2,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
-\node[dyn] (fl) at (4.6,0) {\textbf{Flight}\\{\scriptsize callsign}};
+\node[dyn] (fl) at (4.6,0) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
 \node[sta] (al) at (8.6,0) {\textbf{Airline}\\{\scriptsize icao, telephony}};
 \node[dyn] (ins) at (4.6,-3.2) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q,\tau$, conf\_label}};
 \node[sta] (rw) at (8.6,-3.2) {\textbf{Runway / Taxiway}\\{\scriptsize / Facility}};
 \node[sta] (ap) at (8.6,-5.6) {\textbf{Airport}};
-\node[dyn] (cm) at (4.6,2.2) {\textbf{CallsignMention}\\{\scriptsize $\hat c_i$ (원 표면형)}};
+\node[dyn] (cm) at (4.6,2.2) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
 \node[dyn] (ins2) at (1.4,-5.6) {\textbf{Instruction}\\{\scriptsize (다음)}};
 
 \draw[e] (tx) -- node[el,above]{SPOKEN\_BY} (role);
@@ -863,7 +863,7 @@ M2b & $u_1=(\hat c_1, I_1)$, $\hat c_1=\texttt{"Alpha 2398"}$,\\
 & $\phantom{I_1=\{}(\cmd{CROSS\_RUNWAY},-,-,-,\texttt{"two two right"}),\ (\cmd{TAXI\_VIA},-,-,-,\texttt{Alpha})\}$\\
 & $u_2=(\texttt{"Delta 2398"},\{\text{같은 3개 개념}\})$\\
 M3 & $\nu(\texttt{"two two right"})=\cmd{22R}$, $\ell(\cdot)=\cmd{Runway\_22R}$\\
-& $\hat c_1$의 \texttt{Alpha}는 telephony에 없고 숫자가 일치하며 $\mathrm{ctx}$가 높음 $\Rightarrow f_1=f_2=\cmd{DAL2398}$, $\mathcal{A}_1\ni\cmd{ASR\_CORRECTED}$ (\ch{C4})\\
+& $\hat c_1$의 \texttt{Alpha}는 telephony에 없고 숫자가 일치하며 $\mathrm{ctx}$가 높음 $\Rightarrow c_1=c_2=\cmd{DAL2398}$, $\mathcal{A}_1\ni\cmd{ASR\_CORRECTED}$ (\ch{C4})\\
 M4 & $\cmd{Transmission}_2\xrightarrow{\cmd{READBACK\_OF}}\cmd{Transmission}_1$ ($t^s_2-t^e_1=0.6\,\mathrm{s}\le\Delta_{\mathrm{rb}}$). $\tau(\cmd{CROSS\_RUNWAY}) = [46.9, t^{\mathrm{to}})$\\
 M5 & $\mathrm{Req}=\{\cmd{CROSS\_RUNWAY}\}$, $\mathrm{Miss}=\mathrm{Conf}=\emptyset\Rightarrow\cmd{MATCH}$. 단어 단위로는 순서·표현이 다르지만 개념 단위로는 일치한다 (\ch{C6}). 근거 $\pi$에는 \cmd{ASR\_CORRECTED} 표시가 포함된다.\\
 M6 & $q_2(\cmd{DAL2398}) = \langle\cmd{TURN}\prec\cmd{CROSS\_RUNWAY}\prec\cmd{TAXI\_VIA}\rangle$\\
@@ -891,9 +891,9 @@ F_{\rho} = F\big(\,\cdot\,;\ \Ont_{\rho},\ \KS^{\rho},\ \Vdom^{\rho},\ \mathcal{
 \end{align}
 (b)에서 바꾸는 것은 공항 1곳(KR: \cmd{RKSI}, JP: \cmd{RJTT})의 정적 지식, 프롬프트 어휘, 그리고 $\KR$(\texttt{rules.json})의 복창 규칙(ICAO)뿐이고 온톨로지(\texttt{ontology.json})는 그대로다. ICAO·국가 규정 원문은 아직 입력 자료에 없어 RQ4 단계에서 확보·검증한다. 데이터는 OurAirports와 FAA JO 7340.2 콜사인 표 \cite{faa7340}를 그대로 재사용한다.
 
-\textbf{[측정]} 국가별 송신 $n_\rho\approx 15$--$20$개에 대해 사람이 정답 $(f^*_i, I^*_i)$를 단다.
+\textbf{[측정]} 국가별 송신 $n_\rho\approx 15$--$20$개에 대해 사람이 정답 $(c^*_i, I^*_i)$를 단다.
 \begin{align}
-\mathrm{CSR}_\rho &= \frac{1}{n_\rho}\sum_{i}\mathbb{1}\big[f_i = f^*_i\big] &&\text{(콜사인 인식률)}\\
+\mathrm{CSR}_\rho &= \frac{1}{n_\rho}\sum_{i}\mathbb{1}\big[c_i = c^*_i\big] &&\text{(콜사인 인식률)}\\
 \mathrm{CmdF1}_\rho &= \mathrm{F1}\Big(\textstyle\bigcup_i \tilde I_i,\ \bigcup_i I^*_i\Big) &&\text{(개념 단위 명령 인식, $m(\cdot,\cdot)$ 기준 일치)}\\
 m^\dagger(i) &= \text{첫 } k\in(\mathrm{M1},\mathrm{M2a},\mathrm{M2b},\mathrm{M3}) \text{ s.t. } \mathrm{out}_{k}(i)\neq \mathrm{gold}_{k}(i) &&\text{(처음 실패한 단계)}
 \end{align}
@@ -921,10 +921,10 @@ m^\dagger(i) &= \text{첫 } k\in(\mathrm{M1},\mathrm{M2a},\mathrm{M2b},\mathrm{M
 모듈 & 입력 & 출력 & 구현 후보\\\midrule
 M0 & $D_{\mathrm{apt}},D_{\mathrm{tel}},D_{\mathrm{fac}},D_{\mathrm{onto}},D_{\mathrm{reg}}$ & $\Ont,\ \KS,\ \KR,\ \Vdom$ (+ 설정 $\Cfg$) & Python, pdftotext (\texttt{kb/})\\
 M1a & $\{(a^{\varphi},\Ctx^{\varphi})\}_{\varphi}$ & $\{(s_i,x_i,\Ctx_i)\}$ (UTC 병합) & ffmpeg, Silero VAD, 파일명 파서\\
-M1b & $x_i,\Vdom,\mathcal{F}_{\mathrm{act}}$ & $(w_i,c_i,\mathrm{lang}_i)$ & faster-whisper large-v3 (RTX 4090에서 동작 확인)\\
+M1b & $x_i,\Vdom,\mathcal{F}_{\mathrm{act}}$ & $(w_i,\mathrm{lang}_i)$ & faster-whisper large-v3 (RTX 4090에서 동작 확인)\\
 M2a & $\{(w_i,\sigma_i)\}_{i\in\text{파일}}$ & $\{r_i\}$, $\rho:\sigma\mapsto r$ & LLM(화자 단위) + 규칙 다수결\\
 M2b & $w_i,\Ont,\mathcal{E}$ & $u_i=(\hat c_i,I_i)$ & LLM(API 또는 로컬) + JSON Schema 구조화 출력\\
-M3 & $u_i,\KS,\G_{<t_i},\Ctx_i$ & $\tilde u_i=(f_i,\tilde I_i,\mathcal{A}_i)$ & rapidfuzz, Double Metaphone, 규칙\\
+M3 & $u_i,\KS,\G_{<t_i},\Ctx_i$ & $\tilde u_i=(c_i,\tilde I_i,\mathcal{A}_i)$ & rapidfuzz, Double Metaphone, 규칙\\
 M4 & $\G_{t_{i-1}},\tilde u_i,\Sigma,\KR,\Cfg$ & $\G_{t_i}$ & Neo4j + Cypher MERGE (Graphiti 참고)\\
 M5 & $\G_t,\mathcal{R},\KR$ & $\Yset$ & Cypher 규칙 질의\\
 M6 & $\G,t,q$ & $Q(\G,t,q)$ & Neo4j Browser / Streamlit\\

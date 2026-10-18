@@ -60,7 +60,7 @@ STT를 Whisper로 바꾸면 M1 안에서 음성 구간 탐지(VAD)로 송신을 
 \node[mod] (m5) at (14.4,-8.4) {\textbf{M5}\\규칙 추론·이상 탐지\\{\footnotesize 복창 비교 $\rho_1$–$\rho_7$}};
 \node[mod] (m6) at (3.4,-8.4) {\textbf{M6}\\시점 질의·시각화\\{\footnotesize 웹 데모}};
 
-\draw[flow] (m3.south) -- node[data, right=4pt]{항공편 $f_i$\\정규화된 지시 $\tilde I_i$\\{\footnotesize 대상 = 공항 노드 (없으면 $\bot$)}} (m4.north);
+\draw[flow] (m3.south) -- node[data, right=4pt]{항공편 콜사인 $c_i$\\정규화된 지시 $\tilde I_i$\\{\footnotesize 대상 = 공항 노드 (없으면 $\bot$)}} (m4.north);
 \draw[flow] (m4) -- node[data, above=3pt]{\textbf{Temporal KG} $\mathcal{G}_t$}
                     node[data, below=3pt]{{\footnotesize 복창 연결·지시 유효 구간 포함}} (m5);
 \draw[flow] (m5) -- node[data, above=3pt]{$\mathcal{G}$ + \textbf{경고} $\mathcal{Y}$}
