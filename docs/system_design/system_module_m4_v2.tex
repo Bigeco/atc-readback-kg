@@ -45,7 +45,7 @@
 \pagestyle{empty}
 \begin{document}
 \section*{KG 스키마 그림 후보 비교}
-일곱 후보 모두 \textbf{같은 KG}를 그린 것이다(노드 종류 Transmission·Instruction은 각각 하나). 다른 점은 그리는 방식과, D만 복창 간선을 지시 단위로 바꾸는 구조 변경이라는 점이다.
+여덟 후보 모두 \textbf{같은 KG}를 그린 것이다(노드 종류 Transmission·Instruction은 각각 하나). 다른 점은 그리는 방식과, D만 복창 간선을 지시 단위로 바꾸는 구조 변경이라는 점이다.
 \begin{center}\small
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
 \toprule
@@ -56,7 +56,8 @@ C & B + KATL 실제 예시 시간축 & 구조(B)와 시간·복창(예시)을 �
 D & B와 같되 READBACK\_OF를 \emph{지시끼리} 연결 (구조 변경) & 어느 지시가 복창됐는지 그래프에서 바로 보임 & 코드 수정 필요, 간선 수 증가\\
 E & B와 같되 시각을 가진 Transmission·Instruction을 ``시간축 위의 사건'' 상자로 묶고 시간 화살표 표시 & 무엇이 시간에 따라 쌓이는지 한눈에 보임 & (C처럼 예시 시간축을 함께 두는 것이 좋음)\\
 F & E를 세 층(사건 / 개체 / 정적 KB)으로 정리 + 시간축 예시. 선행 연구(Zep) 구조를 따름 & 층마다 성격이 분명하고 선행 연구로 설명 가능 & 그림이 큼\\
-G (추천) & F와 같은 그림 + 설계 결정과 근거 표 & 최종안 & \\
+G & F와 같은 그림 + 설계 결정과 근거 표 & 결정 근거가 한 장에 정리됨 & \\
+H (추천) & G에서 지시 대상 상자를 AirportPlace(공항 장소)와 ATCFacility(관제 시설)로 나눔 & 최종안. TARGET/VIA가 어디를 가리키는지 분명함 & \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -396,7 +397,7 @@ READBACK\_OF를 송신끼리가 아니라 \textbf{조종사 지시 $\to$ 관제�
 \end{tikzpicture}}
 \end{center}
 \newpage
-\section*{후보 G: 최종 추천안 (F + 설계 결정 정리)}
+\section*{후보 G: F + 설계 결정 정리}
 그림은 후보 F와 같다(세 층 + KATL 시간축 예시). 아래 표는 이 그림이 담은 설계 결정과 그 근거다.
 \begin{center}
 \resizebox{0.92\textwidth}{!}{%
@@ -460,6 +461,91 @@ READBACK\_OF는 송신끼리 & 대화의 주고받기(누가 누구에게 답했
 \end{tabularx}
 \end{center}
 
+\begin{center}
+\resizebox{0.85\textwidth}{!}{%
+\begin{tikzpicture}[font=\small, x=0.13cm, y=1cm]
+\draw[-{Stealth}, thick] (18,0) -- (102,0) node[right]{$t$ [s]};
+\foreach \x in {20,30,...,100} { \draw (\x,0.08) -- (\x,-0.08) node[below,font=\scriptsize]{\x}; }
+% transmissions (short labels; contents listed below the figure)
+\fill[blue!25] (24.1,0.85) rectangle (30.4,1.15); \node[anchor=south,font=\scriptsize] at (27.2,1.15) {\#0005 ATCO};
+\fill[orange!40] (31.7,1.85) rectangle (37.2,2.15); \node[anchor=west,font=\scriptsize] at (37.6,2.0) {\#0006 PILOT (복창)};
+\fill[blue!25] (88.5,0.85) rectangle (91.2,1.15); \node[anchor=south,font=\scriptsize] at (89.8,1.15) {\#0022 ATCO};
+% readback
+\draw[red!60!black, thick, -{Stealth}] (33,1.83) to[out=-110,in=30] (29.5,1.5);
+\node[font=\scriptsize, red!60!black, anchor=west] at (38,1.55) {READBACK\_OF \{MISMATCH\}};
+\draw[red!60!black, thin] (37.9,1.55) -- (33.2,1.6);
+% next
+\draw[teal!60!black, thick, dashed, -{Stealth}] (30.4,0.75) to[out=-10,in=190] (88.5,0.75);
+\node[font=\scriptsize, teal!60!black, fill=white, inner sep=1pt] at (72,0.3) {NEXT \{$\Delta t$ = 64.4 s\}};
+% validity bars
+\fill[green!45!black!60] (24.1,-0.95) rectangle (88.5,-0.7); \node[anchor=east,font=\scriptsize] at (23.5,-0.82) {$\tau$(TAXI\_VIA)};
+\node[font=\scriptsize, anchor=west] at (88.8,-0.82) {MONITOR가 끝냄};
+\fill[green!25] (24.1,-1.45) rectangle (30.4,-1.2); \node[anchor=east,font=\scriptsize] at (23.5,-1.33) {$\tau$(FOLLOW)};
+\fill[green!45!black!60] (88.5,-1.95) rectangle (101,-1.7); \node[anchor=east,font=\scriptsize] at (88.0,-1.83) {$\tau$(MONITOR): 다음 지시가 없어 최대 1800 s까지};
+% snapshot
+\draw[dashed] (50,-2.2) -- (50,2.5) node[above,font=\scriptsize]{$\G|_{50}$};
+\node[font=\scriptsize, anchor=north west] at (50.6,-2.15) {$\G|_{50}$: DAL1489는 TAXI\_VIA(M 경유 M2) 유효};
+\end{tikzpicture}}
+\end{center}
+\newpage
+\section*{후보 H: G에서 지시 대상 상자를 둘로 나눔 (최종 추천안)}
+후보 G와 같고, ``Runway / Taxiway / Ramp / Facility'' 상자만 성격대로 둘로 나눴다.
+\begin{itemize}\itemsep0pt
+\item \textbf{AirportPlace (공항 장소)}: Runway, Taxiway, Ramp. 지시의 목적지·정지 위치(TARGET)와 taxi 경로(VIA, 유도로만)가 가리킨다.
+\item \textbf{ATCFacility (관제 시설)}: Facility와 주파수. CONTACT/MONITOR의 TARGET이 가리킨다. 장소가 아니라 관제 기관이다(AIXM도 관제 기관·주파수를 공항 구성 요소와 따로 둔다).
+\item 두 이름은 그림에서 노드 종류를 묶는 상위 이름이다. 실제 노드 ID는 M3 규칙 \texttt{개체종류:공항코드:개체이름} 그대로다(\texttt{Runway:KATL:26L}, \texttt{Taxiway:KATL:M2}, \texttt{Ramp:KATL:5}, \texttt{Facility:KATL:TWR}).
+\item KATL 목록에 없는 이름(예: \texttt{Taxiway:KATL:Z})도 노드로 만들되 \texttt{in\_kb=false}로 표시한다(KB\_VIOLATION).
+\end{itemize}
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  font=\small,
+  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.85cm, minimum width=2.6cm, align=center},
+  ent/.style={draw, thick, rounded corners=2pt, fill=yellow!12, minimum height=0.85cm, minimum width=2.6cm, align=center},
+  sta/.style={draw, thick, fill=res, minimum height=0.85cm, minimum width=2.4cm, align=center},
+  e/.style={-{Stealth[length=2.2mm]}, thick},
+  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt},
+  band/.style={draw, rounded corners=6pt, thick, inner sep=0pt},
+  bl/.style={font=\small\bfseries, anchor=north west, align=left}
+]
+% ---- layer 1: events (time-stamped)
+\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s=[t^s,t^e)$, $w$, speaker}};
+\node[dyn] (ins) at (7,0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q$, $\tau=[t^s,t^{\mathrm{to}})$}};
+\draw[e] (tx) -- node[el,above]{CONTAINS} (ins);
+\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT $\to$ 직전 ATCO, 같은 항공편, $0<\Delta t\le 20$ s}} to[out=0,in=70,looseness=1.2] (tx.north);
+\draw[e, teal!60!black] (ins.north west) to[out=110,in=180,looseness=1.2] ($(ins.north)+(-0.2,1.0)$) node[el,above,text=teal!60!black,align=center]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의 다음 관제사 지시}} to[out=0,in=70,looseness=1.2] (ins.north);
+\draw[-{Stealth[length=2.5mm]}, very thick, teal!60!black] (-3.2,-1.1) -- node[below,font=\scriptsize]{시간 $t$ (UTC)} (13.6,-1.1);
+% ---- layer 2: entities (from transmissions, no time)
+\node[ent] (fl) at (0,-3.6) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
+\node[ent] (cm) at (-4.2,-3.6) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
+% ---- layer 3: static KB
+\node[sta] (role) at (-4.2,-6.6) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
+\node[sta] (al) at (0,-6.6) {\textbf{Airline}\\{\scriptsize icao, country}};
+\node[sta, minimum width=3.4cm] (rw) at (5.6,-6.6) {\textbf{AirportPlace} (공항 장소)\\{\scriptsize Runway $\cdot$ Taxiway $\cdot$ Ramp}\\{\scriptsize 예: \texttt{Taxiway:KATL:M2}}};
+\node[sta, minimum width=3.0cm] (fac) at (10.4,-6.6) {\textbf{ATCFacility} (관제 시설)\\{\scriptsize Facility + 주파수}\\{\scriptsize 예: \texttt{Facility:KATL:TWR}}};
+\node[sta] (ap) at (15.2,-6.6) {\textbf{Airport}\\{\scriptsize KATL}};
+% ---- edges across layers
+\draw[e] (tx) -- node[el,right]{ADDRESSES} (fl);
+\draw[e] (fl) -- node[el,above]{ALIAS} (cm);
+\draw[e] (fl) -- node[el,right]{OPERATED\_BY} (al);
+\draw[e] (tx.south west) to[out=225,in=60] node[el,pos=0.35,left]{SPOKEN\_BY} (role.north);
+\draw[e] ([xshift=-3mm]ins.south) -- node[el,left,pos=0.55,align=right]{TARGET\\{\scriptsize 목적지·정지 위치}} ([xshift=5mm]rw.north);
+\draw[e] ([xshift=1mm]ins.south) -- node[el,right,pos=0.55,align=left]{VIA\\{\scriptsize taxi 경로 (Taxiway)}} ([xshift=12mm]rw.north);
+\draw[e] ([xshift=5mm]ins.south) -- node[el,right,pos=0.3,align=left]{TARGET\\{\scriptsize CONTACT / MONITOR}} (fac.north);
+\draw[e] (rw.south) to[out=-20,in=-160,looseness=0.7] node[el,below]{PART\_OF} (ap.south);
+\draw[e] (fac) -- node[el,above]{PART\_OF} (ap);
+% ---- bands
+\begin{scope}[on background layer]
+\node[band, draw=teal!60!black, fill=teal!5, fit={(-10,2.6) (17,-1.6)}] (b1) {};
+\node[band, draw=orange!70!black, fill=yellow!6, fit={(-10,-2.6) (17,-4.5)}] (b2) {};
+\node[band, draw=violet!60!black, fill=violet!4, fit={(-10,-5.4) (17,-8.6)}] (b3) {};
+\end{scope}
+\node[bl, text=teal!60!black] at ([xshift=2mm,yshift=-2mm]b1.north west) {① 사건 층\\{\scriptsize\mdseries 시각을 가짐}\\{\scriptsize\mdseries (Zep: episode)}};
+\node[bl, text=orange!70!black] at ([xshift=2mm,yshift=-2mm]b2.north west) {② 개체 층\\{\scriptsize\mdseries 송신에서 생김,}\\{\scriptsize\mdseries 시각 없음}};
+\node[bl, text=violet!60!black] at ([xshift=2mm,yshift=-2mm]b3.north west) {③ 정적 KB 층\\{\scriptsize\mdseries 미리 준비한 지식}};
+\end{tikzpicture}}
+\end{center}
+설계 결정과 근거는 후보 G의 표와 같다. 아래는 같은 KATL 시간축 예시다.
 \begin{center}
 \resizebox{0.85\textwidth}{!}{%
 \begin{tikzpicture}[font=\small, x=0.13cm, y=1cm]
