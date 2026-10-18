@@ -116,8 +116,9 @@ RETURN count(rel);
 
 class GraphBuilder:
     def __init__(self, kb: dict, ontology: dict, rules: dict, build_cfg: dict, region: str = "US",
-                 rb_window: float = 20.0, context_link_window: float = 8.0):
+                 rb_window: float = 20.0, context_link_window: float = 8.0, airline_country: Optional[dict] = None):
         self.kb = kb
+        self.airline_country = airline_country or {}  # ICAO designator -> ISO country (airlines.json), for RQ4
         self.ontology = ontology
         self.icao = kb.get("icao", "UNKNOWN")
         rule_set = rules["region_rules"][region]
@@ -198,7 +199,8 @@ class GraphBuilder:
             g.add_node(fid, "Flight", callsign=flight_id, airline=airline, layer="dynamic")
             g.add_edge("ADDRESSES", tx_id, fid, valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])
             if airline and airline not in ("N",):
-                g.add_node(f"Airline:{airline}", "Airline", icao=airline, layer="static")
+                g.add_node(f"Airline:{airline}", "Airline", icao=airline, country=self.airline_country.get(airline),
+                           layer="static")
                 g.add_edge("OPERATED_BY", fid, f"Airline:{airline}")
             if rec["callsign"]["surface"]:
                 cs_id = f"CallsignMention:{rec['callsign']['surface']}"

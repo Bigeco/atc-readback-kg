@@ -204,7 +204,8 @@ def main():
     # ---------------- M3 + M4: canonicalize and build graph (UTC order)
     t0 = time.perf_counter()
     canon = Canonicalizer(kb, telephony)
-    builder = GraphBuilder(kb, ontology, rules, build_cfg, args.region, args.rb_window)
+    builder = GraphBuilder(kb, ontology, rules, build_cfg, args.region, args.rb_window,
+                           airline_country=load_json(AIRLINES_PATH).get("country"))
     canonical = []
     for turn, ext in zip(turns, extractions):
         rec = canon.canonicalize(turn, ext)
