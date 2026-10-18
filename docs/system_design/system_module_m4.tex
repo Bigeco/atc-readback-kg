@@ -55,7 +55,7 @@
   e/.style={-{Stealth[length=2.2mm]}, thick},
   el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
 ]
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s_i, w_i$}};
+\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize (ATCO) $s_i, w_i$}};
 \node[dyn] (tx2) at (0,-3.2) {\textbf{Transmission}\\{\scriptsize (PILOT)}};
 \node[sta] (role) at (-4.2,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
 \node[dyn] (fl) at (4.6,0) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
@@ -64,7 +64,8 @@
 \node[sta] (rw) at (8.6,-3.2) {\textbf{Runway / Taxiway}\\{\scriptsize / Facility}};
 \node[sta] (ap) at (8.6,-5.6) {\textbf{Airport}};
 \node[dyn] (cm) at (4.6,2.2) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
-\node[dyn] (ins2) at (1.4,-5.6) {\textbf{Instruction}\\{\scriptsize (다음)}};
+\node[dyn] (ins2) at (4.6,-5.8) {\textbf{Instruction}\\{\scriptsize 다음 관제사 지시 (같은 항공편)}};
+\node[dyn] (pins) at (0,-5.8) {\textbf{Instruction}\\{\scriptsize 조종사가 복창한 지시}};
 
 \draw[e] (tx) -- node[el,above]{SPOKEN\_BY} (role);
 \draw[e] (tx) -- node[el,above]{ADDRESSES} (fl);
@@ -74,10 +75,10 @@
 \draw[e] (rw) -- node[el,right]{PART\_OF} (ap);
 \draw[e] (fl) -- node[el,right]{ALIAS} (cm);
 \draw[e, red!60!black] (tx2) -- node[el,left,text=red!60!black]{READBACK\_OF \{status\}} (tx);
-\draw[e] (ins) -- node[el,sloped,below]{NEXT \{$\Delta t$\}} (ins2);
-\draw[e, dashed] (tx2) -- node[el,below]{CONTAINS} (ins2);
+\draw[e] (ins) -- node[el,right]{NEXT \{$\Delta t$\}} (ins2);
+\draw[e] (tx2) -- node[el,right]{CONTAINS} (pins);
 
-\node[font=\scriptsize, align=left, anchor=north west] at (-5.6,-6.4) {
+\node[font=\scriptsize, align=left, anchor=north west] at (-5.6,-7.0) {
 \tikz\node[fill=comp,draw,minimum width=4mm,minimum height=3mm]{}; 동적(사건) 계층: 유효 구간 $\tau$, 근거 송신 prov 보유\\[2pt]
 모든 간선: 적재 시각 $t'$ (\texttt{ingested\_at})\\[2pt]
 \tikz\node[fill=res,draw,minimum width=4mm,minimum height=3mm]{}; 정적 계층 $\KS$ (atmonto IRI 매핑)};
