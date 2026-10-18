@@ -752,12 +752,12 @@ m(\tilde\iota,\tilde\iota') &= \mathbb{1}\big[\kappa=\kappa'\ \wedge\ \ell(g)=\e
   e/.style={-{Stealth[length=2.2mm]}, thick},
   el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
 ]
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s_i, w_i, c_i, t'$}};
+\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s_i, w_i, t'$}};
 \node[dyn] (tx2) at (0,-3.2) {\textbf{Transmission}\\{\scriptsize (PILOT)}};
 \node[sta] (role) at (-4.2,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
 \node[dyn] (fl) at (4.6,0) {\textbf{Flight}\\{\scriptsize callsign}};
 \node[sta] (al) at (8.6,0) {\textbf{Airline}\\{\scriptsize icao, telephony}};
-\node[dyn] (ins) at (4.6,-3.2) {\textbf{Instruction}\\{\scriptsize $\kappa,v,\mu,q,\tau,\mathrm{conf}$}};
+\node[dyn] (ins) at (4.6,-3.2) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q,\tau$, conf\_label}};
 \node[sta] (rw) at (8.6,-3.2) {\textbf{Runway / Taxiway}\\{\scriptsize / Facility}};
 \node[sta] (ap) at (8.6,-5.6) {\textbf{Airport}};
 \node[dyn] (cm) at (4.6,2.2) {\textbf{CallsignMention}\\{\scriptsize $\hat c_i$ (원 표면형)}};
@@ -775,7 +775,7 @@ m(\tilde\iota,\tilde\iota') &= \mathbb{1}\big[\kappa=\kappa'\ \wedge\ \ell(g)=\e
 \draw[e, dashed] (tx2) -- node[el,below]{CONTAINS} (ins2);
 
 \node[font=\scriptsize, align=left, anchor=north west] at (-5.4,-4.4) {
-\tikz\node[fill=comp,draw,minimum width=4mm,minimum height=3mm]{}; 동적(사건) 계층: $\tau,\mathrm{prov},\mathrm{conf}$ 보유\\[2pt]
+\tikz\node[fill=comp,draw,minimum width=4mm,minimum height=3mm]{}; 동적(사건) 계층: $\tau,\mathrm{prov}$ 보유\\[2pt]
 \tikz\node[fill=res,draw,minimum width=4mm,minimum height=3mm]{}; 정적 계층 $\KS$ (atmonto IRI 매핑)};
 \end{tikzpicture}}
 \caption{KG 스키마. 송신과 지시를 사건 노드로 reify하고(\ch{C8}), 오인식 표면형은 \cmd{CallsignMention}으로 보존한다(\ch{C4}, \ch{C12}).}

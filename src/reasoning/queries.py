@@ -26,7 +26,6 @@ def transmission_view(graph, tx_id: str) -> dict:
         "tx_id": tx_id, "speaker": p["speaker"], "text": p["text"], "flight": p.get("flight_id"),
         "utc_start_epoch": p["utc_start_epoch"], "utc_end_epoch": p["utc_end_epoch"], "file": p["file"],
         "offset_start": p["offset_start"], "offset_end": p["offset_end"], "flags": p.get("flags", []),
-        "asr_conf": p.get("asr_conf"),
         "instructions": [instruction_view(graph, n["id"]) for n in graph.instructions_of(tx_id)],
     }
 

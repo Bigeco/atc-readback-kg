@@ -200,7 +200,7 @@ function renderAlerts() {
   $("#alerts").innerHTML = rows.slice(0, 400).map((a) => `
     <div class="alert ${a.alert_id === S.selectedAlert ? "selected" : ""}" data-id="${a.alert_id}">
       <div class="t">${hhmmss(a.utc_epoch)}<br>${esc(a.flight || "—")}</div>
-      <div><div class="lbl ${esc(a.label)}">${esc(a.label)} <span class="hint">${esc(a.rule)} · conf ${a.confidence}</span></div>
+      <div><div class="lbl ${esc(a.label)}">${esc(a.label)} <span class="hint">${esc(a.rule)}</span></div>
         <div class="m" title="${esc(a.message)}">${esc(a.message)}</div></div></div>`).join("") ||
     `<p class="hint" style="padding:8px">조건에 맞는 경보가 없습니다.</p>`;
   document.querySelectorAll(".alert").forEach((el) => el.addEventListener("click", () => openAlert(el.dataset.id)));
@@ -221,7 +221,7 @@ async function showEvidence(txId, alert = null) {
   const pair = [tx, tx.counterpart].filter(Boolean).sort((x, y) => x.utc_start_epoch - y.utc_start_epoch);
   const rb = tx.readback ? tx.readback.props : null;
   const block = (t) => `<div class="ev-tx ${esc(t.speaker)}"><div class="meta">${playBtn(t)}<span>${hhmmss(t.utc_start_epoch)}</span>
-      <span>${esc(t.speaker)}</span><span>${esc(t.flight || "")}</span><span>asr ${t.asr_conf ?? "-"}</span></div>
+      <span>${esc(t.speaker)}</span><span>${esc(t.flight || "")}</span></div>
       <div>${esc(t.text)}</div>
       <div class="chips">${(t.instructions || []).filter((i) => !["REQUEST", "ACK"].includes(i.type)).map((i) => `<span class="chip">${esc(insText(i))}</span>`).join("")}
       ${(t.flags || []).map((f) => `<span class="pill flag">${esc(f)}</span>`).join("")}</div></div>`;

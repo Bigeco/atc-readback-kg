@@ -87,8 +87,6 @@ def _row(row: dict, **override) -> dict:
            "text": row["text"], "start": row["start"], "end": row["end"],
            "utc_start_epoch": row["utc_start_epoch"], "utc_end_epoch": row["utc_end_epoch"],
            **{k: row.get(k) for k in ROW_KEYS}}
-    if row.get("avg_logprob") is not None:
-        out["avg_logprob"] = row["avg_logprob"]
     out.update(override)
     return out
 

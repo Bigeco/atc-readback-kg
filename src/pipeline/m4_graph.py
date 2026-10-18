@@ -173,7 +173,6 @@ class GraphBuilder:
         flags = list(rec["callsign"]["flags"])
         flight_id = rec["flight_id"]
         t0, t1 = rec["utc_start_epoch"], rec["utc_end_epoch"]
-        asr_conf = asr_confidence(rec.get("avg_logprob"))
 
         # Pilot without callsign: link to the controller transmission it most likely answers.
         linked_from = None
@@ -188,7 +187,7 @@ class GraphBuilder:
                    file=rec["file"], offset_start=rec["start"], offset_end=rec["end"],
                    utc_start_epoch=t0, utc_end_epoch=t1, flight_id=flight_id, callsign_surface=rec["callsign"]["surface"],
                    callsign_candidates=rec["callsign"].get("candidates", []), flags=sorted(set(flags)),
-                   asr_conf=asr_conf, backend=rec.get("backend"),
+                   backend=rec.get("backend"),
                    layer="dynamic")
         if speaker in ("ATCO", "PILOT"):
             g.add_edge("SPOKEN_BY", tx_id, f"Role:{speaker}", valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])
@@ -197,8 +196,7 @@ class GraphBuilder:
             fid = f"Flight:{flight_id}"
             airline = rec["callsign"].get("airline")
             g.add_node(fid, "Flight", callsign=flight_id, airline=airline, layer="dynamic")
-            g.add_edge("ADDRESSES", tx_id, fid, valid_from=t0, valid_to=t1, prov=[rec["tx_id"]],
-                       conf=asr_conf * (0.6 if "ASR_CORRECTED" in flags or "LINKED_BY_CONTEXT" in flags else 1.0))
+            g.add_edge("ADDRESSES", tx_id, fid, valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])
             if airline and airline not in ("N",):
                 g.add_node(f"Airline:{airline}", "Airline", icao=airline, layer="static")
                 g.add_edge("OPERATED_BY", fid, f"Airline:{airline}")
@@ -218,7 +216,7 @@ class GraphBuilder:
                        target_id=inst["target_id"], target_text=inst["target_text"], route_ids=inst["route_ids"],
                        value=inst["value"], qualifier=inst["qualifier"], flags=inst["flags"], feed=rec["feed"],
                        valid_from=t0, valid_to=None if is_state else t1, state=is_state, tx_node=tx_id,
-                       conf=asr_conf, conf_label="MEDIUM", layer="dynamic")
+                       conf_label="MEDIUM", layer="dynamic")
             g.add_edge("CONTAINS", tx_id, ins_id, valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])
             if inst["target_id"]:
                 self._ensure_target(inst["target_id"], inst["target_kind"], inst["target_text"])
@@ -301,8 +299,7 @@ class GraphBuilder:
         if not concepts and not is_ack:
             return  # chatter in the window (e.g. "thanks"): neither a readback nor an acknowledgement
 
-        asr = min(g.nodes[target]["props"]["asr_conf"], g.nodes[pilot_tx]["props"]["asr_conf"])
-        g.add_edge("READBACK_OF", pilot_tx, target, valid_from=t0, prov=[pilot_tx, target], conf=asr, **result)
+        g.add_edge("READBACK_OF", pilot_tx, target, valid_from=t0, prov=[pilot_tx, target], **result)
         self.read_back.add(target)
 
         matched = {m["ins_id"] for m in result["matched"]}
@@ -320,16 +317,8 @@ class GraphBuilder:
                 p["valid_to"] = p["valid_from"] + self.max_validity.get(p["type"], self.default_validity)
                 p["expired"] = True
             tx = self.graph.nodes[p["tx_node"]]["props"]
-            weak = p["conf"] < 0.45 or p.get("flags") or \
+            weak = p.get("flags") or \
                 {"ASR_CORRECTED", "UNRESOLVED_AIRLINE", "LINKED_BY_CONTEXT"} & set(tx.get("flags", []))
             if weak and p["conf_label"] != "HIGH":
                 p["conf_label"] = "LOW"
         return self.graph
-
-
-def asr_confidence(avg_logprob: Optional[float]) -> float:
-    """Map Whisper's average token log-probability to [0, 1] (exp of the mean log-probability)."""
-    import math
-    if avg_logprob is None:
-        return 0.5
-    return round(max(0.0, min(1.0, math.exp(avg_logprob))), 3)

@@ -180,7 +180,7 @@ class Canonicalizer:
             speaker = extraction["speaker"]
         record = {
             **{k: turn.get(k) for k in ("tx_id", "feed", "icao", "facility_class", "file", "start", "end",
-                                         "utc_start_epoch", "utc_end_epoch", "text", "role", "role_source", "avg_logprob")},
+                                         "utc_start_epoch", "utc_end_epoch", "text", "role", "role_source")},
             "speaker_id": turn.get("speaker"),
             "speaker": speaker,
             "backend": extraction.get("backend"),
