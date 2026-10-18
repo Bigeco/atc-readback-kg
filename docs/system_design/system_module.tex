@@ -633,8 +633,8 @@ f_i = \arg\max_{f\in\mathcal{F}_{\mathrm{act}}(t_i)\cup\{f_{\mathrm{new}}\}}\;\B
 \textbf{[정의] 이중 시간 (bi-temporal).} 모든 동적 원소 $x$에 대해 다음을 둔다.
 \begin{itemize}
 \item 사건 시간 $\tau(x) = [t^{\mathrm{from}}_x, t^{\mathrm{to}}_x)$: 사실이 실제로 유효한 구간.
-\item 처리 시간 $t'_x$: 시스템에 적재된 시각.
-\item $\mathrm{prov}(x)=\{s_i\}$, $\mathrm{conf}(x) = g(c_i, \mathrm{conf}_{\mathrm{LLM}}, \mathcal{A}_i)$.
+\item 처리 시간 $t'_x$: 시스템에 적재된 시각. 구현에서는 간선마다 \texttt{ingested\_at}으로 기록한다.
+\item $\mathrm{prov}(x)=\{s_i\}$: 근거 송신. 지시의 신뢰 등급 \texttt{conf\_label}은 조종사 복창으로 확인되면 HIGH, 경고(콜사인 교정, KB 위반 등)가 붙으면 LOW, 그 밖에는 MEDIUM이다. MOSS가 STT 신뢰도를 주지 않아 숫자 신뢰도는 쓰지 않는다.
 \end{itemize}
 상태형 지시 $\iota\in\Tst$의 유효 구간은
 \begin{equation}
@@ -752,7 +752,7 @@ m(\tilde\iota,\tilde\iota') &= \mathbb{1}\big[\kappa=\kappa'\ \wedge\ \ell(g)=\e
   e/.style={-{Stealth[length=2.2mm]}, thick},
   el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
 ]
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s_i, w_i, t'$}};
+\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s_i, w_i$}};
 \node[dyn] (tx2) at (0,-3.2) {\textbf{Transmission}\\{\scriptsize (PILOT)}};
 \node[sta] (role) at (-4.2,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
 \node[dyn] (fl) at (4.6,0) {\textbf{Flight}\\{\scriptsize callsign}};
@@ -774,8 +774,9 @@ m(\tilde\iota,\tilde\iota') &= \mathbb{1}\big[\kappa=\kappa'\ \wedge\ \ell(g)=\e
 \draw[e] (ins) -- node[el,sloped,below]{NEXT \{$\Delta t$\}} (ins2);
 \draw[e, dashed] (tx2) -- node[el,below]{CONTAINS} (ins2);
 
-\node[font=\scriptsize, align=left, anchor=north west] at (-5.4,-4.4) {
-\tikz\node[fill=comp,draw,minimum width=4mm,minimum height=3mm]{}; 동적(사건) 계층: $\tau,\mathrm{prov}$ 보유\\[2pt]
+\node[font=\scriptsize, align=left, anchor=north west] at (-5.6,-6.4) {
+\tikz\node[fill=comp,draw,minimum width=4mm,minimum height=3mm]{}; 동적(사건) 계층: 유효 구간 $\tau$, 근거 송신 prov 보유\\[2pt]
+모든 간선: 적재 시각 $t'$ (\texttt{ingested\_at})\\[2pt]
 \tikz\node[fill=res,draw,minimum width=4mm,minimum height=3mm]{}; 정적 계층 $\KS$ (atmonto IRI 매핑)};
 \end{tikzpicture}}
 \caption{KG 스키마. 송신과 지시를 사건 노드로 reify하고(\ch{C8}), 오인식 표면형은 \cmd{CallsignMention}으로 보존한다(\ch{C4}, \ch{C12}).}

@@ -55,7 +55,7 @@
   e/.style={-{Stealth[length=2.2mm]}, thick},
   el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
 ]
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s_i, w_i, t'$}};
+\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s_i, w_i$}};
 \node[dyn] (tx2) at (0,-3.2) {\textbf{Transmission}\\{\scriptsize (PILOT)}};
 \node[sta] (role) at (-4.2,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
 \node[dyn] (fl) at (4.6,0) {\textbf{Flight}\\{\scriptsize callsign}};
@@ -77,8 +77,9 @@
 \draw[e] (ins) -- node[el,sloped,below]{NEXT \{$\Delta t$\}} (ins2);
 \draw[e, dashed] (tx2) -- node[el,below]{CONTAINS} (ins2);
 
-\node[font=\scriptsize, align=left, anchor=north west] at (-5.4,-4.4) {
-\tikz\node[fill=comp,draw,minimum width=4mm,minimum height=3mm]{}; 동적(사건) 계층: $\tau,\mathrm{prov}$ 보유\\[2pt]
+\node[font=\scriptsize, align=left, anchor=north west] at (-5.6,-6.4) {
+\tikz\node[fill=comp,draw,minimum width=4mm,minimum height=3mm]{}; 동적(사건) 계층: 유효 구간 $\tau$, 근거 송신 prov 보유\\[2pt]
+모든 간선: 적재 시각 $t'$ (\texttt{ingested\_at})\\[2pt]
 \tikz\node[fill=res,draw,minimum width=4mm,minimum height=3mm]{}; 정적 계층 $\KS$ (atmonto IRI 매핑)};
 \end{tikzpicture}}
 \caption{KG 스키마. 송신과 지시를 사건 노드로 reify하고(\ch{C8}), 오인식 표면형은 \cmd{CallsignMention}으로 보존한다(\ch{C4}, \ch{C12}).}
