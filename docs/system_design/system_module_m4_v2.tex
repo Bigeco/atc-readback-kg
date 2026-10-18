@@ -45,7 +45,7 @@
 \pagestyle{empty}
 \begin{document}
 \section*{KG 스키마 그림 후보 비교}
-여섯 후보 모두 \textbf{같은 KG}를 그린 것이다(노드 종류 Transmission·Instruction은 각각 하나). 다른 점은 그리는 방식과, D만 복창 간선을 지시 단위로 바꾸는 구조 변경이라는 점이다.
+일곱 후보 모두 \textbf{같은 KG}를 그린 것이다(노드 종류 Transmission·Instruction은 각각 하나). 다른 점은 그리는 방식과, D만 복창 간선을 지시 단위로 바꾸는 구조 변경이라는 점이다.
 \begin{center}\small
 \begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
 \toprule
@@ -56,6 +56,7 @@ C & B + KATL 실제 예시 시간축 & 구조(B)와 시간·복창(예시)을 �
 D & B와 같되 READBACK\_OF를 \emph{지시끼리} 연결 (구조 변경) & 어느 지시가 복창됐는지 그래프에서 바로 보임 & 코드 수정 필요, 간선 수 증가\\
 E & B와 같되 시각을 가진 Transmission·Instruction을 ``시간축 위의 사건'' 상자로 묶고 시간 화살표 표시 & 무엇이 시간에 따라 쌓이는지 한눈에 보임 & (C처럼 예시 시간축을 함께 두는 것이 좋음)\\
 F & E를 세 층(사건 / 개체 / 정적 KB)으로 정리 + 시간축 예시. 선행 연구(Zep) 구조를 따름 & 층마다 성격이 분명하고 선행 연구로 설명 가능 & 그림이 큼\\
+G (추천) & F와 같은 그림 + 설계 결정과 근거 표 & 최종안 & \\
 \bottomrule
 \end{tabularx}
 \end{center}
@@ -370,6 +371,97 @@ READBACK\_OF를 송신끼리가 아니라 \textbf{조종사 지시 $\to$ 관제�
 
 \begin{center}
 \resizebox{0.9\textwidth}{!}{%
+\begin{tikzpicture}[font=\small, x=0.13cm, y=1cm]
+\draw[-{Stealth}, thick] (18,0) -- (102,0) node[right]{$t$ [s]};
+\foreach \x in {20,30,...,100} { \draw (\x,0.08) -- (\x,-0.08) node[below,font=\scriptsize]{\x}; }
+% transmissions (short labels; contents listed below the figure)
+\fill[blue!25] (24.1,0.85) rectangle (30.4,1.15); \node[anchor=south,font=\scriptsize] at (27.2,1.15) {\#0005 ATCO};
+\fill[orange!40] (31.7,1.85) rectangle (37.2,2.15); \node[anchor=west,font=\scriptsize] at (37.6,2.0) {\#0006 PILOT (복창)};
+\fill[blue!25] (88.5,0.85) rectangle (91.2,1.15); \node[anchor=south,font=\scriptsize] at (89.8,1.15) {\#0022 ATCO};
+% readback
+\draw[red!60!black, thick, -{Stealth}] (33,1.83) to[out=-110,in=30] (29.5,1.5);
+\node[font=\scriptsize, red!60!black, anchor=west] at (38,1.55) {READBACK\_OF \{MISMATCH\}};
+\draw[red!60!black, thin] (37.9,1.55) -- (33.2,1.6);
+% next
+\draw[teal!60!black, thick, dashed, -{Stealth}] (30.4,0.75) to[out=-10,in=190] (88.5,0.75);
+\node[font=\scriptsize, teal!60!black, fill=white, inner sep=1pt] at (72,0.3) {NEXT \{$\Delta t$ = 64.4 s\}};
+% validity bars
+\fill[green!45!black!60] (24.1,-0.95) rectangle (88.5,-0.7); \node[anchor=east,font=\scriptsize] at (23.5,-0.82) {$\tau$(TAXI\_VIA)};
+\node[font=\scriptsize, anchor=west] at (88.8,-0.82) {MONITOR가 끝냄};
+\fill[green!25] (24.1,-1.45) rectangle (30.4,-1.2); \node[anchor=east,font=\scriptsize] at (23.5,-1.33) {$\tau$(FOLLOW)};
+\fill[green!45!black!60] (88.5,-1.95) rectangle (101,-1.7); \node[anchor=east,font=\scriptsize] at (88.0,-1.83) {$\tau$(MONITOR): 다음 지시가 없어 최대 1800 s까지};
+% snapshot
+\draw[dashed] (50,-2.2) -- (50,2.5) node[above,font=\scriptsize]{$\G|_{50}$};
+\node[font=\scriptsize, anchor=north west] at (50.6,-2.15) {$\G|_{50}$: DAL1489는 TAXI\_VIA(M 경유 M2) 유효};
+\end{tikzpicture}}
+\end{center}
+\newpage
+\section*{후보 G: 최종 추천안 (F + 설계 결정 정리)}
+그림은 후보 F와 같다(세 층 + KATL 시간축 예시). 아래 표는 이 그림이 담은 설계 결정과 그 근거다.
+\begin{center}
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[
+  font=\small,
+  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.85cm, minimum width=2.6cm, align=center},
+  ent/.style={draw, thick, rounded corners=2pt, fill=yellow!12, minimum height=0.85cm, minimum width=2.6cm, align=center},
+  sta/.style={draw, thick, fill=res, minimum height=0.85cm, minimum width=2.4cm, align=center},
+  e/.style={-{Stealth[length=2.2mm]}, thick},
+  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt},
+  band/.style={draw, rounded corners=6pt, thick, inner sep=0pt},
+  bl/.style={font=\small\bfseries, anchor=north west, align=left}
+]
+% ---- layer 1: events (time-stamped)
+\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s=[t^s,t^e)$, $w$, speaker}};
+\node[dyn] (ins) at (7,0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q$, $\tau=[t^s,t^{\mathrm{to}})$}};
+\draw[e] (tx) -- node[el,above]{CONTAINS} (ins);
+\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT $\to$ 직전 ATCO, 같은 항공편, $0<\Delta t\le 20$ s}} to[out=0,in=70,looseness=1.2] (tx.north);
+\draw[e, teal!60!black] (ins.north west) to[out=110,in=180,looseness=1.2] ($(ins.north)+(-0.2,1.0)$) node[el,above,text=teal!60!black,align=center]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의 다음 관제사 지시}} to[out=0,in=70,looseness=1.2] (ins.north);
+\draw[-{Stealth[length=2.5mm]}, very thick, teal!60!black] (-3.2,-1.1) -- node[below,font=\scriptsize]{시간 $t$ (UTC)} (10.6,-1.1);
+% ---- layer 2: entities (from transmissions, no time)
+\node[ent] (fl) at (0,-3.6) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
+\node[ent] (cm) at (-4.2,-3.6) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
+% ---- layer 3: static KB
+\node[sta] (role) at (-4.2,-6.6) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
+\node[sta] (al) at (0,-6.6) {\textbf{Airline}\\{\scriptsize icao, country}};
+\node[sta] (rw) at (7,-6.6) {\textbf{Runway / Taxiway}\\{\scriptsize / Ramp / Facility}};
+\node[sta] (ap) at (11.2,-6.6) {\textbf{Airport}};
+% ---- edges across layers
+\draw[e] (tx) -- node[el,right]{ADDRESSES} (fl);
+\draw[e] (fl) -- node[el,above]{ALIAS} (cm);
+\draw[e] (fl) -- node[el,right]{OPERATED\_BY} (al);
+\draw[e] (tx.south west) to[out=225,in=60] node[el,pos=0.35,left]{SPOKEN\_BY} (role.north);
+\draw[e] ([xshift=-3mm]ins.south) -- node[el,left,pos=0.55]{TARGET} ([xshift=-3mm]rw.north);
+\draw[e] ([xshift=3mm]ins.south) -- node[el,right,pos=0.55]{VIA} ([xshift=3mm]rw.north);
+\draw[e] (rw) -- node[el,above]{PART\_OF} (ap);
+% ---- bands
+\begin{scope}[on background layer]
+\node[band, draw=teal!60!black, fill=teal!5, fit={(-10,2.6) (12.8,-1.6)}] (b1) {};
+\node[band, draw=orange!70!black, fill=yellow!6, fit={(-10,-2.6) (12.8,-4.5)}] (b2) {};
+\node[band, draw=violet!60!black, fill=violet!4, fit={(-10,-5.6) (12.8,-7.5)}] (b3) {};
+\end{scope}
+\node[bl, text=teal!60!black] at ([xshift=2mm,yshift=-2mm]b1.north west) {① 사건 층\\{\scriptsize\mdseries 시각을 가짐}\\{\scriptsize\mdseries (Zep: episode)}};
+\node[bl, text=orange!70!black] at ([xshift=2mm,yshift=-2mm]b2.north west) {② 개체 층\\{\scriptsize\mdseries 송신에서 생김,}\\{\scriptsize\mdseries 시각 없음}};
+\node[bl, text=violet!60!black] at ([xshift=2mm,yshift=-2mm]b3.north west) {③ 정적 KB 층\\{\scriptsize\mdseries 미리 준비한 지식}};
+\end{tikzpicture}}
+\end{center}
+\begin{center}\footnotesize
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{3.6cm}@{}}
+\toprule
+결정 & 내용 & 근거\\\midrule
+세 층으로 나눔 & ① 사건 층(Transmission, Instruction: 시각 있음) ② 개체 층(Flight, CallsignMention: 송신에서 생기나 시각 없음) ③ 정적 KB 층 & Zep의 episode / entity 층 구분\\
+송신·지시를 노드로 (사건화) & 송신 하나에 지시가 여러 개(DLR: Callsign + Command 여러 개)라 두 노드를 합치지 않음 & W3C n-ary 관계, SEM 사건 노드\\
+시간은 속성으로 & 송신 $s=[t^s,t^e)$, 지시 $\tau=[t^s,t^{\mathrm{to}})$, 간선 적재 시각 $t'$. 시각이 연속값이라 시간 노드를 공유할 일이 없음. \texttt{valid\_from/valid\_to}는 OWL-Time \texttt{hasBeginning/hasEnd}에 대응 & SEM \texttt{hasBeginTimeStamp}, Zep 이중 시간($T$, $T'$)\\
+시점 질의 & 시각 $t$를 주면 $\tau\ni t$인 관제사 상태형 지시를 고르고(\texttt{snapshot}), \texttt{tx\_node}로 송신을 찾음 & \\
+NEXT는 지시끼리 & 항공기 상태의 흐름(어떤 지시를 어떤 순서로 받았나). 한 송신 안 지시 순서도 담고(\,$\Delta t=0$), 이전 지시를 끝내는 것도 지시 단위. 시작 시각 순서에서 유도됨 & 사건 그래프의 next-event 관계\\
+READBACK\_OF는 송신끼리 & 대화의 주고받기(누가 누구에게 답했나). 조건: PILOT $\to$ 직전 ATCO, 같은 항공편·주파수, $0<\Delta t\le 20$\,s. 빠뜨린 지시는 상대 노드가 없어 지시 간선으로 못 그리므로, 지시 단위 결과는 간선 속성(\texttt{matched}, \texttt{missing}, \texttt{conflicts})에 저장 & 대화 구조 연구의 reply-to\\
+지우지 않고 끝냄 & 새 지시가 이전 지시를 대체하면 $\tau$의 끝과 \texttt{invalidated\_by}만 기록. 과거 시점 질의가 가능 & Zep invalidation\\
+같은 종류끼리 관계는 자기 화살표 & READBACK\_OF, NEXT는 같은 노드 종류의 \emph{서로 다른} 두 노드 사이 관계. 조건을 간선에 적어 오해를 막음 & UML·ER·온톨로지 스키마 관례\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{center}
+\resizebox{0.85\textwidth}{!}{%
 \begin{tikzpicture}[font=\small, x=0.13cm, y=1cm]
 \draw[-{Stealth}, thick] (18,0) -- (102,0) node[right]{$t$ [s]};
 \foreach \x in {20,30,...,100} { \draw (\x,0.08) -- (\x,-0.08) node[below,font=\scriptsize]{\x}; }
