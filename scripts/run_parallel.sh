@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Sharded pipeline: ASR shards (by feed) -> M4 shards (by turn) -> merge + M5-M7 -> evaluation.
+# Sharded pipeline: ASR shards (by feed) -> M2 shards (by turn) -> merge + M3-M5 -> evaluation.
 # A GPU id may repeat to run several processes on one GPU (Whisper needs ~5 GB, the 4B LLM ~20 GB).
-#   ASR_GPUS="4 5 6 7" M4_GPUS="4 5 6 7" RUN_NAME=katl_all bash scripts/run_parallel.sh   # 4 GPUs
-#   ASR_GPUS="4 4 4"   M4_GPUS="4"       RUN_NAME=katl_all bash scripts/run_parallel.sh   # 1 GPU
+#   ASR_GPUS="4 5 6 7" M2_GPUS="4 5 6 7" RUN_NAME=katl_all bash scripts/run_parallel.sh   # 4 GPUs
+#   ASR_GPUS="4 4 4"   M2_GPUS="4"       RUN_NAME=katl_all bash scripts/run_parallel.sh   # 1 GPU
+#   ASR_ARGS="--model /path/us-atc-v3-ct2 --beam-size 1 --repetition-penalty 1.1 --radio-filter --no-prompt" ...  # other STT
 set -euo pipefail
 source "$(dirname "$0")/_env.sh"
 
 ASR_GPUS=(${ASR_GPUS:-${GPUS:-4 5 6 7}})
-M4_GPUS=(${M4_GPUS:-${GPUS:-4 5 6 7}})
+M2_GPUS=(${M2_GPUS:-${M4_GPUS:-${GPUS:-4 5 6 7}}})   # M2 = extraction (LLM); M4_GPUS kept as an alias
 RUN_NAME="${RUN_NAME:-katl_all}"
 AIRPORT="${AIRPORT:-katl}"
 FACILITIES="${FACILITIES:-GND DEL TWR DEP APP}"
 LLM_MODEL="${LLM_MODEL:-Qwen/Qwen3-4B-Instruct-2507}"
+ASR_ARGS="${ASR_ARGS:-}"   # extra run_asr.py options, e.g. --model <ct2 dir> --no-prompt --radio-filter
 LOG_DIR="$PROJECT_ROOT/results/$RUN_NAME/logs"
 mkdir -p "$LOG_DIR"
 
@@ -26,22 +28,22 @@ run_shards() {  # $1 = stage name, $2 = space-separated GPU list, rest = command
   echo "[$(date +%T)] $stage done"
 }
 
-echo "[$(date +%T)] ASR: ${#ASR_GPUS[@]} processes on GPUs ${ASR_GPUS[*]}"
+echo "[$(date +%T)] M1 STT: ${#ASR_GPUS[@]} processes on GPUs ${ASR_GPUS[*]}"
 run_shards asr "${ASR_GPUS[*]}" "$PYTHON_BIN $SRC_ROOT/run_asr.py --run-name $RUN_NAME --airports $AIRPORT \
-  --facilities $FACILITIES --num-shards ${#ASR_GPUS[@]} --shard-index \$SHARD_INDEX"
+  --facilities $FACILITIES $ASR_ARGS --num-shards ${#ASR_GPUS[@]} --shard-index \$SHARD_INDEX"
 
-echo "[$(date +%T)] M4: ${#M4_GPUS[@]} processes on GPUs ${M4_GPUS[*]}"
-run_shards m4 "${M4_GPUS[*]}" "$PYTHON_BIN $SRC_ROOT/build_kg.py --run-name $RUN_NAME --airport $AIRPORT \
-  --extractor llm --llm-model $LLM_MODEL --m4-shard \$SHARD_INDEX/${#M4_GPUS[@]}"
-N=${#M4_GPUS[@]}
+echo "[$(date +%T)] M2: ${#M2_GPUS[@]} processes on GPUs ${M2_GPUS[*]}"
+run_shards m2 "${M2_GPUS[*]}" "$PYTHON_BIN $SRC_ROOT/build_kg.py --run-name $RUN_NAME --airport $AIRPORT \
+  --extractor llm --llm-model $LLM_MODEL --m2-shard \$SHARD_INDEX/${#M2_GPUS[@]}"
+N=${#M2_GPUS[@]}
 
-echo "[$(date +%T)] merge + M5-M7"
+echo "[$(date +%T)] merge + M3-M5"
 "$PYTHON_BIN" "$SRC_ROOT/build_kg.py" --run-name "$RUN_NAME" --airport "$AIRPORT" --extractor llm \
   --llm-model "$LLM_MODEL" --merge-shards "$N" > "$LOG_DIR/build.log" 2>&1
 tail -3 "$LOG_DIR/build.log"
 
 echo "[$(date +%T)] evaluation"
-CUDA_VISIBLE_DEVICES="${M4_GPUS[0]}" RUN_NAME="$RUN_NAME" bash "$SCRIPT_DIR/run_eval.sh" > "$LOG_DIR/eval.log" 2>&1 || true
+CUDA_VISIBLE_DEVICES="${M2_GPUS[0]}" RUN_NAME="$RUN_NAME" bash "$SCRIPT_DIR/run_eval.sh" > "$LOG_DIR/eval.log" 2>&1 || true
 "$PYTHON_BIN" "$SRC_ROOT/evaluation/e4_rq4_diagnosis.py" template --run-name "$RUN_NAME" --n 20 >> "$LOG_DIR/eval.log" 2>&1
 grep -E "^\[E" "$LOG_DIR/eval.log" || true
 echo "[$(date +%T)] all done -> results/$RUN_NAME"

@@ -1,4 +1,4 @@
-"""M6: incremental event-centric temporal knowledge graph.
+"""M4: incremental event-centric temporal knowledge graph.
 
 - Event reification: Transmission and Instruction nodes (W3C n-ary pattern).
 - Bi-temporal edges: valid_from / valid_to (when a fact holds) and ingested_at (when we learned it).

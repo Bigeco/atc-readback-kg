@@ -1,4 +1,4 @@
-"""Text normalization helpers shared by extraction (M4) and canonicalization (M5).
+"""Text normalization helpers shared by extraction (M2) and canonicalization (M3).
 
 Every rewrite is recorded in an edit log so that the knowledge graph can keep
 the raw transcript as provenance next to the normalized concept.

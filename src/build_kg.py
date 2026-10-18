@@ -1,4 +1,4 @@
-"""Stage 2 (M3 -> M7): turn splitting, extraction, canonicalization, temporal KG and anomaly rules.
+"""KG construction (M2 -> M5): role detection/turn splitting and extraction (M2), canonicalization, temporal KG and anomaly rules.
 
 Input : results/<run>/stt/<feed>/*.jsonl   (from run_asr.py)
 Output: results/<run>/{turns,extraction,canonical}.jsonl, kg/graph.json, kg/neo4j/, alerts.json, summary.json
@@ -17,10 +17,10 @@ sys.path.insert(0, str(SRC_ROOT))
 from common.atc_text import build_callsign_regex
 from common.io_utils import iter_jsonl, load_json, load_jsonl, save_json, write_jsonl
 from common.paths import AIRLINES_PATH, KG_BUILD_PATH, ONTOLOGY_PATH, RULES_PATH, STATIC_KB_ROOT, display_path, run_dir
-from pipeline.m3_role import split_turns
-from pipeline.m4_extract import LLMExtractor, RuleExtractor
-from pipeline.m5_canonicalize import Canonicalizer
-from pipeline.m6_graph import GraphBuilder
+from pipeline.m2_role import split_turns
+from pipeline.m2_extract import LLMExtractor, RuleExtractor
+from pipeline.m3_canonicalize import Canonicalizer
+from pipeline.m4_graph import GraphBuilder
 from reasoning.queries import readback_status_counts
 from reasoning.rules import detect_anomalies
 
@@ -66,11 +66,11 @@ def main():
     parser.add_argument("--airport", default="katl", help="static KB name under data/static_kb")
     parser.add_argument("--rb-window", type=float, default=None,
                         help="readback window in seconds (default: configs/kg_build.json)")
-    parser.add_argument("--reuse-extraction", action="store_true", help="skip M4 if extraction.jsonl exists")
-    parser.add_argument("--revalidate", action="store_true", help="re-apply M4 validation to stored raw LLM output")
+    parser.add_argument("--reuse-extraction", action="store_true", help="skip M2 if extraction.jsonl exists")
+    parser.add_argument("--revalidate", action="store_true", help="re-apply M2 validation to stored raw LLM output")
     parser.add_argument("--limit", type=int, default=0, help="debug: only the first N segments")
-    parser.add_argument("--m4-shard", default=None, help="'i/n': run M4 on every n-th turn starting at i, write a part file, exit")
-    parser.add_argument("--merge-shards", type=int, default=0, help="merge n M4 part files instead of running M4")
+    parser.add_argument("--m2-shard", "--m4-shard", dest="m2_shard", default=None, help="'i/n': run M2 on every n-th turn starting at i, write a part file, exit")
+    parser.add_argument("--merge-shards", type=int, default=0, help="merge n M2 part files instead of running M2")
     args = parser.parse_args()
 
     out = run_dir(args.run_name)
@@ -84,7 +84,7 @@ def main():
     callsign_re = build_callsign_regex(telephony)
     timings = {}
 
-    # ---------------- M3: turns
+    # ---------------- M2 step 1: speaker role + turns
     t0 = time.perf_counter()
     rows = load_stt_rows(run_dir(args.stt_from or args.run_name) / "stt")
     n_raw = len(rows)
@@ -97,30 +97,30 @@ def main():
     row_by_tx = {r["tx_id"]: r for r in rows}
     for turn in turns:
         src = row_by_tx[turn["tx_id"]]
-        turn.update({k: src[k] for k in ("feed", "icao", "facility_class", "file", "avg_logprob")})
+        turn.update({k: src.get(k) for k in ("feed", "icao", "facility_class", "file", "avg_logprob")})  # avg_logprob optional
         turn["unsupported_lang"] = src.get("lang", "en") != "en" and src.get("lang_prob", 0) >= 0.5
     write_jsonl(turns, out / "turns.jsonl")
-    timings["m3_sec"] = round(time.perf_counter() - t0, 1)
-    print(f"[M3] {n_raw} segments ({n_hall} hallucination-flagged) -> {len(rows)} kept -> {len(turns)} turns "
+    timings["m2_turns_sec"] = round(time.perf_counter() - t0, 1)
+    print(f"[M2] {n_raw} segments ({n_hall} hallucination-flagged) -> {len(rows)} kept -> {len(turns)} turns "
           f"(roles: {dict(Counter(t['role'] for t in turns))})")
 
-    # ---------------- M4: extraction
+    # ---------------- M2 step 2: extraction
     t0 = time.perf_counter()
     ext_path = out / "extraction.jsonl"
     extractor_usage = {}
-    if args.m4_shard:
-        i, n = (int(x) for x in args.m4_shard.split("/"))
+    if args.m2_shard:
+        i, n = (int(x) for x in args.m2_shard.split("/"))
         part = [t for k, t in enumerate(turns) if k % n == i and not t["unsupported_lang"]]
         extractor = build_extractor(args, ontology, callsign_re)
         rows = []
-        for j in tqdm(range(0, len(part), 256), desc=f"M4 shard {i}/{n}"):
+        for j in tqdm(range(0, len(part), 256), desc=f"M2 shard {i}/{n}"):
             batch = part[j:j + 256]
             for turn, ext in zip(batch, extractor.extract(batch)):
                 rows.append({"turn_id": turn["turn_id"], **ext})
         write_jsonl(rows, out / f"extraction.part{i}-of-{n}.jsonl")
         save_json({"usage": getattr(getattr(extractor, "llm", None), "usage", {}),
                    "sec": round(time.perf_counter() - t0, 1)}, out / f"extraction.part{i}-of-{n}.meta.json")
-        print(f"[M4] shard {i}/{n}: {len(rows)} turns -> extraction.part{i}-of-{n}.jsonl")
+        print(f"[M2] shard {i}/{n}: {len(rows)} turns -> extraction.part{i}-of-{n}.jsonl")
         return
 
     if args.merge_shards:
@@ -141,7 +141,7 @@ def main():
                 "normalized_text": turn["text"], "edits": [], "backend": "unsupported_lang", "valid_json": True})
         write_jsonl(extractions, ext_path)
         extractor_usage = {**usage, "shards": args.merge_shards, "shard_wall_sec": shard_secs}
-        print(f"[M4] merged {args.merge_shards} shards ({len(by_turn)} turns)")
+        print(f"[M2] merged {args.merge_shards} shards ({len(by_turn)} turns)")
     elif args.reuse_extraction and ext_path.exists():
         extractions = load_jsonl(ext_path)
         if len(extractions) != len(turns):
@@ -150,14 +150,14 @@ def main():
             validator = LLMExtractor(None, ontology, callsign_re)
             extractions = [{"turn_id": t["turn_id"], **e} for t, e in zip(turns, validator.revalidate(turns, extractions))]
             write_jsonl(extractions, ext_path)
-        print(f"[M4] reused {display_path(ext_path)}{' (revalidated)' if args.revalidate else ''}")
+        print(f"[M2] reused {display_path(ext_path)}{' (revalidated)' if args.revalidate else ''}")
         extractor_usage = previous_summary.get("llm_usage", {})
     else:
         extractor = build_extractor(args, ontology, callsign_re)
         supported = [t for t in turns if not t["unsupported_lang"]]
         by_turn = {}
         chunk = 256
-        for i in tqdm(range(0, len(supported), chunk), desc=f"M4 ({extractor.name})"):
+        for i in tqdm(range(0, len(supported), chunk), desc=f"M2 ({extractor.name})"):
             batch = supported[i:i + chunk]
             for turn, ext in zip(batch, extractor.extract(batch)):
                 by_turn[turn["turn_id"]] = ext
@@ -169,14 +169,14 @@ def main():
             extractions.append({"turn_id": turn["turn_id"], **ext})
         write_jsonl(extractions, ext_path)
         extractor_usage = getattr(getattr(extractor, "llm", None), "usage", {})
-    timings["m4_sec"] = round(time.perf_counter() - t0, 1)
+    timings["m2_extract_sec"] = round(time.perf_counter() - t0, 1)
     if args.reuse_extraction:
-        timings["m4_sec"] = previous_summary.get("timings", {}).get("m4_sec", timings["m4_sec"])
+        timings["m2_extract_sec"] = previous_summary.get("timings", {}).get("m2_extract_sec", previous_summary.get("timings", {}).get("m4_sec", timings["m2_extract_sec"]))
     if args.merge_shards:
-        timings["m4_sec"] = max(extractor_usage["shard_wall_sec"])
-    print(f"[M4] backends: {dict(Counter(e['backend'] for e in extractions))}")
+        timings["m2_extract_sec"] = max(extractor_usage["shard_wall_sec"])
+    print(f"[M2] backends: {dict(Counter(e['backend'] for e in extractions))}")
 
-    # ---------------- M5 + M6: canonicalize and build graph (UTC order)
+    # ---------------- M3 + M4: canonicalize and build graph (UTC order)
     t0 = time.perf_counter()
     canon = Canonicalizer(kb, telephony)
     builder = GraphBuilder(kb, ontology, rules, build_cfg, args.region, args.rb_window)
@@ -189,9 +189,9 @@ def main():
     write_jsonl(canonical, out / "canonical.jsonl")
     graph.save(out / "kg" / "graph.json")
     graph.export_neo4j(out / "kg" / "neo4j")
-    timings["m5_m6_sec"] = round(time.perf_counter() - t0, 1)
+    timings["m3_m4_sec"] = round(time.perf_counter() - t0, 1)
 
-    # ---------------- M7: rules
+    # ---------------- M5: rules
     alerts = detect_anomalies(graph, builder.required, set(rules["runway_state_types"]), args.rb_window)
     save_json(alerts, out / "alerts.json")
 
@@ -223,8 +223,8 @@ def main():
         "timings": timings,
     }
     save_json(summary, out / "summary.json")
-    print(f"[M6] {sum(labels.values())} nodes, {len(graph.edges)} edges; flights={summary['flights']}")
-    print(f"[M7] readback: {summary['readback_status']} | alerts: {summary['alerts']}")
+    print(f"[M4] {sum(labels.values())} nodes, {len(graph.edges)} edges; flights={summary['flights']}")
+    print(f"[M5] readback: {summary['readback_status']} | alerts: {summary['alerts']}")
     print(f"[done] -> {display_path(out)}")
 
 

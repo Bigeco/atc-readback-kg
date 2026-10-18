@@ -1,4 +1,4 @@
-"""M2: context-biased Whisper ASR with hallucination filtering (and VAD-based segmentation, M1).
+"""M1 STT (Whisper backend): VAD-based segmentation and context-biased Whisper ASR with hallucination filtering.
 
 Segmentation uses the Silero VAD bundled with faster-whisper. LiveATC raw archives
 contain no digital silence between transmissions, so the VAD is the primary splitter.
@@ -10,15 +10,20 @@ import numpy as np
 
 
 SAMPLE_RATE = 16000
+# AM airband voice channel used by the US-ATC fine-tune (thomaseibner/whisper-large-v3-turbo-us-atc-v3):
+# 6th-order 300-3400 Hz band-pass + EBU R128 loudness normalisation, applied to every training clip.
+RADIO_FILTER = ",".join(["highpass=f=300:poles=2"] * 3 + ["lowpass=f=3400:poles=2"] * 3
+                        + ["loudnorm=I=-16:TP=-1.5:LRA=11"])
 HALLUCINATION_PHRASES = {
     "thank you.", "thank you", "thanks for watching.", "thanks for watching", "you", "you.",
     "bye.", "bye", "subtitles by the amara.org community",
 }
 
 
-def load_audio(path: str) -> np.ndarray:
+def load_audio(path: str, radio_filter: bool = False) -> np.ndarray:
+    af = ["-af", RADIO_FILTER] if radio_filter else []
     pcm = subprocess.run(
-        ["ffmpeg", "-loglevel", "error", "-i", path, "-ac", "1", "-ar", str(SAMPLE_RATE), "-f", "s16le", "-"],
+        ["ffmpeg", "-loglevel", "error", "-i", path, *af, "-ac", "1", "-ar", str(SAMPLE_RATE), "-f", "s16le", "-"],
         capture_output=True, check=True,
     ).stdout
     return np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
@@ -61,16 +66,19 @@ def build_domain_prompt(kb: dict, telephony: Iterable[str], active_callsigns: It
 
 class WhisperTranscriber:
     def __init__(self, model_name: str = "large-v3", device: str = "cuda", compute_type: str = "float16",
-                 beam_size: int = 5, min_silence_ms: int = 300, speech_pad_ms: int = 150):
+                 beam_size: int = 5, min_silence_ms: int = 300, speech_pad_ms: int = 150,
+                 repetition_penalty: float = 1.0, radio_filter: bool = False):
         from faster_whisper import WhisperModel
 
         self.model = WhisperModel(model_name, device=device, compute_type=compute_type)
         self.beam_size = beam_size
+        self.repetition_penalty = repetition_penalty
+        self.radio_filter = radio_filter
         self.vad_parameters = {"min_silence_duration_ms": min_silence_ms, "speech_pad_ms": speech_pad_ms}
 
     def transcribe(self, path: str, prompt: str = "", language: Optional[str] = "en",
                    segment_language_id: bool = False) -> dict:
-        audio = load_audio(path)
+        audio = load_audio(path, self.radio_filter)
         segments, info = self.model.transcribe(
             audio,
             language=language,
@@ -79,6 +87,7 @@ class WhisperTranscriber:
             beam_size=self.beam_size,
             initial_prompt=prompt or None,
             condition_on_previous_text=False,
+            repetition_penalty=self.repetition_penalty,
         )
 
         rows: List[dict] = []

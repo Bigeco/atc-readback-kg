@@ -1,4 +1,4 @@
-########################## M4: ontology-grounded extraction ###########################
+########################## M2: ontology-grounded extraction ###########################
 
 EXTRACTION_SYS_PROMPT = """
 You convert one U.S. air traffic control radio transmission into structured ATC concepts.

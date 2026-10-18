@@ -1,4 +1,4 @@
-"""M8: time-aware queries over the temporal KG (also the competency questions of E1)."""
+"""M6: time-aware queries over the temporal KG (also the competency questions of E1)."""
 from collections import defaultdict
 from typing import Dict, List, Optional
 

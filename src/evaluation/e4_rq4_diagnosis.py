@@ -2,7 +2,7 @@
 
   template : sample N turns of a run -> gold template JSONL (predictions prefilled, gold fields empty)
   score    : CSR (callsign recognition), CmdF1 (concept-level command F1), WER (if gold_text given)
-             and the distribution of m_dagger = first failing module (M2 ASR / M3 role / M4 extraction / M5 grounding)
+             and the distribution of m_dagger = first failing module (M1 STT / M2-role / M2-extract / M3 grounding)
   compare  : side-by-side table of several scored runs (e.g. US vs JP vs KR, condition a vs b)
 
 Gold row: {"turn_id", "gold_text", "gold_speaker", "gold_flight", "gold_instructions": [{"type", "target"}]}
@@ -78,13 +78,13 @@ def score(args):
             wers.append(wer)
 
         if wer is not None and wer > WER_FAIL:
-            stage = "M2"
+            stage = "M1-STT"
         elif c["speaker"] != g["gold_speaker"] and turns[g["turn_id"]]["role"] != g["gold_speaker"]:
-            stage = "M3"
+            stage = "M2-role"
         elif sorted(t for t, _ in pred_concepts) != sorted(t for t, _ in gold_concepts):
-            stage = "M4"
+            stage = "M2-extract"
         elif not flight_ok or sorted(pred_concepts, key=str) != sorted(gold_concepts, key=str):
-            stage = "M5"
+            stage = "M3-ground"
         else:
             stage = "OK"
         if c.get("normalized_text") is not None and "UNSUPPORTED_LANG" in c.get("callsign", {}).get("flags", []):

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full pipeline: ASR (M1-M2) -> KG (M3-M7).
+# Full pipeline: STT (M1) -> KG (M2-M5).
 #   RUN_NAME=katl_gnd AIRPORT=katl EXTRACTOR=llm CUDA_VISIBLE_DEVICES=3 bash scripts/run_pipeline.sh
 set -euo pipefail
 source "$(dirname "$0")/_env.sh"

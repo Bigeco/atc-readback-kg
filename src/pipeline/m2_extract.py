@@ -1,4 +1,4 @@
-"""M4: ontology-grounded extraction of ATC instructions from one speaker turn.
+"""M2 (step 2): ontology-grounded extraction of ATC instructions from one speaker turn.
 
 Two backends share one output schema:
 - RuleExtractor: deterministic phraseology grammar (baseline, no GPU, used by E3 for speed).

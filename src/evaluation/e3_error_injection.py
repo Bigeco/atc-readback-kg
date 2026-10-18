@@ -2,7 +2,7 @@
 
 Real readback errors occur in under 1% of transmissions (Cardosi 1994), so controlled errors are
 injected into pilot readbacks that the pipeline judged MATCH (cf. artificial samples in Helmke et al. 2022).
-Text-level injection measures the reasoning layer (M4->M7) without ASR noise, i.e. an upper bound.
+Text-level injection measures the reasoning layer (M2->M5) without ASR noise, i.e. an upper bound.
 """
 import argparse
 import random
@@ -18,9 +18,9 @@ from common.atc_text import LETTER_TO_WORD, PHONETIC, build_callsign_regex
 from common.io_utils import load_json, load_jsonl, save_json
 from common.paths import AIRLINES_PATH, ONTOLOGY_PATH, RULES_PATH, STATIC_KB_ROOT, display_path, run_dir
 from evaluation.metrics import rate
-from pipeline.m4_extract import LLMExtractor, RuleExtractor
-from pipeline.m5_canonicalize import Canonicalizer
-from pipeline.m6_graph import TemporalEventGraph
+from pipeline.m2_extract import LLMExtractor, RuleExtractor
+from pipeline.m3_canonicalize import Canonicalizer
+from pipeline.m4_graph import TemporalEventGraph
 from reasoning.rules import compare_readback
 
 

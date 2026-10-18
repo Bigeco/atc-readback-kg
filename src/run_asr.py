@@ -1,4 +1,4 @@
-"""Stage 1 (M1 + M2): archive discovery, VAD segmentation and context-biased Whisper ASR.
+"""M1 STT (Whisper backend): archive discovery, VAD segmentation and context-biased Whisper ASR.
 
 Output: results/<run>/stt/<feed>/<stem>.jsonl, one row per VAD segment.
 """
@@ -18,13 +18,13 @@ from common.atc_text import build_callsign_regex, find_callsigns
 from common.io_utils import load_json, save_json, write_jsonl
 from common.paths import AIRLINES_PATH, STATIC_KB_ROOT, display_path, run_dir
 from pipeline.m1_ingest import DEFAULT_FACILITIES, discover_archives
-from pipeline.m2_asr import WhisperTranscriber, build_domain_prompt
+from pipeline.m1_asr import WhisperTranscriber, build_domain_prompt
 
 
 def load_kb(icao: str) -> dict:
     path = STATIC_KB_ROOT / f"{icao.lower()}.json"
     if not path.exists():
-        print(f"[M2] warning: no static KB for {icao} ({display_path(path)}); prompt falls back to generic vocabulary")
+        print(f"[M1] warning: no static KB for {icao} ({display_path(path)}); prompt falls back to generic vocabulary")
         return {"icao": icao}
     return load_json(path)
 
@@ -52,11 +52,15 @@ def recent_callsigns(rows, callsign_re, top_k: int = 10):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run M1 (ingest) + M2 (ASR) over LiveATC archives.")
+    parser = argparse.ArgumentParser(description="Run M1 STT (ingest + VAD + Whisper) over LiveATC archives.")
     parser.add_argument("--run-name", default="katl_gnd")
     parser.add_argument("--airports", nargs="+", default=["katl"], help="folder names under data/raw/liveatc")
     parser.add_argument("--facilities", nargs="+", default=list(DEFAULT_FACILITIES))
-    parser.add_argument("--model", default="large-v3")
+    parser.add_argument("--model", default="large-v3", help="faster-whisper size name or a CTranslate2 model directory")
+    parser.add_argument("--beam-size", type=int, default=5)
+    parser.add_argument("--repetition-penalty", type=float, default=1.0)
+    parser.add_argument("--radio-filter", action="store_true", help="300-3400 Hz band-pass + loudnorm before decoding")
+    parser.add_argument("--no-prompt", action="store_true", help="decode without the domain prompt")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--compute-type", default="float16")
     parser.add_argument("--language", default="en", help="'auto' enables Whisper language detection (RQ4)")
@@ -74,7 +78,7 @@ def main():
         archives = archives[: args.limit]
     if args.num_shards > 1:
         archives = shard_by_feed(archives, args.num_shards, args.shard_index)
-        print(f"[M2] shard {args.shard_index + 1}/{args.num_shards}: {len(archives)} archives, "
+        print(f"[M1] shard {args.shard_index + 1}/{args.num_shards}: {len(archives)} archives, "
               f"feeds {sorted({a['feed'] for a in archives})}")
     if not archives:
         print("[M1] nothing to transcribe; check data/raw/liveatc/<airport>/ and --facilities")
@@ -84,7 +88,8 @@ def main():
     callsign_re = build_callsign_regex(telephony)
     kbs = {}
     carry = {}
-    transcriber = WhisperTranscriber(args.model, args.device, args.compute_type)
+    transcriber = WhisperTranscriber(args.model, args.device, args.compute_type, beam_size=args.beam_size,
+                                     repetition_penalty=args.repetition_penalty, radio_filter=args.radio_filter)
     language = None if args.language == "auto" else args.language
 
     manifest = []
@@ -96,7 +101,7 @@ def main():
 
         kb = kbs.setdefault(archive["icao"], load_kb(archive["icao"]))
         active = [] if args.no_context_carry else carry.get(archive["feed"], [])
-        prompt = build_domain_prompt(kb, telephony.keys(), active)
+        prompt = "" if args.no_prompt else build_domain_prompt(kb, telephony.keys(), active)
 
         t0 = time.perf_counter()
         result = transcriber.transcribe(archive["path"], prompt, language, args.segment_lang)
@@ -116,13 +121,15 @@ def main():
             })
         write_jsonl(rows, out_path)
         carry[archive["feed"]] = recent_callsigns(rows, callsign_re)
-        tqdm.write(f"[M2] {archive['file']}: {len(rows)} segments, {result['duration_sec']/60:.1f} min audio, "
+        tqdm.write(f"[M1] {archive['file']}: {len(rows)} segments, {result['duration_sec']/60:.1f} min audio, "
                    f"{elapsed:.0f}s, hallucination-flagged {sum(r['hallucination'] for r in rows)}")
 
     save_json({"run_name": args.run_name, "model": args.model, "language": args.language,
-               "context_carry": not args.no_context_carry, "archives": manifest},
+               "context_carry": not args.no_context_carry, "prompt": not args.no_prompt,
+               "beam_size": args.beam_size, "repetition_penalty": args.repetition_penalty,
+               "radio_filter": args.radio_filter, "archives": manifest},
               out_root / (f"manifest.shard{args.shard_index}.json" if args.num_shards > 1 else "manifest.json"))
-    print(f"[M2] done -> {display_path(out_root)}")
+    print(f"[M1] done -> {display_path(out_root)}")
 
 
 if __name__ == "__main__":

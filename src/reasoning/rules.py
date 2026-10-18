@@ -1,6 +1,6 @@
-"""M7: concept-level readback comparison and rule-based anomaly detection.
+"""M5: concept-level readback comparison and rule-based anomaly detection.
 
-Rules (system_module.pdf, M7):
+Rules (system_module.pdf, M5):
   rho1 MISMATCH / PARTIAL   readback concepts differ from / omit required concepts
   rho2 NO_READBACK          required instruction without any readback in the window
   rho3 NO_CALLSIGN          readback without callsign (FAA JO 7110.65 2-4-3)

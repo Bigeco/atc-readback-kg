@@ -1,4 +1,4 @@
-"""LLM backends for M4 extraction and the optional E2 evidence judge.
+"""LLM backends for M2 extraction and the optional E2 evidence judge.
 
 - "hf": local Hugging Face model (default Qwen/Qwen3-4B-Instruct-2507), batched greedy decoding.
         Required for restricted data (e.g. Korean recordings) because nothing leaves the machine.

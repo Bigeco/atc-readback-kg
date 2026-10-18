@@ -1,8 +1,8 @@
-"""M3: text-based speaker role detection and turn splitting.
+"""M2 (step 1): text-based speaker role detection and turn splitting.
 
 Cues follow BERTraffic-style text diarization: controllers lead with the callsign,
 pilots usually end with it, and pilot calls open with the facility name.
-Undecided turns are left as UNKNOWN for the M4 LLM to resolve.
+Undecided turns are left as UNKNOWN for the M2 extraction LLM to resolve.
 """
 import re
 from typing import List

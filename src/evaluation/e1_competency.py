@@ -14,7 +14,7 @@ sys.path.insert(0, str(SRC_ROOT))
 
 from common.io_utils import load_json, save_json
 from common.paths import display_path, run_dir
-from pipeline.m6_graph import TemporalEventGraph
+from pipeline.m4_graph import TemporalEventGraph
 from reasoning import queries as Q
 
 

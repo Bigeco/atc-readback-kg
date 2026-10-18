@@ -1,4 +1,4 @@
-"""M5: callsign resolution, value normalization and grounding to the static KB.
+"""M3: callsign resolution, value normalization and grounding to the static KB.
 
 Turns are processed in UTC order so that the set of recently active flights
 (a lightweight stand-in for surveillance data) can repair callsign errors.
