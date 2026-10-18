@@ -62,7 +62,7 @@
 \node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s=[t^s,t^e)$, $w$, speaker}};
 \node[dyn] (ins) at (7,0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q$, $\tau=[t^s,t^{\mathrm{to}})$}};
 \draw[e] (tx) -- node[el,above]{CONTAINS} (ins);
-\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT $\to$ 직전 ATCO, 같은 항공편, $0<\Delta t\le 20$ s}} to[out=0,in=70,looseness=1.2] (tx.north);
+\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT 송신 $\to$ 직전 ATCO 송신, 같은 항공편}} to[out=0,in=70,looseness=1.2] (tx.north);
 \draw[e, teal!60!black] (ins.north west) to[out=110,in=180,looseness=1.2] ($(ins.north)+(-0.2,1.0)$) node[el,above,text=teal!60!black,align=center]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의 다음 관제사 지시}} to[out=0,in=70,looseness=1.2] (ins.north);
 \draw[-{Stealth[length=2.5mm]}, very thick, teal!60!black] (-3.2,-1.1) -- node[below,font=\scriptsize]{시간 $t$ (UTC)} (10.6,-1.1);
 % ---- layer 2: entities (from transmissions, no time)
@@ -100,7 +100,7 @@
 시간은 속성으로 & 송신 $s=[t^s,t^e)$, 지시 $\tau=[t^s,t^{\mathrm{to}})$, 간선 적재 시각 $t'$. 시각이 연속값이라 시간 노드를 공유할 일이 없음. \texttt{valid\_from/valid\_to}는 OWL-Time \texttt{hasBeginning/hasEnd}에 대응 & SEM \texttt{hasBeginTimeStamp}, Zep 이중 시간($T$, $T'$)\\
 시점 질의 & 시각 $t$를 주면 $\tau\ni t$인 관제사 상태형 지시를 고르고(\texttt{snapshot}), \texttt{tx\_node}로 송신을 찾음 & \\
 NEXT는 지시끼리 & 항공기 상태의 흐름(어떤 지시를 어떤 순서로 받았나). 한 송신 안 지시 순서도 담고(\,$\Delta t=0$), 이전 지시를 끝내는 것도 지시 단위. 시작 시각 순서에서 유도됨 & 사건 그래프의 next-event 관계\\
-READBACK\_OF는 송신끼리 & 대화의 주고받기(누가 누구에게 답했나). 조건: PILOT $\to$ 직전 ATCO, 같은 항공편·주파수, $0<\Delta t\le 20$\,s. 빠뜨린 지시는 상대 노드가 없어 지시 간선으로 못 그리므로, 지시 단위 결과는 간선 속성(\texttt{matched}, \texttt{missing}, \texttt{conflicts})에 저장 & 대화 구조 연구의 reply-to\\
+READBACK\_OF는 송신끼리 & 대화의 주고받기(누가 누구에게 답했나). 조건: PILOT $\to$ 직전 ATCO, 같은 항공편·주파수(복창 시간 창은 \texttt{kg\_build.json}). 빠뜨린 지시는 상대 노드가 없어 지시 간선으로 못 그리므로, 지시 단위 결과는 간선 속성(\texttt{matched}, \texttt{missing}, \texttt{conflicts})에 저장 & 대화 구조 연구의 reply-to\\
 지우지 않고 끝냄 & 새 지시가 이전 지시를 대체하면 $\tau$의 끝과 \texttt{invalidated\_by}만 기록. 과거 시점 질의가 가능 & Zep invalidation\\
 같은 종류끼리 관계는 자기 화살표 & READBACK\_OF, NEXT는 같은 노드 종류의 \emph{서로 다른} 두 노드 사이 관계. 조건을 간선에 적어 오해를 막음 & UML·ER·온톨로지 스키마 관례\\
 \bottomrule
