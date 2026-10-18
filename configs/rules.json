@@ -12,7 +12,7 @@
   "sources": [
     "FAA Order JO 7110.65BB 2-4-3 (read-back levels, quoted under readback_basis.FAA) and 3-7-2.",
     "ICAO Doc 4444 PANS-ATM, read-back requirements (runway, level, heading, SSR code, frequency). Not among data/ontology inputs; not verified by this script.",
-    "supersedes / max_validity_sec / runway_state_types are KG design values, not regulation."
+    "supersedes / runway_state_types follow from the meaning of the instructions (design, not regulation). Time parameters (max validity, read-back window) are in configs/kg_build.json."
   ],
   "region_rules": {
     "US": "FAA",
@@ -195,17 +195,6 @@
     "CLEARED_TO_LAND": [
       "CLEARED_TO_LAND"
     ]
-  },
-  "max_validity_sec": {
-    "TAXI_VIA": 900,
-    "HOLD_SHORT": 900,
-    "CROSS_RUNWAY": 180,
-    "HOLD_POSITION": 600,
-    "CONTACT": 1800,
-    "MONITOR": 1800,
-    "LINE_UP_AND_WAIT": 300,
-    "CLEARED_FOR_TAKEOFF": 180,
-    "CLEARED_TO_LAND": 600
   },
   "runway_state_types": [
     "CROSS_RUNWAY",

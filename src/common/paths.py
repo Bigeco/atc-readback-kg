@@ -12,6 +12,7 @@ RESULTS_ROOT = PROJECT_ROOT / "results"
 
 ONTOLOGY_PATH = CONFIG_ROOT / "ontology.json"
 RULES_PATH = CONFIG_ROOT / "rules.json"
+KG_BUILD_PATH = CONFIG_ROOT / "kg_build.json"
 AIRLINES_PATH = CONFIG_ROOT / "airlines.json"
 
 

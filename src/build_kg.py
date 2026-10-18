@@ -16,7 +16,7 @@ sys.path.insert(0, str(SRC_ROOT))
 
 from common.atc_text import build_callsign_regex
 from common.io_utils import iter_jsonl, load_json, load_jsonl, save_json, write_jsonl
-from common.paths import AIRLINES_PATH, ONTOLOGY_PATH, RULES_PATH, STATIC_KB_ROOT, display_path, run_dir
+from common.paths import AIRLINES_PATH, KG_BUILD_PATH, ONTOLOGY_PATH, RULES_PATH, STATIC_KB_ROOT, display_path, run_dir
 from pipeline.m3_role import split_turns
 from pipeline.m4_extract import LLMExtractor, RuleExtractor
 from pipeline.m5_canonicalize import Canonicalizer
@@ -64,7 +64,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=24)
     parser.add_argument("--region", default="US", choices=["US", "KR", "JP"])
     parser.add_argument("--airport", default="katl", help="static KB name under data/static_kb")
-    parser.add_argument("--rb-window", type=float, default=20.0, help="readback window in seconds")
+    parser.add_argument("--rb-window", type=float, default=None,
+                        help="readback window in seconds (default: configs/kg_build.json)")
     parser.add_argument("--reuse-extraction", action="store_true", help="skip M4 if extraction.jsonl exists")
     parser.add_argument("--revalidate", action="store_true", help="re-apply M4 validation to stored raw LLM output")
     parser.add_argument("--limit", type=int, default=0, help="debug: only the first N segments")
@@ -76,6 +77,8 @@ def main():
     previous_summary = load_json(out / "summary.json") if (out / "summary.json").exists() else {}
     ontology = load_json(ONTOLOGY_PATH)
     rules = load_json(RULES_PATH)
+    build_cfg = load_json(KG_BUILD_PATH)
+    args.rb_window = args.rb_window or build_cfg["readback_window_sec"]
     telephony = load_json(AIRLINES_PATH)["telephony"]
     kb = load_json(STATIC_KB_ROOT / f"{args.airport.lower()}.json")
     callsign_re = build_callsign_regex(telephony)
@@ -176,7 +179,7 @@ def main():
     # ---------------- M5 + M6: canonicalize and build graph (UTC order)
     t0 = time.perf_counter()
     canon = Canonicalizer(kb, telephony)
-    builder = GraphBuilder(kb, ontology, rules, args.region, args.rb_window)
+    builder = GraphBuilder(kb, ontology, rules, build_cfg, args.region, args.rb_window)
     canonical = []
     for turn, ext in zip(turns, extractions):
         rec = canon.canonicalize(turn, ext)

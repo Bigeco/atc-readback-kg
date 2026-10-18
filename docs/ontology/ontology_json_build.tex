@@ -200,12 +200,13 @@ FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK, 79쪽)은 두 부분으로 되어 �
 \toprule
 파일 & 키 & 근거 & 읽는 모듈\\\midrule
 \texttt{ontology.json} & \key{entity\_types}, \key{relation\_types}, \key{dlr\_instruction\_schema}, \key{dlr\_catalog}, \key{command\_types}(\key{state}, \key{targets}, \key{description}, \key{dlr}, \key{faa\_phraseology}), \key{advisory\_types}, \key{non\_instruction\_types}, \key{lexical\_cues} & DLR 설명서·표, FAA 표준 문구(미국에서 쓰는 말인지) & M4 추출, M6 그래프\\
-\texttt{rules.json} & \key{region\_rules}, \key{readback}(종류별 등급), \key{readback\_required}, \key{readback\_basis}, \key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types} & FAA §2-4-3, ICAO(미검증), KG 설계값 & M6 복창 연결, M7 경고 규칙, E3\\
+\texttt{rules.json} & \key{region\_rules}, \key{readback}(종류별 등급), \key{readback\_required}, \key{readback\_basis}, \key{supersedes}, \key{runway\_state\_types} & FAA §2-4-3, ICAO(미검증), 지시의 의미 & M6 복창 연결·상태 종료, M7 경고 규칙, E3\\
+\texttt{kg\_build.json} & \key{readback\_window\_sec}(20초), \key{max\_validity\_sec}, \key{default\_max\_validity\_sec}(600초) & 데이터 처리 설정 (사람이 작성, 생성 코드 대상 아님) & M6, M7\\
 \bottomrule
 \end{tabularx}
 \end{center}
 
-\noindent 이렇게 나누면 RQ4(한국·일본)에서 \textbf{온톨로지는 그대로 두고 규칙만 ICAO로 바꾼다}는 실험 조건을 파일 단위로 보여 줄 수 있다. 두 파일 모두 \key{generated}에 생성 코드, 날짜, 입력 PDF의 MD5를 기록한다.
+\noindent 시간 값(복창 연결 시간 창, 최대 유효시간)은 도메인 규칙이 아니라 녹음 누락 등에 대비한 \textbf{데이터 처리 설정}이므로 \texttt{configs/kg\_build.json}에 따로 둔다. KATL 전체 KG에서 관제사 상태형 지시 2{,}993개 중 2{,}251개가 다음 지시 없이 최대 유효시간으로 종료되었고, 복창 연결 404건 중 351건이 5초 이내였다(95\% 지점 12.4초). 이렇게 나누면 RQ4(한국·일본)에서 \textbf{온톨로지는 그대로 두고 규칙만 ICAO로 바꾼다}는 실험 조건을 파일 단위로 보여 줄 수 있다. 두 파일 모두 \key{generated}에 생성 코드, 날짜, 입력 PDF의 MD5를 기록한다.
 
 \subsection*{\texttt{dlr\_instruction\_schema}: DLR 지시 구조}
 설명서 Figure 2-1(7쪽)의 구조를 그대로 중첩해 담았다. 각 요소에는 한 문장 설명, JSON 키(5.1장, 20쪽), 우리 M4 필드(\key{ours}), 필수 여부와 빈 값, 우리와 다른 점(\key{note})을 적었다.
@@ -252,7 +253,7 @@ rules.json
 \section{호환성 확인}\label{sec:compat}
 %==========================================================
 \begin{enumerate}[leftmargin=14pt]
-\item \textbf{값 비교:} 두 파일의 값을 이전 단일 파일(v0.1)과 비교했다. \key{readback\_required}, \key{region\_rules}, \key{supersedes}, \key{max\_validity\_sec}, \key{runway\_state\_types}, \key{lexical\_cues}, \key{advisory\_types}, \key{non\_instruction\_types}, \key{entity\_types}, \key{relation\_types}, 20개 종류의 \key{state}와 복창 등급이 모두 같다.
+\item \textbf{값 비교:} 두 파일의 값을 이전 단일 파일(v0.1)과 비교했다. \key{readback\_required}, \key{region\_rules}, \key{supersedes}, \key{max\_validity\_sec}(현재 \texttt{kg\_build.json}), \key{runway\_state\_types}, \key{lexical\_cues}, \key{advisory\_types}, \key{non\_instruction\_types}, \key{entity\_types}, \key{relation\_types}, 20개 종류의 \key{state}와 복창 등급이 모두 같다.
 \item \textbf{전체 재실행:} 저장된 추출 결과로 KATL 전체 KG(\texttt{results/katl\_all})를 다시 만들었다. 경고 파일(\texttt{alerts.json})은 바이트 단위로 같고, 그래프(\texttt{graph.json})는 적재 시각(\key{ingested\_at})을 빼면 같다. 노드 42{,}954개, 간선 65{,}016개, 복창 연결 404건(일치 232, 부분 138, 불일치 34)이다.
 \end{enumerate}
 

@@ -260,7 +260,7 @@ RELATION_TYPES = {
 }
 REGION_RULES = {"US": "FAA", "KR": "ICAO", "JP": "ICAO"}
 
-# KG design values (not regulatory): supersession and maximum validity of state-type instructions.
+# Inference rules from the meaning of instructions (not regulation): supersession of state-type instructions.
 SUPERSEDES = {
     "CONTACT": ["*"], "MONITOR": ["*"],
     "TAXI_VIA": ["TAXI_VIA", "HOLD_POSITION"],
@@ -269,10 +269,6 @@ SUPERSEDES = {
     "LINE_UP_AND_WAIT": ["HOLD_SHORT", "LINE_UP_AND_WAIT"],
     "CLEARED_FOR_TAKEOFF": ["LINE_UP_AND_WAIT", "HOLD_SHORT", "CLEARED_FOR_TAKEOFF"],
     "CLEARED_TO_LAND": ["CLEARED_TO_LAND"],
-}
-MAX_VALIDITY_SEC = {
-    "TAXI_VIA": 900, "HOLD_SHORT": 900, "CROSS_RUNWAY": 180, "HOLD_POSITION": 600, "CONTACT": 1800,
-    "MONITOR": 1800, "LINE_UP_AND_WAIT": 300, "CLEARED_FOR_TAKEOFF": 180, "CLEARED_TO_LAND": 600,
 }
 RUNWAY_STATE_TYPES = ["CROSS_RUNWAY", "LINE_UP_AND_WAIT", "CLEARED_FOR_TAKEOFF", "CLEARED_TO_LAND"]
 
@@ -567,7 +563,8 @@ def build(out_dir: Path):
         "sources": [
             "FAA Order JO 7110.65BB 2-4-3 (read-back levels, quoted under readback_basis.FAA) and 3-7-2.",
             ICAO_READBACK_SOURCE,
-            "supersedes / max_validity_sec / runway_state_types are KG design values, not regulation.",
+            "supersedes / runway_state_types follow from the meaning of the instructions (design, not regulation). "
+            "Time parameters (max validity, read-back window) are in configs/kg_build.json.",
         ],
         "region_rules": REGION_RULES,
         "readback": readback,
@@ -582,10 +579,9 @@ def build(out_dir: Path):
             "ICAO": ICAO_READBACK_SOURCE,
         },
         "supersedes": SUPERSEDES,
-        "max_validity_sec": MAX_VALIDITY_SEC,
         "runway_state_types": RUNWAY_STATE_TYPES,
     }
-    unknown = {k for k in [*SUPERSEDES, *MAX_VALIDITY_SEC, *RUNWAY_STATE_TYPES] if k not in command_types}
+    unknown = {k for k in [*SUPERSEDES, *RUNWAY_STATE_TYPES] if k not in command_types}
     if unknown:
         sys.exit(f"[onto] rules refer to undefined command types: {sorted(unknown)}")
 

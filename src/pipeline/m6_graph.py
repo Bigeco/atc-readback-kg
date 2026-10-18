@@ -115,8 +115,8 @@ RETURN count(rel);
 
 
 class GraphBuilder:
-    def __init__(self, kb: dict, ontology: dict, rules: dict, region: str = "US", rb_window: float = 20.0,
-                 context_link_window: float = 8.0):
+    def __init__(self, kb: dict, ontology: dict, rules: dict, build_cfg: dict, region: str = "US",
+                 rb_window: float = 20.0, context_link_window: float = 8.0):
         self.kb = kb
         self.ontology = ontology
         self.icao = kb.get("icao", "UNKNOWN")
@@ -124,7 +124,8 @@ class GraphBuilder:
         self.required: Set[str] = set(rules["readback_required"][rule_set])
         self.state_types = {k for k, v in ontology["command_types"].items() if v["state"]}
         self.supersedes = rules["supersedes"]
-        self.max_validity = rules["max_validity_sec"]
+        self.max_validity = build_cfg["max_validity_sec"]
+        self.default_validity = build_cfg["default_max_validity_sec"]
         self.rb_window = rb_window
         self.context_link_window = context_link_window
         self.graph = TemporalEventGraph()
@@ -316,7 +317,7 @@ class GraphBuilder:
         for node in self.graph.nodes_by_label("Instruction").values():
             p = node["props"]
             if p["state"] and p["valid_to"] is None:
-                p["valid_to"] = p["valid_from"] + self.max_validity.get(p["type"], 600)
+                p["valid_to"] = p["valid_from"] + self.max_validity.get(p["type"], self.default_validity)
                 p["expired"] = True
             tx = self.graph.nodes[p["tx_node"]]["props"]
             weak = p["conf"] < 0.45 or p.get("flags") or \

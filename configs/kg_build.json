@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "description": "KG construction parameters (data-handling settings, not domain rules). Domain rules are in configs/rules.json.",
+  "readback_window_sec": 20.0,
+  "_readback_window_sec_note": "A pilot transmission can be linked as a read-back only within this many seconds after the ATCO transmission; an instruction requiring read-back with no link inside the window raises NO_READBACK. katl_all: 351/404 links within 5 s, p95 12.4 s (measured inside the 20 s window).",
+  "max_validity_sec": {
+    "TAXI_VIA": 900,
+    "HOLD_SHORT": 900,
+    "CROSS_RUNWAY": 180,
+    "HOLD_POSITION": 600,
+    "CONTACT": 1800,
+    "MONITOR": 1800,
+    "LINE_UP_AND_WAIT": 300,
+    "CLEARED_FOR_TAKEOFF": 180,
+    "CLEARED_TO_LAND": 600
+  },
+  "default_max_validity_sec": 600,
+  "_max_validity_sec_note": "A state instruction that no later instruction supersedes (missed audio, flight left the frequency) is closed this many seconds after it started and marked expired. katl_all: 2,251 of 2,993 ATCO state instructions were closed this way. Values are design choices, not regulation."
+}

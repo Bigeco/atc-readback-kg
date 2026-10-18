@@ -39,7 +39,7 @@ and a web demo presents the results.
 ## Layout
 
 ```
-configs/                 ontology.json (vocabulary: DLR-based command types), rules.json (FAA/ICAO readback, supersession), airlines.json (telephony)
+configs/                 ontology.json (vocabulary: DLR-based command types), rules.json (FAA/ICAO readback, supersession), kg_build.json (readback window, max validity), airlines.json (telephony)
 data/
   raw/liveatc/<airport>/<feed>/*.mp3   LiveATC archives (not committed)
   static_kb/<icao>.json                M0 output
