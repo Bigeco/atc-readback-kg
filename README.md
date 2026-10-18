@@ -28,7 +28,7 @@ and a web demo presents the results.
 | M1b | **M1 STT** — context-biased Whisper large-v3 + hallucination filter + language id (alternative: MOSS-ATC joint transcription + diarization of whole archives, which replaces M1a's VAD) | `src/pipeline/m1_asr.py`, `src/run_asr.py`, `src/run_asr_moss.py` | `results/<run>/stt/`, `data/raw/text/` |
 | M2a | **M2 extraction** — speaker role decision: LLM labels each MOSS speaker ATCO/PILOT (rule vote fallback; Whisper path: per-transmission rules) | `src/pipeline/m2_role.py` | `turns.jsonl`, `speaker_roles.json` |
 | M2b | **M2 extraction** — ontology-grounded extraction (LLM few-shot + rule grammar, hybrid; also decides speaker role) | `src/pipeline/m2_extract.py`, `src/prompt/prompt.py` | `extraction.jsonl` |
-| M3 | Callsign resolution (incl. number-only and misrecognized airlines), KB grounding | `src/pipeline/m3_canonicalize.py` | `canonical.jsonl` |
+| M3 | Entity linking: callsigns, runways, taxiways and facilities to KB entities (incl. number-only and misrecognized callsigns) | `src/pipeline/m3_canonicalize.py` | `canonical.jsonl` |
 | M4 | Incremental bi-temporal event graph, readback linking, invalidation | `src/pipeline/m4_graph.py` | `kg/graph.json`, `kg/neo4j/` |
 | M5 | Concept-level readback comparison and anomaly rules ρ1–ρ7 | `src/reasoning/rules.py` | `alerts.json` |
 | M6 | Snapshot / timeline / competency queries | `src/reasoning/queries.py` | API + demo |

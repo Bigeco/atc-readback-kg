@@ -368,7 +368,7 @@ Zep/Graphiti의 \emph{episodic--semantic 부분그래프} 구분 \cite{zep2025}�
 \node[mod] (m3) at (9.9,0) {\textbf{M2a}\\화자 역할\\판정};
 \node[mod] (m4) at (13.2,0) {\textbf{M2b}\\온톨로지 기반\\LLM 의미추출};
 % row 2
-\node[mod] (m5) at (13.2,-3.4) {\textbf{M3}\\정규화·grounding\\·개체 해소};
+\node[mod] (m5) at (13.2,-3.4) {\textbf{M3}\\개체 연결};
 \node[mod] (m6) at (9.9,-3.4) {\textbf{M4}\\증분 Temporal\\KG 구축};
 \node[mod] (m7) at (6.6,-3.4) {\textbf{M5}\\규칙 추론·\\이상 탐지};
 \node[mod] (m8) at (3.3,-3.4) {\textbf{M6}\\시점 질의·\\시각화};
@@ -577,7 +577,7 @@ u_i = \arg\max_{u\,\in\,\mathcal{L}(\mathrm{JSchema}(\Ont))}\; P_{\mathrm{LLM}}\
 \end{itemize}
 
 %----------------------------------------------------------
-\subsection{M3. 정규화·Grounding·개체 해소}
+\subsection{M3. 개체 연결 (entity linking)}
 \textbf{[해결 문제]} \ch{C4} 콜사인 오인식·생략, \ch{C5} 표기 변이, \ch{C9} 정적 지식 검증, \ch{C2} 잔여 오인식 교정.
 
 \textbf{[입력]} $u_i$, $\KS$, $\G_{<t_i}$, $\Ctx_i$.

@@ -132,7 +132,7 @@ td.sym{font-family:var(--f-mono);white-space:nowrap}
           <span><i class="tag">M1b</i>STT (Whisper)</span>
           <span><i class="tag">M2a</i>화자 역할 판정</span>
           <span><i class="tag">M2b</i>지시 추출 (LLM)</span>
-          <span><i class="tag">M3</i>정규화·개체 해소</span>
+          <span><i class="tag">M3</i>개체 연결</span>
           <span><i class="tag">M4</i>Temporal KG 구축</span>
           <span><i class="tag">M5</i>규칙 추론·경고</span>
           <span><i class="tag">M6</i>시점 질의</span>
@@ -220,7 +220,7 @@ td.sym{font-family:var(--f-mono);white-space:nowrap}
       </article>
 
       <article class="mod">
-        <div class="mhead"><i class="tag" style="align-self:flex-start">M3</i><span class="nm">정규화·grounding·개체 해소</span></div>
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M3</i><span class="nm">개체 연결</span></div>
         <div class="io i"><h4>입력</h4><ul><li>u<sub>i</sub></li><li>K<sub>S</sub>: 활주로·유도로·항공사 목록</li><li>G<sub>&lt;t</sub>: 지금까지의 그래프</li><li>C<sub>i</sub>: 맥락</li></ul></div>
         <div class="io o"><h4>출력</h4><ul><li>f<sub>i</sub>: 항공편 노드</li><li>Ĩ<sub>i</sub>: 대상이 K<sub>S</sub> 노드로 연결된 지시 (없으면 ⊥)</li><li>A<sub>i</sub>: 플래그 (ASR_CORRECTED 등)</li></ul></div>
         <p class="ex">예: <b>"Delta 2642" → Flight DAL2642</b>, <b>"two six right" → Runway KATL 26R</b>. 목록에 없는 유도로면 KB_VIOLATION.</p>
