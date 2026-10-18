@@ -44,361 +44,8 @@
 \definecolor{res}{RGB}{240,236,248}
 \pagestyle{empty}
 \begin{document}
-\section*{KG 스키마 그림 후보 비교}
-여덟 후보 모두 \textbf{같은 KG}를 그린 것이다(노드 종류 Transmission·Instruction은 각각 하나). 다른 점은 그리는 방식과, D만 복창 간선을 지시 단위로 바꾸는 구조 변경이라는 점이다.
-\begin{center}\small
-\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
-\toprule
-후보 & 그리는 방식 & 장점 & 단점\\\midrule
-A (현재) & 예시식: Transmission·Instruction을 여러 번 그림 & 관계가 구체적으로 보임 & 노드 종류가 나뉜 것처럼 보임\\
-B & 스키마식: 종류마다 한 번, 같은 종류끼리 관계는 자기 화살표(self-loop) & 노드 종류와 관계가 한눈에 보임 & 시간 흐름(τ, 순서)은 안 보임\\
-C & B + KATL 실제 예시 시간축 & 구조(B)와 시간·복창(예시)을 함께 보여줌 & 그림이 2개\\
-D & B와 같되 READBACK\_OF를 \emph{지시끼리} 연결 (구조 변경) & 어느 지시가 복창됐는지 그래프에서 바로 보임 & 코드 수정 필요, 간선 수 증가\\
-E & B와 같되 시각을 가진 Transmission·Instruction을 ``시간축 위의 사건'' 상자로 묶고 시간 화살표 표시 & 무엇이 시간에 따라 쌓이는지 한눈에 보임 & (C처럼 예시 시간축을 함께 두는 것이 좋음)\\
-F & E를 세 층(사건 / 개체 / 정적 KB)으로 정리 + 시간축 예시. 선행 연구(Zep) 구조를 따름 & 층마다 성격이 분명하고 선행 연구로 설명 가능 & 그림이 큼\\
-G & F와 같은 그림 + 설계 결정과 근거 표 & 결정 근거가 한 장에 정리됨 & \\
-H (추천) & G에서 지시 대상 상자를 AirportPlace(공항 장소)와 ATCFacility(관제 시설)로 나눔 & 최종안. TARGET/VIA가 어디를 가리키는지 분명함 & \\
-\bottomrule
-\end{tabularx}
-\end{center}
-\newpage
-\section*{후보 A: 현재 그림 (예시식)}
-관제사 송신과 조종사 송신, 지시들을 \textbf{각각 따로} 그려 관계를 보여준다. 실제 KG에서는 Transmission·Instruction이 각각 한 종류이고, 관제사/조종사는 속성 \texttt{speaker}로 구분된다.
-\begin{center}
-\resizebox{0.95\textwidth}{!}{%
-\begin{tikzpicture}[
-  font=\small,
-  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.8cm, minimum width=2.4cm, align=center},
-  sta/.style={draw, thick, fill=res, minimum height=0.8cm, minimum width=2.2cm, align=center},
-  e/.style={-{Stealth[length=2.2mm]}, thick},
-  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
-]
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize (ATCO) $s, w$}};
-\node[dyn] (tx2) at (0,-3.2) {\textbf{Transmission}\\{\scriptsize (PILOT)}};
-\node[sta] (role) at (-4.2,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
-\node[dyn] (fl) at (4.6,0) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
-\node[sta] (al) at (8.6,0) {\textbf{Airline}\\{\scriptsize icao, country (예: DAL, US)}};
-\node[dyn] (ins) at (4.6,-3.2) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q,\tau$}};
-\node[sta] (rw) at (8.6,-3.2) {\textbf{Runway / Taxiway}\\{\scriptsize / Facility}};
-\node[sta] (ap) at (8.6,-5.6) {\textbf{Airport}};
-\node[dyn] (cm) at (4.6,2.2) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
-\node[dyn] (ins2) at (4.6,-5.8) {\textbf{Instruction}\\{\scriptsize 다음 관제사 지시 (같은 항공편)}};
-\node[dyn] (pins) at (0,-5.8) {\textbf{Instruction}\\{\scriptsize 조종사가 복창한 지시}};
-
-\draw[e] (tx) -- node[el,above]{SPOKEN\_BY} (role);
-\draw[e] (tx) -- node[el,above]{ADDRESSES} (fl);
-\draw[e] (fl) -- node[el,above]{OPERATED\_BY} (al);
-\draw[e] (tx) -- node[el,sloped,above]{CONTAINS} (ins);
-\draw[e] (ins) -- node[el,above]{TARGET} (rw);
-\draw[e] (rw) -- node[el,right]{PART\_OF} (ap);
-\draw[e] (fl) -- node[el,right]{ALIAS} (cm);
-\draw[e, red!60!black] (tx2) -- node[el,left,text=red!60!black]{READBACK\_OF \{status\}} (tx);
-\draw[e] (ins) -- node[el,right]{NEXT \{$\Delta t$\}} (ins2);
-\draw[e] (tx2) -- node[el,right]{CONTAINS} (pins);
-
-\node[font=\scriptsize, align=left, anchor=north west] at (-5.6,-7.0) {
-\tikz\node[fill=comp,draw,minimum width=4mm,minimum height=3mm]{}; 동적(사건) 계층: 유효 구간 $\tau$, 근거 송신 prov 보유\\[2pt]
-모든 간선: 적재 시각 $t'$ (\texttt{ingested\_at})\\[2pt]
-\tikz\node[fill=res,draw,minimum width=4mm,minimum height=3mm]{}; 정적 계층 $\KS$ (atmonto IRI 매핑)};
-\end{tikzpicture}}
-\end{center}
-\newpage
-\section*{후보 B: 스키마식 (종류마다 한 번 + 자기 화살표)}
-Transmission·Instruction을 \textbf{한 번씩만} 그리고, 같은 종류끼리의 관계는 자기 자신으로 돌아오는 화살표로 그린다. 관제사/조종사는 상자 안 \texttt{speaker} 속성으로 표시한다.
-\begin{itemize}\itemsep0pt
-\item READBACK\_OF: 조종사 송신 $\to$ 관제사 송신 (복창 관계)
-\item NEXT: 같은 항공편의 관제사 지시 $\to$ 다음 관제사 지시 (시간 순서)
-\end{itemize}
-\begin{center}
-\resizebox{0.95\textwidth}{!}{%
-\begin{tikzpicture}[
-  font=\small,
-  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.8cm, minimum width=2.4cm, align=center},
-  sta/.style={draw, thick, fill=res, minimum height=0.8cm, minimum width=2.2cm, align=center},
-  e/.style={-{Stealth[length=2.2mm]}, thick},
-  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
-]
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s, w$, speaker}};
-\node[sta] (role) at (-4.4,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
-\node[dyn] (fl) at (4.8,0) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
-\node[sta] (al) at (9.0,0) {\textbf{Airline}\\{\scriptsize icao, country}};
-\node[dyn] (cm) at (4.8,2.2) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
-\node[dyn] (ins) at (0,-3.0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q,\tau$, speaker}};
-\node[sta] (rw) at (4.8,-3.0) {\textbf{Runway / Taxiway}\\{\scriptsize / Ramp / Facility}};
-\node[sta] (ap) at (9.0,-3.0) {\textbf{Airport}};
-\draw[e] (tx) -- node[el,above]{SPOKEN\_BY} (role);
-\draw[e] (tx) -- node[el,above]{ADDRESSES} (fl);
-\draw[e] (fl) -- node[el,above]{OPERATED\_BY} (al);
-\draw[e] (fl) -- node[el,right]{ALIAS} (cm);
-\draw[e] (tx) -- node[el,right]{CONTAINS} (ins);
-\draw[e] ([yshift=2mm]ins.east) -- node[el,above]{TARGET} ([yshift=2mm]rw.west);
-\draw[e] ([yshift=-2mm]ins.east) -- node[el,below]{VIA} ([yshift=-2mm]rw.west);
-\draw[e] (rw) -- node[el,above]{PART\_OF} (ap);
-\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT 송신 $\to$ 직전 ATCO 송신: 같은 항공편·주파수, $0<\Delta t\le 20$ s}} to[out=0,in=70,looseness=1.2] (tx.north);
-\draw[e, teal!60!black] (ins.west) to[out=200,in=270,looseness=1.3] ($(ins.west)+(-1.6,0.6)$) node[el,left,text=teal!60!black,align=right]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의}\\{\scriptsize 다음 관제사 지시}\\{\scriptsize (시간순, $\Delta t\ge 0$)}} to[out=90,in=160,looseness=1.3] ([yshift=3mm]ins.west);
-\end{tikzpicture}}
-\end{center}
-\newpage
-\section*{후보 C: 스키마(B) + 실제 예시 시간축 (추천)}
-위는 후보 B의 스키마(\emph{어떤 노드와 관계가 있나}), 아래는 KATL 지상관제 DAL1489의 실제 송신으로 그린 시간축(\emph{실제로 어떻게 연결되나})이다. 아래 그림이 기존 SFO 시간 모델 그림을 대신한다.
-\begin{center}
-\resizebox{0.8\textwidth}{!}{%
-\begin{tikzpicture}[
-  font=\small,
-  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.8cm, minimum width=2.4cm, align=center},
-  sta/.style={draw, thick, fill=res, minimum height=0.8cm, minimum width=2.2cm, align=center},
-  e/.style={-{Stealth[length=2.2mm]}, thick},
-  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
-]
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s, w$, speaker}};
-\node[sta] (role) at (-4.4,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
-\node[dyn] (fl) at (4.8,0) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
-\node[sta] (al) at (9.0,0) {\textbf{Airline}\\{\scriptsize icao, country}};
-\node[dyn] (cm) at (4.8,2.2) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
-\node[dyn] (ins) at (0,-3.0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q,\tau$, speaker}};
-\node[sta] (rw) at (4.8,-3.0) {\textbf{Runway / Taxiway}\\{\scriptsize / Ramp / Facility}};
-\node[sta] (ap) at (9.0,-3.0) {\textbf{Airport}};
-\draw[e] (tx) -- node[el,above]{SPOKEN\_BY} (role);
-\draw[e] (tx) -- node[el,above]{ADDRESSES} (fl);
-\draw[e] (fl) -- node[el,above]{OPERATED\_BY} (al);
-\draw[e] (fl) -- node[el,right]{ALIAS} (cm);
-\draw[e] (tx) -- node[el,right]{CONTAINS} (ins);
-\draw[e] ([yshift=2mm]ins.east) -- node[el,above]{TARGET} ([yshift=2mm]rw.west);
-\draw[e] ([yshift=-2mm]ins.east) -- node[el,below]{VIA} ([yshift=-2mm]rw.west);
-\draw[e] (rw) -- node[el,above]{PART\_OF} (ap);
-\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT 송신 $\to$ 직전 ATCO 송신: 같은 항공편·주파수, $0<\Delta t\le 20$ s}} to[out=0,in=70,looseness=1.2] (tx.north);
-\draw[e, teal!60!black] (ins.west) to[out=200,in=270,looseness=1.3] ($(ins.west)+(-1.6,0.6)$) node[el,left,text=teal!60!black,align=right]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의}\\{\scriptsize 다음 관제사 지시}\\{\scriptsize (시간순, $\Delta t\ge 0$)}} to[out=90,in=160,looseness=1.3] ([yshift=3mm]ins.west);
-\end{tikzpicture}}
-
-\vspace{6mm}
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[font=\small, x=0.13cm, y=1cm]
-\draw[-{Stealth}, thick] (18,0) -- (102,0) node[right]{$t$ [s]};
-\foreach \x in {20,30,...,100} { \draw (\x,0.08) -- (\x,-0.08) node[below,font=\scriptsize]{\x}; }
-% transmissions (short labels; contents listed below the figure)
-\fill[blue!25] (24.1,0.85) rectangle (30.4,1.15); \node[anchor=south,font=\scriptsize] at (27.2,1.15) {\#0005 ATCO};
-\fill[orange!40] (31.7,1.85) rectangle (37.2,2.15); \node[anchor=west,font=\scriptsize] at (37.6,2.0) {\#0006 PILOT (복창)};
-\fill[blue!25] (88.5,0.85) rectangle (91.2,1.15); \node[anchor=south,font=\scriptsize] at (89.8,1.15) {\#0022 ATCO};
-% readback
-\draw[red!60!black, thick, -{Stealth}] (33,1.83) to[out=-110,in=30] (29.5,1.5);
-\node[font=\scriptsize, red!60!black, anchor=west] at (38,1.55) {READBACK\_OF \{MISMATCH\}};
-\draw[red!60!black, thin] (37.9,1.55) -- (33.2,1.6);
-% next
-\draw[teal!60!black, thick, dashed, -{Stealth}] (30.4,0.75) to[out=-10,in=190] (88.5,0.75);
-\node[font=\scriptsize, teal!60!black, fill=white, inner sep=1pt] at (72,0.3) {NEXT \{$\Delta t$ = 64.4 s\}};
-% validity bars
-\fill[green!45!black!60] (24.1,-0.95) rectangle (88.5,-0.7); \node[anchor=east,font=\scriptsize] at (23.5,-0.82) {$\tau$(TAXI\_VIA)};
-\node[font=\scriptsize, anchor=west] at (88.8,-0.82) {MONITOR가 끝냄};
-\fill[green!25] (24.1,-1.45) rectangle (30.4,-1.2); \node[anchor=east,font=\scriptsize] at (23.5,-1.33) {$\tau$(FOLLOW)};
-\fill[green!45!black!60] (88.5,-1.95) rectangle (101,-1.7); \node[anchor=east,font=\scriptsize] at (88.0,-1.83) {$\tau$(MONITOR): 다음 지시가 없어 최대 1800 s까지};
-% snapshot
-\draw[dashed] (50,-2.2) -- (50,2.5) node[above,font=\scriptsize]{$\G|_{50}$};
-\node[font=\scriptsize, anchor=north west] at (50.6,-2.15) {$\G|_{50}$: DAL1489는 TAXI\_VIA(M 경유 M2) 유효};
-\end{tikzpicture}}
-\end{center}
-{\small KATL 전체(Whisper)에서 연결된 복창 404건 중 351건이 관제사 송신 끝난 뒤 5\,s 안, 95\%가 12.4\,s 안에 시작했다. 아래 예의 \#0006도 \#0005 끝난 뒤 1.3\,s 만에 시작한다.
-
-\begin{tabularx}{\textwidth}{@{}ll>{\raggedright\arraybackslash}X@{}}
-\#0005 & 24.1 s, ATCO & ``Delta fourteen eighty nine pass behind \dots\ nine left to Mike two taxi via Mike'' $\to$ FOLLOW, TAXI\_VIA (M 경유 M2), TRAFFIC\_INFO\\
-\#0006 & 31.7 s, PILOT & ``Nine left Mike two via Mike \dots\ Delta fourteen eighty nine'' $\to$ TAXI\_VIA, FOLLOW (복창)\\
-\#0022 & 88.5 s, ATCO & ``Delta fourteen eighty nine monitor twenty three eighty five'' $\to$ MONITOR\\
-\end{tabularx}
-
-파란 상자 = 관제사 송신, 주황 상자 = 조종사 송신, 초록 막대 = 지시의 유효 구간 $\tau$. 시각은 2024-08-26 00:00:00Z부터의 초. NEXT는 실제로 \#0005의 마지막 지시(TRAFFIC\_INFO)에서 \#0022 MONITOR로 이어진다.}
-\newpage
-\section*{후보 D: 복창을 지시 단위로 연결 (구조 변경)}
-READBACK\_OF를 송신끼리가 아니라 \textbf{조종사 지시 $\to$ 관제사 지시}로 잇는다. 지금은 어느 지시가 맞았는지가 송신 간선의 속성(\texttt{matched}, \texttt{conflicts})에 들어 있는데, 이를 간선 자체로 만든다. 예: \#0006의 TAXI\_VIA $\to$ \#0005의 TAXI\_VIA \{conflict: target\}. \textbf{코드 수정(M4, M5)이 필요하다.}
-\begin{center}
-\resizebox{0.95\textwidth}{!}{%
-\begin{tikzpicture}[
-  font=\small,
-  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.8cm, minimum width=2.4cm, align=center},
-  sta/.style={draw, thick, fill=res, minimum height=0.8cm, minimum width=2.2cm, align=center},
-  e/.style={-{Stealth[length=2.2mm]}, thick},
-  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
-]
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s, w$, speaker}};
-\node[sta] (role) at (-4.4,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
-\node[dyn] (fl) at (4.8,0) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
-\node[sta] (al) at (9.0,0) {\textbf{Airline}\\{\scriptsize icao, country}};
-\node[dyn] (cm) at (4.8,2.2) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
-\node[dyn] (ins) at (0,-3.0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q,\tau$, speaker}};
-\node[sta] (rw) at (4.8,-3.0) {\textbf{Runway / Taxiway}\\{\scriptsize / Ramp / Facility}};
-\node[sta] (ap) at (9.0,-3.0) {\textbf{Airport}};
-\draw[e] (tx) -- node[el,above]{SPOKEN\_BY} (role);
-\draw[e] (tx) -- node[el,above]{ADDRESSES} (fl);
-\draw[e] (fl) -- node[el,above]{OPERATED\_BY} (al);
-\draw[e] (fl) -- node[el,right]{ALIAS} (cm);
-\draw[e] (tx) -- node[el,right]{CONTAINS} (ins);
-\draw[e] ([yshift=2mm]ins.east) -- node[el,above]{TARGET} ([yshift=2mm]rw.west);
-\draw[e] ([yshift=-2mm]ins.east) -- node[el,below]{VIA} ([yshift=-2mm]rw.west);
-\draw[e] (rw) -- node[el,above]{PART\_OF} (ap);
-\draw[e, red!60!black] (ins.south west) to[out=-110,in=180,looseness=1.2] ($(ins.south)+(-0.2,-1.0)$) node[el,below,text=red!60!black,align=center]{READBACK\_OF \{matched/conflict\}\\{\scriptsize 조종사 지시 $\to$ 직전 관제사 지시: 같은 항공편·종류, $0<\Delta t\le 20$ s}} to[out=0,in=-70,looseness=1.2] (ins.south);
-\draw[e, teal!60!black] (ins.west) to[out=200,in=270,looseness=1.3] ($(ins.west)+(-1.6,0.6)$) node[el,left,text=teal!60!black,align=right]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의}\\{\scriptsize 다음 관제사 지시}\\{\scriptsize (시간순, $\Delta t\ge 0$)}} to[out=90,in=160,looseness=1.3] ([yshift=3mm]ins.west);
-\end{tikzpicture}}
-\end{center}
-\newpage
-\section*{후보 E: 시각을 가진 노드를 한 묶음으로 (C의 스키마를 대체)}
-시각을 가진 노드는 \textbf{Transmission과 Instruction 둘뿐}이다. 두 노드를 점선 상자 ``시간축 위의 사건''으로 묶고, 상자 아래에 시간 화살표를 둔다. 묶음 안의 관계(CONTAINS, READBACK\_OF, NEXT)는 모두 시간축 위에서 일어난다.
-\begin{itemize}\itemsep0pt
-\item 지시의 유효 구간 $\tau$는 그 지시를 담은 송신의 시작 시각 $t^s$에서 시작한다(같은 시간축).
-\item 묶음 밖의 Flight, CallsignMention은 송신에서 생기지만 시각을 갖지 않는다. 언제 교신했는지는 연결된 송신으로 안다.
-\item Role, Airline, 활주로·유도로, Airport는 정적 지식이다.
-\item 노드를 합치지 않고 그림에서만 묶는다. 송신 하나에 지시가 여러 개(DLR: Callsign + Command 여러 개)인 구조를 유지하기 위해서다.
-\end{itemize}
-\begin{center}
-\resizebox{0.95\textwidth}{!}{%
-\begin{tikzpicture}[
-  font=\small,
-  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.8cm, minimum width=2.4cm, align=center},
-  sta/.style={draw, thick, fill=res, minimum height=0.8cm, minimum width=2.2cm, align=center},
-  e/.style={-{Stealth[length=2.2mm]}, thick},
-  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt}
-]
-% time-stamped event group
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s=[t^s,t^e)$, $w$, speaker}};
-\node[dyn] (ins) at (0,-3.0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q$, $\tau=[t^s,t^{\mathrm{to}})$}};
-\draw[e] (tx) -- node[el,right]{CONTAINS} (ins);
-\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT 송신 $\to$ 직전 ATCO 송신, $0<\Delta t\le 20$ s}} to[out=0,in=70,looseness=1.2] (tx.north);
-\draw[e, teal!60!black] (ins.south west) to[out=-110,in=180,looseness=1.2] ($(ins.south)+(-0.2,-1.0)$) node[el,below,text=teal!60!black,align=center]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의 다음 관제사 지시}} to[out=0,in=-70,looseness=1.2] (ins.south);
-\begin{scope}[on background layer]
-\node[draw=teal!60!black, dashed, thick, rounded corners=6pt, fill=teal!4, fit=(tx)(ins), inner xsep=16mm, inner ysep=24mm, yshift=0mm] (grp) {};
-\end{scope}
-\node[font=\small\bfseries, text=teal!60!black, anchor=south west] at (grp.north west) {시간축 위의 사건 (시각을 가짐)};
-\draw[-{Stealth[length=2.5mm]}, very thick, teal!60!black] ([xshift=4mm,yshift=3mm]grp.south west) -- node[above,font=\scriptsize,fill=teal!4,inner sep=1pt]{시간 $t$ (UTC) $\to$} ([xshift=-4mm,yshift=3mm]grp.south east);
-% outside: dynamic but timeless, and static
-\node[sta] (role) at (-5.6,0) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
-\node[dyn] (fl) at (5.6,0) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
-\node[dyn] (cm) at (5.6,2.3) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
-\node[sta] (al) at (9.8,0) {\textbf{Airline}\\{\scriptsize icao, country}};
-\node[sta] (rw) at (5.6,-3.0) {\textbf{Runway / Taxiway}\\{\scriptsize / Ramp / Facility}};
-\node[sta] (ap) at (9.8,-3.0) {\textbf{Airport}};
-\draw[e] (tx) -- node[el,above]{SPOKEN\_BY} (role);
-\draw[e] (tx) -- node[el,above]{ADDRESSES} (fl);
-\draw[e] (fl) -- node[el,right]{ALIAS} (cm);
-\draw[e] (fl) -- node[el,above]{OPERATED\_BY} (al);
-\draw[e] ([yshift=2mm]ins.east) -- node[el,above]{TARGET} ([yshift=2mm]rw.west);
-\draw[e] ([yshift=-2mm]ins.east) -- node[el,below]{VIA} ([yshift=-2mm]rw.west);
-\draw[e] (rw) -- node[el,above]{PART\_OF} (ap);
-\end{tikzpicture}}
-\end{center}
-아래는 후보 C와 같은 KATL 시간축 예시다. 묶음 상자 안의 관계가 실제로 시간 위에 어떻게 놓이는지 보인다.
-\begin{center}
-\resizebox{0.9\textwidth}{!}{%
-\begin{tikzpicture}[font=\small, x=0.13cm, y=1cm]
-\draw[-{Stealth}, thick] (18,0) -- (102,0) node[right]{$t$ [s]};
-\foreach \x in {20,30,...,100} { \draw (\x,0.08) -- (\x,-0.08) node[below,font=\scriptsize]{\x}; }
-% transmissions (short labels; contents listed below the figure)
-\fill[blue!25] (24.1,0.85) rectangle (30.4,1.15); \node[anchor=south,font=\scriptsize] at (27.2,1.15) {\#0005 ATCO};
-\fill[orange!40] (31.7,1.85) rectangle (37.2,2.15); \node[anchor=west,font=\scriptsize] at (37.6,2.0) {\#0006 PILOT (복창)};
-\fill[blue!25] (88.5,0.85) rectangle (91.2,1.15); \node[anchor=south,font=\scriptsize] at (89.8,1.15) {\#0022 ATCO};
-% readback
-\draw[red!60!black, thick, -{Stealth}] (33,1.83) to[out=-110,in=30] (29.5,1.5);
-\node[font=\scriptsize, red!60!black, anchor=west] at (38,1.55) {READBACK\_OF \{MISMATCH\}};
-\draw[red!60!black, thin] (37.9,1.55) -- (33.2,1.6);
-% next
-\draw[teal!60!black, thick, dashed, -{Stealth}] (30.4,0.75) to[out=-10,in=190] (88.5,0.75);
-\node[font=\scriptsize, teal!60!black, fill=white, inner sep=1pt] at (72,0.3) {NEXT \{$\Delta t$ = 64.4 s\}};
-% validity bars
-\fill[green!45!black!60] (24.1,-0.95) rectangle (88.5,-0.7); \node[anchor=east,font=\scriptsize] at (23.5,-0.82) {$\tau$(TAXI\_VIA)};
-\node[font=\scriptsize, anchor=west] at (88.8,-0.82) {MONITOR가 끝냄};
-\fill[green!25] (24.1,-1.45) rectangle (30.4,-1.2); \node[anchor=east,font=\scriptsize] at (23.5,-1.33) {$\tau$(FOLLOW)};
-\fill[green!45!black!60] (88.5,-1.95) rectangle (101,-1.7); \node[anchor=east,font=\scriptsize] at (88.0,-1.83) {$\tau$(MONITOR): 다음 지시가 없어 최대 1800 s까지};
-% snapshot
-\draw[dashed] (50,-2.2) -- (50,2.5) node[above,font=\scriptsize]{$\G|_{50}$};
-\node[font=\scriptsize, anchor=north west] at (50.6,-2.15) {$\G|_{50}$: DAL1489는 TAXI\_VIA(M 경유 M2) 유효};
-\end{tikzpicture}}
-\end{center}
-\newpage
-\section*{후보 F: 세 층 구조 (Zep식) + 시간축 예시}
-노드를 \textbf{성격에 따라 세 층}으로 나눈다. 선행 연구 Zep (Rasmussen et al., arXiv 2501.13956, 2025)(대화 메시지 $\to$ temporal KG)의 에피소드 층·개체 층 구분을 따랐다.
-\begin{center}\small
-\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}X@{}}
-\toprule
-층 & 노드 & 성격\\\midrule
-① 사건 층 & Transmission, Instruction & 무전에서 생기고 \textbf{시각을 가짐}. 시간축 위에 쌓인다. Zep의 episode(원본 메시지)에 해당\\
-② 개체 층 & Flight, CallsignMention & 무전에서 생기지만 \textbf{시각이 없음}. 언제 교신했는지는 연결된 송신으로 안다. Zep의 entity에 해당\\
-③ 정적 KB 층 & Role, Airline, Runway/Taxiway/Ramp/Facility, Airport & 미리 준비한 지식 (katl.json, airlines.json). 변하지 않음\\
-\bottomrule
-\end{tabularx}
-\end{center}
-\begin{center}
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  font=\small,
-  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.85cm, minimum width=2.6cm, align=center},
-  ent/.style={draw, thick, rounded corners=2pt, fill=yellow!12, minimum height=0.85cm, minimum width=2.6cm, align=center},
-  sta/.style={draw, thick, fill=res, minimum height=0.85cm, minimum width=2.4cm, align=center},
-  e/.style={-{Stealth[length=2.2mm]}, thick},
-  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt},
-  band/.style={draw, rounded corners=6pt, thick, inner sep=0pt},
-  bl/.style={font=\small\bfseries, anchor=north west, align=left}
-]
-% ---- layer 1: events (time-stamped)
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s=[t^s,t^e)$, $w$, speaker}};
-\node[dyn] (ins) at (7,0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q$, $\tau=[t^s,t^{\mathrm{to}})$}};
-\draw[e] (tx) -- node[el,above]{CONTAINS} (ins);
-\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT $\to$ 직전 ATCO, 같은 항공편, $0<\Delta t\le 20$ s}} to[out=0,in=70,looseness=1.2] (tx.north);
-\draw[e, teal!60!black] (ins.north west) to[out=110,in=180,looseness=1.2] ($(ins.north)+(-0.2,1.0)$) node[el,above,text=teal!60!black,align=center]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의 다음 관제사 지시}} to[out=0,in=70,looseness=1.2] (ins.north);
-\draw[-{Stealth[length=2.5mm]}, very thick, teal!60!black] (-3.2,-1.1) -- node[below,font=\scriptsize]{시간 $t$ (UTC)} (10.6,-1.1);
-% ---- layer 2: entities (from transmissions, no time)
-\node[ent] (fl) at (0,-3.6) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
-\node[ent] (cm) at (-4.2,-3.6) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
-% ---- layer 3: static KB
-\node[sta] (role) at (-4.2,-6.6) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
-\node[sta] (al) at (0,-6.6) {\textbf{Airline}\\{\scriptsize icao, country}};
-\node[sta] (rw) at (7,-6.6) {\textbf{Runway / Taxiway}\\{\scriptsize / Ramp / Facility}};
-\node[sta] (ap) at (11.2,-6.6) {\textbf{Airport}};
-% ---- edges across layers
-\draw[e] (tx) -- node[el,right]{ADDRESSES} (fl);
-\draw[e] (fl) -- node[el,above]{ALIAS} (cm);
-\draw[e] (fl) -- node[el,right]{OPERATED\_BY} (al);
-\draw[e] (tx.south west) to[out=225,in=60] node[el,pos=0.35,left]{SPOKEN\_BY} (role.north);
-\draw[e] ([xshift=-3mm]ins.south) -- node[el,left,pos=0.55]{TARGET} ([xshift=-3mm]rw.north);
-\draw[e] ([xshift=3mm]ins.south) -- node[el,right,pos=0.55]{VIA} ([xshift=3mm]rw.north);
-\draw[e] (rw) -- node[el,above]{PART\_OF} (ap);
-% ---- bands
-\begin{scope}[on background layer]
-\node[band, draw=teal!60!black, fill=teal!5, fit={(-10,2.6) (12.8,-1.6)}] (b1) {};
-\node[band, draw=orange!70!black, fill=yellow!6, fit={(-10,-2.6) (12.8,-4.5)}] (b2) {};
-\node[band, draw=violet!60!black, fill=violet!4, fit={(-10,-5.6) (12.8,-7.5)}] (b3) {};
-\end{scope}
-\node[bl, text=teal!60!black] at ([xshift=2mm,yshift=-2mm]b1.north west) {① 사건 층\\{\scriptsize\mdseries 시각을 가짐}\\{\scriptsize\mdseries (Zep: episode)}};
-\node[bl, text=orange!70!black] at ([xshift=2mm,yshift=-2mm]b2.north west) {② 개체 층\\{\scriptsize\mdseries 송신에서 생김,}\\{\scriptsize\mdseries 시각 없음}};
-\node[bl, text=violet!60!black] at ([xshift=2mm,yshift=-2mm]b3.north west) {③ 정적 KB 층\\{\scriptsize\mdseries 미리 준비한 지식}};
-\end{tikzpicture}}
-\end{center}
-{\small 간선의 근거: READBACK\_OF는 대화 구조 연구의 reply-to(발화 $\to$ 응답한 발화)를 ATC에 맞게 좁힌 것(다른 화자, 20\,s 안, 같은 항공편). NEXT는 사건 그래프의 next-event 관계로, 지시의 시작 시각 순서에서 유도된다. 이전 지시를 끝낼 때는 지우지 않고 $\tau$의 끝만 정한다(Zep의 invalidation과 같은 방식). 모든 간선에는 적재 시각 $t'$(\texttt{ingested\_at})가 붙는다.}
-
-\begin{center}
-\resizebox{0.9\textwidth}{!}{%
-\begin{tikzpicture}[font=\small, x=0.13cm, y=1cm]
-\draw[-{Stealth}, thick] (18,0) -- (102,0) node[right]{$t$ [s]};
-\foreach \x in {20,30,...,100} { \draw (\x,0.08) -- (\x,-0.08) node[below,font=\scriptsize]{\x}; }
-% transmissions (short labels; contents listed below the figure)
-\fill[blue!25] (24.1,0.85) rectangle (30.4,1.15); \node[anchor=south,font=\scriptsize] at (27.2,1.15) {\#0005 ATCO};
-\fill[orange!40] (31.7,1.85) rectangle (37.2,2.15); \node[anchor=west,font=\scriptsize] at (37.6,2.0) {\#0006 PILOT (복창)};
-\fill[blue!25] (88.5,0.85) rectangle (91.2,1.15); \node[anchor=south,font=\scriptsize] at (89.8,1.15) {\#0022 ATCO};
-% readback
-\draw[red!60!black, thick, -{Stealth}] (33,1.83) to[out=-110,in=30] (29.5,1.5);
-\node[font=\scriptsize, red!60!black, anchor=west] at (38,1.55) {READBACK\_OF \{MISMATCH\}};
-\draw[red!60!black, thin] (37.9,1.55) -- (33.2,1.6);
-% next
-\draw[teal!60!black, thick, dashed, -{Stealth}] (30.4,0.75) to[out=-10,in=190] (88.5,0.75);
-\node[font=\scriptsize, teal!60!black, fill=white, inner sep=1pt] at (72,0.3) {NEXT \{$\Delta t$ = 64.4 s\}};
-% validity bars
-\fill[green!45!black!60] (24.1,-0.95) rectangle (88.5,-0.7); \node[anchor=east,font=\scriptsize] at (23.5,-0.82) {$\tau$(TAXI\_VIA)};
-\node[font=\scriptsize, anchor=west] at (88.8,-0.82) {MONITOR가 끝냄};
-\fill[green!25] (24.1,-1.45) rectangle (30.4,-1.2); \node[anchor=east,font=\scriptsize] at (23.5,-1.33) {$\tau$(FOLLOW)};
-\fill[green!45!black!60] (88.5,-1.95) rectangle (101,-1.7); \node[anchor=east,font=\scriptsize] at (88.0,-1.83) {$\tau$(MONITOR): 다음 지시가 없어 최대 1800 s까지};
-% snapshot
-\draw[dashed] (50,-2.2) -- (50,2.5) node[above,font=\scriptsize]{$\G|_{50}$};
-\node[font=\scriptsize, anchor=north west] at (50.6,-2.15) {$\G|_{50}$: DAL1489는 TAXI\_VIA(M 경유 M2) 유효};
-\end{tikzpicture}}
-\end{center}
-\newpage
-\section*{후보 G: F + 설계 결정 정리}
-그림은 후보 F와 같다(세 층 + KATL 시간축 예시). 아래 표는 이 그림이 담은 설계 결정과 그 근거다.
+\section*{KG 스키마와 시간 모델 (최종)}
+노드를 성격에 따라 세 층으로 나눈다: \textbf{① 사건 층}(시각을 가짐), \textbf{② 개체 층}(송신에서 생기지만 시각 없음), \textbf{③ 정적 KB 층}(미리 준비한 지식). 아래 표는 이 그림이 담은 설계 결정과 근거이고, 맨 아래는 KATL 실제 교신으로 그린 시간축 예시다.
 \begin{center}
 \resizebox{0.92\textwidth}{!}{%
 \begin{tikzpicture}[
@@ -424,21 +71,20 @@ READBACK\_OF를 송신끼리가 아니라 \textbf{조종사 지시 $\to$ 관제�
 % ---- layer 3: static KB
 \node[sta] (role) at (-4.2,-6.6) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
 \node[sta] (al) at (0,-6.6) {\textbf{Airline}\\{\scriptsize icao, country}};
-\node[sta] (rw) at (7,-6.6) {\textbf{Runway / Taxiway}\\{\scriptsize / Ramp / Facility}};
-\node[sta] (ap) at (11.2,-6.6) {\textbf{Airport}};
+\node[sta, minimum width=3.6cm] (rw) at (7,-6.6) {\textbf{지시 대상}\\{\scriptsize Runway $\cdot$ Taxiway $\cdot$ Ramp $\cdot$ Facility}\\{\scriptsize 예: \texttt{Taxiway:KATL:M2}}};
+\node[sta] (ap) at (12.6,-6.6) {\textbf{Airport}\\{\scriptsize icao (예: KATL)}};
 % ---- edges across layers
 \draw[e] (tx) -- node[el,right]{ADDRESSES} (fl);
 \draw[e] (fl) -- node[el,above]{ALIAS} (cm);
 \draw[e] (fl) -- node[el,right]{OPERATED\_BY} (al);
 \draw[e] (tx.south west) to[out=225,in=60] node[el,pos=0.35,left]{SPOKEN\_BY} (role.north);
-\draw[e] ([xshift=-3mm]ins.south) -- node[el,left,pos=0.55]{TARGET} ([xshift=-3mm]rw.north);
-\draw[e] ([xshift=3mm]ins.south) -- node[el,right,pos=0.55]{VIA} ([xshift=3mm]rw.north);
+\draw[e] (ins.south) -- node[el,right,pos=0.55,align=left]{TARGET or VIA\\{\scriptsize VIA는 Taxiway만 (taxi 경로)}} (rw.north);
 \draw[e] (rw) -- node[el,above]{PART\_OF} (ap);
 % ---- bands
 \begin{scope}[on background layer]
-\node[band, draw=teal!60!black, fill=teal!5, fit={(-10,2.6) (12.8,-1.6)}] (b1) {};
-\node[band, draw=orange!70!black, fill=yellow!6, fit={(-10,-2.6) (12.8,-4.5)}] (b2) {};
-\node[band, draw=violet!60!black, fill=violet!4, fit={(-10,-5.6) (12.8,-7.5)}] (b3) {};
+\node[band, draw=teal!60!black, fill=teal!5, fit={(-10,2.6) (14.2,-1.6)}] (b1) {};
+\node[band, draw=orange!70!black, fill=yellow!6, fit={(-10,-2.6) (14.2,-4.5)}] (b2) {};
+\node[band, draw=violet!60!black, fill=violet!4, fit={(-10,-5.6) (14.2,-7.5)}] (b3) {};
 \end{scope}
 \node[bl, text=teal!60!black] at ([xshift=2mm,yshift=-2mm]b1.north west) {① 사건 층\\{\scriptsize\mdseries 시각을 가짐}\\{\scriptsize\mdseries (Zep: episode)}};
 \node[bl, text=orange!70!black] at ([xshift=2mm,yshift=-2mm]b2.north west) {② 개체 층\\{\scriptsize\mdseries 송신에서 생김,}\\{\scriptsize\mdseries 시각 없음}};
@@ -460,6 +106,8 @@ READBACK\_OF는 송신끼리 & 대화의 주고받기(누가 누구에게 답했
 \bottomrule
 \end{tabularx}
 \end{center}
+{\footnotesize ``지시 대상''은 그림에서 노드 종류 네 개(Runway, Taxiway, Ramp, Facility)를 묶은 이름이다. 노드 ID는 M3 규칙 \texttt{개체종류:공항코드:개체이름}을 따른다. KATL 목록에 없는 이름도 노드로 만들되 \texttt{in\_kb=false}로 표시한다.}
+
 
 \begin{center}
 \resizebox{0.85\textwidth}{!}{%
@@ -487,90 +135,11 @@ READBACK\_OF는 송신끼리 & 대화의 주고받기(누가 누구에게 답했
 \node[font=\scriptsize, anchor=north west] at (50.6,-2.15) {$\G|_{50}$: DAL1489는 TAXI\_VIA(M 경유 M2) 유효};
 \end{tikzpicture}}
 \end{center}
-\newpage
-\section*{후보 H: G에서 지시 대상 상자를 둘로 나눔 (최종 추천안)}
-후보 G와 같고, ``Runway / Taxiway / Ramp / Facility'' 상자만 성격대로 둘로 나눴다.
-\begin{itemize}\itemsep0pt
-\item \textbf{AirportPlace (공항 장소)}: Runway, Taxiway, Ramp. 지시의 목적지·정지 위치(TARGET)와 taxi 경로(VIA, 유도로만)가 가리킨다.
-\item \textbf{ATCFacility (관제 시설)}: Facility와 주파수. CONTACT/MONITOR의 TARGET이 가리킨다. 장소가 아니라 관제 기관이다(AIXM도 관제 기관·주파수를 공항 구성 요소와 따로 둔다).
-\item 두 이름은 그림에서 노드 종류를 묶는 상위 이름이다. 실제 노드 ID는 M3 규칙 \texttt{개체종류:공항코드:개체이름} 그대로다(\texttt{Runway:KATL:26L}, \texttt{Taxiway:KATL:M2}, \texttt{Ramp:KATL:5}, \texttt{Facility:KATL:TWR}).
-\item KATL 목록에 없는 이름(예: \texttt{Taxiway:KATL:Z})도 노드로 만들되 \texttt{in\_kb=false}로 표시한다(KB\_VIOLATION).
-\end{itemize}
-\begin{center}
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  font=\small,
-  dyn/.style={draw, thick, rounded corners=2pt, fill=comp, minimum height=0.85cm, minimum width=2.6cm, align=center},
-  ent/.style={draw, thick, rounded corners=2pt, fill=yellow!12, minimum height=0.85cm, minimum width=2.6cm, align=center},
-  sta/.style={draw, thick, fill=res, minimum height=0.85cm, minimum width=2.4cm, align=center},
-  e/.style={-{Stealth[length=2.2mm]}, thick},
-  el/.style={font=\scriptsize\sffamily, fill=white, inner sep=1pt},
-  band/.style={draw, rounded corners=6pt, thick, inner sep=0pt},
-  bl/.style={font=\small\bfseries, anchor=north west, align=left}
-]
-% ---- layer 1: events (time-stamped)
-\node[dyn] (tx) at (0,0) {\textbf{Transmission}\\{\scriptsize $s=[t^s,t^e)$, $w$, speaker}};
-\node[dyn] (ins) at (7,0) {\textbf{Instruction}\\{\scriptsize $\kappa,v,q$, $\tau=[t^s,t^{\mathrm{to}})$}};
-\draw[e] (tx) -- node[el,above]{CONTAINS} (ins);
-\draw[e, red!60!black] (tx.north west) to[out=110,in=180,looseness=1.2] ($(tx.north)+(-0.2,1.0)$) node[el,above,text=red!60!black,align=center]{READBACK\_OF \{status\}\\{\scriptsize PILOT $\to$ 직전 ATCO, 같은 항공편, $0<\Delta t\le 20$ s}} to[out=0,in=70,looseness=1.2] (tx.north);
-\draw[e, teal!60!black] (ins.north west) to[out=110,in=180,looseness=1.2] ($(ins.north)+(-0.2,1.0)$) node[el,above,text=teal!60!black,align=center]{NEXT \{$\Delta t$\}\\{\scriptsize 같은 항공편의 다음 관제사 지시}} to[out=0,in=70,looseness=1.2] (ins.north);
-\draw[-{Stealth[length=2.5mm]}, very thick, teal!60!black] (-3.2,-1.1) -- node[below,font=\scriptsize]{시간 $t$ (UTC)} (13.6,-1.1);
-% ---- layer 2: entities (from transmissions, no time)
-\node[ent] (fl) at (0,-3.6) {\textbf{Flight}\\{\scriptsize $c$ (예: DAL1489)}};
-\node[ent] (cm) at (-4.2,-3.6) {\textbf{CallsignMention}\\{\scriptsize $\hat c$ (원 표면형)}};
-% ---- layer 3: static KB
-\node[sta] (role) at (-4.2,-6.6) {\textbf{Role}\\{\scriptsize ATCO / PILOT}};
-\node[sta] (al) at (0,-6.6) {\textbf{Airline}\\{\scriptsize icao, country}};
-\node[sta, minimum width=3.4cm] (rw) at (5.6,-6.6) {\textbf{AirportPlace} (공항 장소)\\{\scriptsize Runway $\cdot$ Taxiway $\cdot$ Ramp}\\{\scriptsize 예: \texttt{Taxiway:KATL:M2}}};
-\node[sta, minimum width=3.0cm] (fac) at (10.4,-6.6) {\textbf{ATCFacility} (관제 시설)\\{\scriptsize Facility + 주파수}\\{\scriptsize 예: \texttt{Facility:KATL:TWR}}};
-\node[sta] (ap) at (15.2,-6.6) {\textbf{Airport}\\{\scriptsize KATL}};
-% ---- edges across layers
-\draw[e] (tx) -- node[el,right]{ADDRESSES} (fl);
-\draw[e] (fl) -- node[el,above]{ALIAS} (cm);
-\draw[e] (fl) -- node[el,right]{OPERATED\_BY} (al);
-\draw[e] (tx.south west) to[out=225,in=60] node[el,pos=0.35,left]{SPOKEN\_BY} (role.north);
-\draw[e] ([xshift=-3mm]ins.south) -- node[el,left,pos=0.55,align=right]{TARGET\\{\scriptsize 목적지·정지 위치}} ([xshift=5mm]rw.north);
-\draw[e] ([xshift=1mm]ins.south) -- node[el,right,pos=0.55,align=left]{VIA\\{\scriptsize taxi 경로 (Taxiway)}} ([xshift=12mm]rw.north);
-\draw[e] ([xshift=5mm]ins.south) -- node[el,right,pos=0.3,align=left]{TARGET\\{\scriptsize CONTACT / MONITOR}} (fac.north);
-\draw[e] (rw.south) to[out=-20,in=-160,looseness=0.7] node[el,below]{PART\_OF} (ap.south);
-\draw[e] (fac) -- node[el,above]{PART\_OF} (ap);
-% ---- bands
-\begin{scope}[on background layer]
-\node[band, draw=teal!60!black, fill=teal!5, fit={(-10,2.6) (17,-1.6)}] (b1) {};
-\node[band, draw=orange!70!black, fill=yellow!6, fit={(-10,-2.6) (17,-4.5)}] (b2) {};
-\node[band, draw=violet!60!black, fill=violet!4, fit={(-10,-5.4) (17,-8.6)}] (b3) {};
-\end{scope}
-\node[bl, text=teal!60!black] at ([xshift=2mm,yshift=-2mm]b1.north west) {① 사건 층\\{\scriptsize\mdseries 시각을 가짐}\\{\scriptsize\mdseries (Zep: episode)}};
-\node[bl, text=orange!70!black] at ([xshift=2mm,yshift=-2mm]b2.north west) {② 개체 층\\{\scriptsize\mdseries 송신에서 생김,}\\{\scriptsize\mdseries 시각 없음}};
-\node[bl, text=violet!60!black] at ([xshift=2mm,yshift=-2mm]b3.north west) {③ 정적 KB 층\\{\scriptsize\mdseries 미리 준비한 지식}};
-\end{tikzpicture}}
-\end{center}
-설계 결정과 근거는 후보 G의 표와 같다. 아래는 같은 KATL 시간축 예시다.
-\begin{center}
-\resizebox{0.85\textwidth}{!}{%
-\begin{tikzpicture}[font=\small, x=0.13cm, y=1cm]
-\draw[-{Stealth}, thick] (18,0) -- (102,0) node[right]{$t$ [s]};
-\foreach \x in {20,30,...,100} { \draw (\x,0.08) -- (\x,-0.08) node[below,font=\scriptsize]{\x}; }
-% transmissions (short labels; contents listed below the figure)
-\fill[blue!25] (24.1,0.85) rectangle (30.4,1.15); \node[anchor=south,font=\scriptsize] at (27.2,1.15) {\#0005 ATCO};
-\fill[orange!40] (31.7,1.85) rectangle (37.2,2.15); \node[anchor=west,font=\scriptsize] at (37.6,2.0) {\#0006 PILOT (복창)};
-\fill[blue!25] (88.5,0.85) rectangle (91.2,1.15); \node[anchor=south,font=\scriptsize] at (89.8,1.15) {\#0022 ATCO};
-% readback
-\draw[red!60!black, thick, -{Stealth}] (33,1.83) to[out=-110,in=30] (29.5,1.5);
-\node[font=\scriptsize, red!60!black, anchor=west] at (38,1.55) {READBACK\_OF \{MISMATCH\}};
-\draw[red!60!black, thin] (37.9,1.55) -- (33.2,1.6);
-% next
-\draw[teal!60!black, thick, dashed, -{Stealth}] (30.4,0.75) to[out=-10,in=190] (88.5,0.75);
-\node[font=\scriptsize, teal!60!black, fill=white, inner sep=1pt] at (72,0.3) {NEXT \{$\Delta t$ = 64.4 s\}};
-% validity bars
-\fill[green!45!black!60] (24.1,-0.95) rectangle (88.5,-0.7); \node[anchor=east,font=\scriptsize] at (23.5,-0.82) {$\tau$(TAXI\_VIA)};
-\node[font=\scriptsize, anchor=west] at (88.8,-0.82) {MONITOR가 끝냄};
-\fill[green!25] (24.1,-1.45) rectangle (30.4,-1.2); \node[anchor=east,font=\scriptsize] at (23.5,-1.33) {$\tau$(FOLLOW)};
-\fill[green!45!black!60] (88.5,-1.95) rectangle (101,-1.7); \node[anchor=east,font=\scriptsize] at (88.0,-1.83) {$\tau$(MONITOR): 다음 지시가 없어 최대 1800 s까지};
-% snapshot
-\draw[dashed] (50,-2.2) -- (50,2.5) node[above,font=\scriptsize]{$\G|_{50}$};
-\node[font=\scriptsize, anchor=north west] at (50.6,-2.15) {$\G|_{50}$: DAL1489는 TAXI\_VIA(M 경유 M2) 유효};
-\end{tikzpicture}}
-\end{center}
+\noindent{\small \textbf{시간축 예시} (KATL 지상관제, 2024-08-26 00:00:00Z부터의 초). 파란 상자 = 관제사 송신, 주황 상자 = 조종사 송신, 초록 막대 = 지시의 유효 구간 $\tau$. 조종사 복창 \#0006은 \#0005가 끝난 뒤 1.3\,s 만에 시작한다(KATL 전체에서 연결된 복창 404건 중 351건이 5\,s 안). 50초 시점의 스냅샷 $\G|_{50}$에서는 TAXI\_VIA가 유효하고, 88.5초에 MONITOR가 이를 끝낸다. NEXT는 실제로 \#0005의 마지막 지시(TRAFFIC\_INFO)에서 \#0022 MONITOR로 이어진다.
 
+\begin{tabularx}{\textwidth}{@{}ll>{\raggedright\arraybackslash}X@{}}
+\#0005 & 24.1 s, ATCO & ``Delta fourteen eighty nine pass behind \dots\ nine left to Mike two taxi via Mike'' $\to$ FOLLOW, TAXI\_VIA (M 경유 M2), TRAFFIC\_INFO\\
+\#0006 & 31.7 s, PILOT & ``Nine left Mike two via Mike \dots\ Delta fourteen eighty nine'' $\to$ TAXI\_VIA, FOLLOW (복창)\\
+\#0022 & 88.5 s, ATCO & ``Delta fourteen eighty nine monitor twenty three eighty five'' $\to$ MONITOR\\
+\end{tabularx}}
 \end{document}
