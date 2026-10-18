@@ -109,10 +109,10 @@
 \end{enumerate}
 
 \subsection{③ DLR 매개변수 표 파싱 (Table 2쪽)}
-표의 값 칸에는 \texttt{runway}, \texttt{TX-Point}, \texttt{Dir-Qualifier}처럼 \textbf{매개변수 이름}이 들어 있고, 실제 형식은 2쪽에 있다. 2쪽을 같은 방식으로 파싱해 매개변수 60개를 얻는다. 명령 행에서 쓰인 이름만 찾아 붙인다.
+표의 값 칸에는 \texttt{runway}, \texttt{TX-Point}, \texttt{Dir-Qualifier}처럼 \textbf{매개변수 이름}이 들어 있고, 실제 형식은 2쪽에 있다(설명서 9쪽: 굵은 글씨 = 직접 값, 보통 글씨 = 매개변수, 주황 칸 = 선택 요소). 2쪽을 같은 방식으로 파싱해 매개변수 60개를 얻는다. 명령 행에서 쓰인 이름만 찾아 붙인다.
 \begin{itemize}[leftmargin=14pt]
-\item 대문자 단어(\texttt{LEFT}, \texttt{EXPEDITE})는 직접 값이므로 찾지 않는다.
-\item 표 자체의 오타(\texttt{Alt-Qualfier})는 유사도 0.85 이상이면 같은 이름으로 본다.
+\item 원문 표는 굵은 글씨(직접 값)와 보통 글씨(매개변수)를 구분하지만 텍스트 추출에서 글꼴 정보가 사라진다. 그래서 \textbf{2쪽 매개변수 표에 이름이 있는 단어}를 매개변수로 본다. 예: \texttt{APTR\_COLOR}, \texttt{ATSU}는 대문자지만 매개변수, \texttt{EXPEDITE}는 표에 없으므로 직접 값.
+\item 표 자체의 오타(\texttt{Alt-Qualfier})나 붙어 있는 괄호 설명(\texttt{GND\_DIRECTION(only for VIA)})은 소문자가 섞인 단어에 한해 유사도 0.85 이상이면 같은 이름으로 본다.
 \end{itemize}
 
 \subsection{④ FAA 조항 분할과 표준 문구 탐색}

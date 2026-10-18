@@ -353,17 +353,24 @@ def parse_parameter_table(text: str):
 
 
 def referenced_parameters(row: dict, params: dict) -> dict:
-    """Resolve non-terminal names (e.g. 'TX-Point', 'Dir-Qualifier') used in a row against the parameter table."""
+    """Resolve non-terminal names (e.g. 'TX-Point', 'APTR_COLOR') used in a row against the parameter table.
+
+    Bold (terminal) vs non-bold (parameter) is lost in text extraction, so a token counts as a parameter when it names
+    a row of the parameter table. Exact names may be upper case (APTR_COLOR); fuzzy matching (table typos such as
+    'Alt-Qualfier', suffixes such as 'GND_DIRECTION(only') is limited to tokens with lower-case letters.
+    """
     norm = {re.sub(r"[^a-z0-9]", "", k.lower()): k for k in params}
     found = {}
     for key in ("sub", "value", "qualifier", "condition"):
         for token in re.split(r"[/,]|\s+", row[key]):
             token = token.strip(" ()")
-            if len(token) < 3 or token.isupper():
-                continue  # upper-case words are terminals (direct values)
+            if len(token) < 3:
+                continue
             probe = re.sub(r"[^a-z0-9]", "", token.lower())
-            close = difflib.get_close_matches(probe, norm, n=1, cutoff=0.85)
-            hit = norm.get(probe) or (norm[close[0]] if close else None)
+            hit = params.get(token) and token or norm.get(probe)
+            if not hit and not token.isupper():
+                close = difflib.get_close_matches(probe, norm, n=1, cutoff=0.85)
+                hit = norm[close[0]] if close else None
             if hit:
                 found[hit] = params[hit]
     return found

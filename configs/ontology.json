@@ -229,6 +229,7 @@
           "parameters": {
             "Preposition": "VIA, TO",
             "TX-Point": "Name of defined Taxi-Point (or Taxi-Way, Runway Entry/Exit) such as A (alfa), B1, HP_05R or DEICING-BAY",
+            "APTR_COLOR": "individually for airports, e.g., RED, BLUE, GREEN",
             "GND_DIRECTION": "LEFT, RIGHT, STRAIGHT, NORTH, EAST, SOUTH, WEST, etc",
             "Pushback-Conditional-Keywords": "WHEN/UNTIL ABEAM xxx"
           }
@@ -374,6 +375,7 @@
           "value": "ATSU/none/ME",
           "condition": "Contact-Conditional-keywords",
           "parameters": {
+            "ATSU": "e.g. Tower, Ground, Radar",
             "Contact-Conditional-keywords": "WHEN AIRBORNE, WHEN REACHING ALTITUDE xxxx/xx ft/FL"
           }
         },
