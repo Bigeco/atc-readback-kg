@@ -1,0 +1,105 @@
+\documentclass[10pt]{article}
+\usepackage[a4paper,landscape,margin=9mm]{geometry}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setCJKmainfont{Noto Sans CJK KR}
+\setCJKsansfont{Noto Sans CJK KR}
+\setCJKmonofont{Noto Sans Mono CJK KR}
+\setmainfont{DejaVu Sans}
+\xeCJKsetup{CJKspace=true}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,fit,backgrounds}
+\pagestyle{empty}
+
+\definecolor{modf}{RGB}{235,242,250}
+\definecolor{modl}{RGB}{31,78,121}
+\definecolor{kn}{RGB}{102,51,153}
+\definecolor{dat}{RGB}{30,30,30}
+\definecolor{off}{RGB}{245,243,236}
+
+\newcommand{\file}[1]{\texttt{\footnotesize #1}}
+
+\begin{document}
+\noindent{\Large\bfseries ATC 복창 KG 시스템: 모듈 입출력 정의}\hfill{\small XAI616 Team 6}\\[2pt]
+{\small 상자 = 모듈(처리 단계), 검은 글자 = 모듈 사이를 흐르는 데이터(입력·출력), \textcolor{kn}{보라 글자} = 미리 준비해 둔 지식 파일. 송신 하나가 M1부터 M7까지 차례로 처리되며 KG가 커진다.}
+
+\vspace{4mm}
+\begin{center}
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  font=\normalsize,
+  mod/.style={draw=modl, very thick, rounded corners=3pt, fill=modf, minimum width=4.0cm, minimum height=1.9cm, align=center, font=\large},
+  data/.style={align=center, text=dat, font=\normalsize},
+  bdata/.style={align=center, text=dat, font=\small, fill=white, inner sep=1.5pt},
+  know/.style={align=center, text=kn, font=\normalsize},
+  flow/.style={-{Stealth[length=3mm]}, very thick, draw=dat},
+  kflow/.style={-{Stealth[length=2.6mm]}, thick, draw=kn},
+  fb/.style={-{Stealth[length=2.4mm]}, thick, dashed, draw=modl},
+]
+% ---------------- row 1: audio -> STT -> text -> extraction
+\node[data, anchor=east] (in) at (0,0) {\textbf{입력}\\[2pt]\textbf{교신 음성} $a$\\(30분 mp3, 관제 주파수 1개)\\[3pt]+ \textbf{녹음 맥락} $\mathcal{C}$\\{\footnotesize 파일 이름의 공항·관제 위치·시작 시각}\\{\footnotesize 예: \file{KATL-Gnd-All-Aug-26-2024-0000Z}}};
+\node[mod] (m1) at (2.6,0) {\textbf{M1}\\송신 분할\\{\footnotesize 음성 구간 탐지(VAD)}};
+\node[mod] (m2) at (11.3,0) {\textbf{M2}\\STT\\{\footnotesize Whisper + 환각 필터}};
+\node[mod] (m3) at (20.0,0) {\textbf{M3}\\화자 역할·턴 분리\\{\footnotesize 콜사인 위치 규칙}};
+\node[mod] (m4) at (28.7,0) {\textbf{M4}\\지시 추출\\{\footnotesize LLM(Qwen3-4B) + 규칙}};
+
+\draw[flow] (in.east) -- (m1.west);
+\draw[flow] (m1) -- node[data, above=3pt]{송신 구간 $s_i=[t^s_i,t^e_i)$}
+                    node[data, below=3pt]{음성 조각 $x_i$\\{\footnotesize 시각은 UTC로 변환}} (m2);
+\draw[flow] (m2) -- node[data, above=3pt]{전사 텍스트 $w_i$}
+                    node[data, below=3pt]{인식 신뢰도 $c_i$\\{\footnotesize + 공항·주파수·시각 꼬리표}} (m3);
+\draw[flow] (m3) -- node[data, above=3pt]{턴 $w_i$, 역할 $r_i$}
+                    node[data, below=3pt]{{\footnotesize ATCO / PILOT}} (m4);
+
+% knowledge into row 1
+\node[know, above=1.6cm of m2] (k2) {공항·항공사 어휘\\\file{katl.json}, \file{airlines.json}};
+\draw[kflow] (k2) -- (m2);
+\node[know, above=1.6cm of m3] (k3) {항공사 호출 이름\\\file{airlines.json}};
+\draw[kflow] (k3) -- (m3);
+\node[know, above=1.6cm of m4] (k4) {\textbf{온톨로지} $\mathcal{O}$ \file{ontology.json}\\{\footnotesize 명령 20종(TAXI, HOLD\_SHORT …)·값 형식(RW26R)}};
+\draw[kflow] (k4) -- (m4);
+
+% ---------------- row 2: normalisation -> KG -> rules -> query (right to left)
+\node[mod] (m5) at (28.7,-10.2) {\textbf{M5}\\정규화·개체 해소\\{\footnotesize 콜사인·활주로·유도로 연결}};
+\node[mod] (m6) at (20.0,-10.2) {\textbf{M6}\\Temporal KG 구축\\{\footnotesize 노드·간선·유효 구간}};
+\node[mod] (m7) at (11.3,-10.2) {\textbf{M7}\\규칙 추론·이상 탐지\\{\footnotesize 복창 비교 $\rho_1$–$\rho_7$}};
+\node[mod] (m8) at (2.6,-10.2) {\textbf{M8}\\시점 질의·시각화\\{\footnotesize 웹 데모}};
+
+\draw[flow] (m4.south) -- node[data, right=4pt, pos=0.5]{콜사인 언급 $\hat c_i$\\지시 목록 $I_i$\\{\footnotesize 지시 $\iota=(\kappa,v,\mu,q,g)$}\\{\footnotesize 종류·값·단위·한정어·대상}} (m5.north);
+\draw[flow] (m5) -- node[data, above=3pt]{항공편 $f_i$}
+                    node[data, below=3pt]{정규화된 지시 $\tilde I_i$\\{\footnotesize 대상 = 공항 노드 (없으면 $\bot$)}} (m6);
+\draw[flow] (m6) -- node[data, above=3pt]{\textbf{Temporal KG} $\mathcal{G}_t$}
+                    node[data, below=3pt]{{\footnotesize 복창 연결·유효 구간 포함}} (m7);
+\draw[flow] (m7) -- node[data, above=3pt]{$\mathcal{G}$ + \textbf{경고} $\mathcal{Y}$}
+                    node[data, below=3pt]{{\footnotesize MISMATCH,}\\{\footnotesize NO\_READBACK …}} (m8);
+\node[data, anchor=east] (out) at (0,-10.2) {\textbf{출력}\\[2pt]\textbf{Temporal KG} $\mathcal{G}$\\\textbf{경고} $\mathcal{Y}$ (복창 검사)\\\textbf{시점 질의} $Q(\mathcal{G},t,q)$\\{\footnotesize (상황 인식)}};
+\draw[flow] (m8.west) -- (out.east);
+
+% feedback: accumulated graph -> entity resolution
+\draw[fb] ($(m6.north)+(0.5,0)$) -- ++(0,0.75) -| node[data, pos=0.25, above, font=\footnotesize, text=modl]{지금까지의 KG $\mathcal{G}_{<t}$ (최근 항공편)} ($(m5.north)+(-0.6,0)$);
+
+% knowledge into row 2
+\node[know, right=0.9cm of m5] (k5) {\textbf{정적 KB} $\mathcal{K}_S$\\\file{katl.json}\\{\footnotesize 활주로 5·유도로 102·시설 12}\\\file{airlines.json}\\{\footnotesize 항공사 44}};
+\draw[kflow] (k5) -- (m5);
+\node[know, below=1.7cm of m6] (k6) {\textbf{규칙} $\mathcal{K}_R$ \file{rules.json}\\지시 대체 관계 (cross → hold short 종료)\\\textbf{설정} $\Theta_{\mathrm{kg}}$ \file{kg\_build.json}\\복창 20초 창, 최대 유효시간};
+\draw[kflow] (k6) -- (m6);
+\node[know, below=1.7cm of m7] (k7) {\textbf{규칙} $\mathcal{K}_R$ \file{rules.json}\\복창 필수 13종 (FAA §2-4-3)\\활주로 점유 4종};
+\draw[kflow] (k7) -- (m7);
+
+% ---------------- offline preparation (M0)
+\node[draw=kn, thick, dashed, rounded corners=3pt, fill=off, align=left, anchor=north west, inner sep=8pt, font=\normalsize, text width=43.6cm] (m0) at (-7.2,-17.6) {%
+\textbf{M0 정적 자원 구축} {\footnotesize(오프라인, 한 번만)}\quad
+DLR 온톨로지 사양서·명령 표 PDF + FAA JO 7110.65BB PDF $\xrightarrow{\ \texttt{build\_ontology.py}\ }$ \textcolor{kn}{\file{ontology.json}, \file{rules.json}}\qquad
+OurAirports + OpenStreetMap $\xrightarrow{\ \texttt{build\_static\_kb.py}\ }$ \textcolor{kn}{\file{katl.json}}\\
+FAA JO 7340.2 → \textcolor{kn}{\file{airlines.json}} (사람이 정리)\qquad \textcolor{kn}{\file{kg\_build.json}}은 사람이 작성\qquad 생성 코드가 PDF 원문과 대조해 근거 없는 항목이 있으면 생성을 멈춘다.};
+
+% stage bands
+\begin{scope}[on background layer]
+\node[fill=gray!6, rounded corners=6pt, fit=(m1)(m4)(k2)(k4), inner sep=8pt, label={[font=\footnotesize\bfseries, text=gray!60!black, anchor=south west]north west:음성 → 텍스트 → 지시}] {};
+\node[fill=gray!6, rounded corners=6pt, fit=(m5)(m8)(k6)(k7), inner sep=8pt, label={[font=\footnotesize\bfseries, text=gray!60!black, anchor=north west]south west:지시 → KG → 경고·질의}] {};
+\end{scope}
+\end{tikzpicture}}
+\end{center}
+\end{document}
