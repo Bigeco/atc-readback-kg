@@ -184,6 +184,24 @@ def select_archives(archives, max_files: int, seed: int = 7, min_segments: int =
     return sorted(picked, key=lambda a: (a["utc_start_epoch"], a["feed"]))[:max_files]
 
 
+def select_additional(archives, out_dir: Path, add: int, seed: int = 7, min_segments: int = 40,
+                      ref_run: Path = PROJECT_ROOT / "results" / "katl_all"):
+    """Keep every archive already transcribed in out_dir and add `add` busy ones, spread over facility classes
+    in proportion to how many busy archives each class still has."""
+    done = [a for a in archives if (out_dir / a["feed"] / f"{a['stem']}.jsonl").exists()]
+    pool = defaultdict(list)
+    for a in archives:
+        if a not in done and busy_enough(a, min_segments, ref_run):
+            pool[a["facility_class"]].append(a)
+    total = sum(len(v) for v in pool.values()) or 1
+    rng = random.Random(seed)
+    picked = []
+    for cls, items in sorted(pool.items()):
+        k = min(len(items), round(add * len(items) / total))
+        picked += rng.sample(sorted(items, key=lambda a: a["utc_start_epoch"]), k)
+    return sorted(done + picked, key=lambda a: (a["utc_start_epoch"], a["feed"]))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Transcribe + diarize LiveATC archives with the MOSS US-ATC model.")
     parser.add_argument("--airports", nargs="+", default=["katl"])
@@ -192,10 +210,15 @@ def main():
     parser.add_argument("--min-segments", type=int, default=40, help="skip archives quieter than this (earlier run)")
     parser.add_argument("--out-dir", type=Path, default=PROJECT_ROOT / "data" / "raw" / "text")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--add", type=int, default=0,
+                        help="keep the archives already in --out-dir and transcribe this many more busy ones")
     args = parser.parse_args()
 
-    archives = select_archives(discover_archives(args.airports, args.facilities), args.max_files,
-                               min_segments=args.min_segments)
+    found = discover_archives(args.airports, args.facilities)
+    if args.add:
+        archives = select_additional(found, args.out_dir, args.add, min_segments=args.min_segments)
+    else:
+        archives = select_archives(found, args.max_files, min_segments=args.min_segments)
     print(f"[MOSS] {len(archives)} archives selected: "
           f"{dict(sorted(__import__('collections').Counter(a['facility_class'] for a in archives).items()))}")
     model = MossTranscriber()
