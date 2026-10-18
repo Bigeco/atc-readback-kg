@@ -22,6 +22,12 @@ DIGIT_WORDS = {
     "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
     "six": "6", "seven": "7", "eight": "8", "nine": "9", "niner": "9", "tree": "3", "fife": "5",
 }
+# Group form ("Delta twenty four twenty five" = 2425, "seven thirty seven" = 737), as MOSS-ATC writes numbers.
+TEENS = {w: str(10 + i) for i, w in enumerate(
+    "ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen".split())}
+TENS = {w: str(i + 2) for i, w in enumerate("twenty thirty forty fifty sixty seventy eighty ninety".split())}
+UNITS = "one|two|three|four|five|six|seven|eight|nine|niner"
+GROUP = re.compile(rf"\b(?:({'|'.join(TENS)})(?:[\s-]+({UNITS}))?|({'|'.join(TEENS)}))\b", re.I)
 
 # Recurrent Whisper confusions on narrow-band VHF audio, observed on KATL Ground.
 ASR_FIXES = [
@@ -51,7 +57,29 @@ def apply_asr_fixes(text: str) -> Tuple[str, List[str]]:
     return out, edits
 
 
+def group_words_to_digits(text: str) -> str:
+    """'twenty four twenty five' -> '2425'; a two-digit group directly after a number joins it ('7 37' -> '737')."""
+    def two_digits(m):
+        if m.group(3):
+            return "\x01" + TEENS[m.group(3).lower()]
+        unit = DIGIT_WORDS[m.group(2).lower()] if m.group(2) else "0"
+        return "\x01" + TENS[m.group(1).lower()] + unit
+
+    out = GROUP.sub(two_digits, text)
+    out = DIGIT_RUN.sub(lambda m: m.group(0).replace(" ", ""), " ".join(
+        DIGIT_WORDS.get(t.lower(), t) for t in out.split(" ")))
+    prev = None
+    while prev != out:
+        prev, out = out, re.sub(r"(\d+)\s+\x01(\d\d)", r"\1\2", out)
+    return out.replace("\x01", "")
+
+
+DIGIT_RUN = re.compile(r"\b\d(?: \d){1,3}\b")
+
+
 def digit_words_to_digits(text: str) -> str:
+    if GROUP.search(text):
+        text = group_words_to_digits(text)
     tokens = re.split(r"(\s+|,)", text)
     out = []
     for tok in tokens:

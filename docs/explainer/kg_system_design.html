@@ -122,7 +122,7 @@ td.sym{font-family:var(--f-mono);white-space:nowrap}
         <div class="steps">
           <span><i class="tag">M1a</i>송신 분할</span>
           <span><i class="tag">M1b</i>STT (Whisper)</span>
-          <span><i class="tag">M2a</i>화자 역할·턴 분리</span>
+          <span><i class="tag">M2a</i>화자 역할 판정</span>
           <span><i class="tag">M2b</i>지시 추출 (LLM)</span>
           <span><i class="tag">M3</i>정규화·개체 해소</span>
           <span><i class="tag">M4</i>Temporal KG 구축</span>
@@ -198,10 +198,10 @@ td.sym{font-family:var(--f-mono);white-space:nowrap}
       </article>
 
       <article class="mod">
-        <div class="mhead"><i class="tag" style="align-self:flex-start">M2a</i><span class="nm">화자 역할·턴 분리</span></div>
-        <div class="io i"><h4>입력</h4><ul><li>w<sub>i</sub>와 앞뒤 송신</li></ul></div>
-        <div class="io o"><h4>출력</h4><ul><li>r<sub>i</sub> ∈ {ATCO, PILOT}: 화자 역할</li><li>한 송신에 두 사람 말이 붙어 있으면 턴으로 분리</li></ul></div>
-        <p class="ex">콜사인 위치(앞이면 관제사, 뒤면 조종사)와 시설 이름 규칙. 예: <b>첫 송신 = ATCO, 둘째 송신 = PILOT</b></p>
+        <div class="mhead"><i class="tag" style="align-self:flex-start">M2a</i><span class="nm">화자 역할 판정</span></div>
+        <div class="io i"><h4>입력</h4><ul><li>한 녹음 파일의 송신 w<sub>i</sub>와 화자 번호 σ<sub>i</sub> (M1 MOSS 출력)</li></ul></div>
+        <div class="io o"><h4>출력</h4><ul><li>r<sub>i</sub> ∈ {ATCO, PILOT}: 송신별 화자 역할 (같은 화자 번호면 같은 역할)</li><li>화자 번호(S01…)마다 역할 하나: LLM이 그 화자의 송신들을 보고 판정 → <code>speaker_roles.json</code></li></ul></div>
+        <p class="ex">여러 콜사인을 부르며 지시하는 화자 = ATCO, 콜사인 하나를 복창 끝에 붙이는 화자 = PILOT. LLM 답이 없으면 콜사인 위치 규칙으로 다수결.</p>
       </article>
 
       <article class="mod">

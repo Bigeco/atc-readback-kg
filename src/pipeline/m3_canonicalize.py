@@ -161,7 +161,7 @@ class Canonicalizer:
             route = [self.ground_target(r) for r in inst.get("route", [])]
             flags = list(target.get("flags", [])) + [f for r in route for f in r["flags"]]
             instructions.append({
-                "ins_id": f"{turn['turn_id']}:{k}",
+                "ins_id": f"{turn['tx_id']}:{k}",
                 "type": inst["type"],
                 "target_id": target.get("id"),
                 "target_kind": target.get("kind"),
@@ -172,10 +172,16 @@ class Canonicalizer:
                 "flags": sorted(set(flags)),
             })
 
-        speaker = extraction.get("speaker") if extraction.get("speaker") in ("ATCO", "PILOT") else turn["role"]
+        # A speaker-level M2a role (MOSS speaker IDs) is final; otherwise the M2b LLM may correct the rule label.
+        speaker_level = bool(turn.get("speaker")) and turn["role"] in ("ATCO", "PILOT")
+        if speaker_level or extraction.get("speaker") not in ("ATCO", "PILOT"):
+            speaker = turn["role"]
+        else:
+            speaker = extraction["speaker"]
         record = {
-            **{k: turn[k] for k in ("turn_id", "tx_id", "feed", "icao", "facility_class", "file", "start", "end",
-                                     "utc_start_epoch", "utc_end_epoch", "text", "role_source", "avg_logprob")},
+            **{k: turn.get(k) for k in ("tx_id", "feed", "icao", "facility_class", "file", "start", "end",
+                                         "utc_start_epoch", "utc_end_epoch", "text", "role", "role_source", "avg_logprob")},
+            "speaker_id": turn.get("speaker"),
             "speaker": speaker,
             "normalized_text": extraction.get("normalized_text"),
             "edits": extraction.get("edits", []),

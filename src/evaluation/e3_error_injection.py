@@ -82,11 +82,11 @@ PERTURBATIONS = {
 
 def evaluate_batch(items, extractor, canon_factory, required):
     """items: list of (pair, text). Extraction is batched so the LLM backend stays fast."""
-    extractions = extractor.extract([{"text": text, "role": "PILOT", "turn_id": "inj"} for _, text in items])
+    extractions = extractor.extract([{"text": text, "role": "PILOT", "tx_id": "inj"} for _, text in items])
     outcomes = []
     for (pair, text), ext in zip(items, extractions):
         canon = canon_factory(pair["atco_flight"], pair["t"])
-        rec = canon.canonicalize({**pair["turn"], "text": text, "turn_id": "inj"}, ext)
+        rec = canon.canonicalize({**pair["turn"], "text": text, "tx_id": "inj"}, ext)
         result = compare_readback(pair["atco_instructions"], rec["instructions"], required)
         outcomes.append({"status": result["status"], "flight": rec["flight_id"], "callsign_flags": rec["callsign"]["flags"]})
     return outcomes
@@ -122,7 +122,7 @@ def main():
     callsign_re = build_callsign_regex(telephony)
     required = set(rules["readback_required"][rules["region_rules"]["US"]])
     graph = TemporalEventGraph.load(out / "kg" / "graph.json")
-    turns = {t["turn_id"]: t for t in load_jsonl(out / "turns.jsonl")}
+    turns = {t["tx_id"]: t for t in load_jsonl(out / "turns.jsonl")}
 
     args.extractor = args.extractor or load_json(out / "summary.json").get("extractor", "rule")
     if args.extractor == "rule":
@@ -145,7 +145,7 @@ def main():
         pairs.append({
             "pilot_tx": edge["src"], "atco_tx": atco_tx, "text": pilot["text"], "t": pilot["utc_start_epoch"],
             "atco_flight": graph.nodes[atco_tx]["props"]["flight_id"],
-            "turn": turns[pilot["turn_id"]],
+            "turn": turns[pilot["tx_id"]],
             "atco_instructions": [{**n["props"], "ins_id": n["id"]} for n in graph.instructions_of(atco_tx)],
         })
     rng.shuffle(pairs)

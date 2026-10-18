@@ -168,7 +168,7 @@ class GraphBuilder:
     # ---------------------------------------------------------------- dynamic layer
     def add_turn(self, rec: dict):
         g = self.graph
-        tx_id = f"Tx:{rec['turn_id']}"
+        tx_id = f"Tx:{rec['tx_id']}"
         speaker = rec["speaker"] if rec["speaker"] in ("ATCO", "PILOT") else "UNKNOWN"
         flags = list(rec["callsign"]["flags"])
         flight_id = rec["flight_id"]
@@ -183,7 +183,7 @@ class GraphBuilder:
                 flight_id = g.nodes[linked_from]["props"]["flight_id"]
                 flags.append("LINKED_BY_CONTEXT")
 
-        g.add_node(tx_id, "Transmission", turn_id=rec["turn_id"], speaker=speaker, text=rec["text"],
+        g.add_node(tx_id, "Transmission", tx_id=rec["tx_id"], speaker_id=rec.get("speaker_id"), speaker=speaker, text=rec["text"],
                    normalized_text=rec.get("normalized_text"), feed=rec["feed"], facility_class=rec["facility_class"],
                    file=rec["file"], offset_start=rec["start"], offset_end=rec["end"],
                    utc_start_epoch=t0, utc_end_epoch=t1, flight_id=flight_id, callsign_surface=rec["callsign"]["surface"],
@@ -191,13 +191,13 @@ class GraphBuilder:
                    asr_conf=asr_conf, atis=rec.get("atis"), edits=rec.get("edits", []), backend=rec.get("backend"),
                    layer="dynamic")
         if speaker in ("ATCO", "PILOT"):
-            g.add_edge("SPOKEN_BY", tx_id, f"Role:{speaker}", valid_from=t0, valid_to=t1, prov=[rec["turn_id"]])
+            g.add_edge("SPOKEN_BY", tx_id, f"Role:{speaker}", valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])
 
         if flight_id:
             fid = f"Flight:{flight_id}"
             airline = rec["callsign"].get("airline")
             g.add_node(fid, "Flight", callsign=flight_id, airline=airline, layer="dynamic")
-            g.add_edge("ADDRESSES", tx_id, fid, valid_from=t0, valid_to=t1, prov=[rec["turn_id"]],
+            g.add_edge("ADDRESSES", tx_id, fid, valid_from=t0, valid_to=t1, prov=[rec["tx_id"]],
                        conf=asr_conf * (0.6 if "ASR_CORRECTED" in flags or "LINKED_BY_CONTEXT" in flags else 1.0))
             if airline and airline not in ("N",):
                 g.add_node(f"Airline:{airline}", "Airline", icao=airline, layer="static")
@@ -206,7 +206,7 @@ class GraphBuilder:
                 cs_id = f"CallsignMention:{rec['callsign']['surface']}"
                 g.add_node(cs_id, "CallsignMention", surface=rec["callsign"]["surface"], layer="dynamic")
                 alias = g.add_edge("ALIAS", fid, cs_id, prov=[], flags=[])
-                alias["props"]["prov"] = sorted(set(alias["props"]["prov"]) | {rec["turn_id"]})
+                alias["props"]["prov"] = sorted(set(alias["props"]["prov"]) | {rec["tx_id"]})
                 if "ASR_CORRECTED" in flags:
                     alias["props"]["flags"] = ["ASR_CORRECTED"]
 
@@ -219,13 +219,13 @@ class GraphBuilder:
                        value=inst["value"], qualifier=inst["qualifier"], flags=inst["flags"], feed=rec["feed"],
                        valid_from=t0, valid_to=None if is_state else t1, state=is_state, tx_node=tx_id,
                        conf=asr_conf, conf_label="MEDIUM", layer="dynamic")
-            g.add_edge("CONTAINS", tx_id, ins_id, valid_from=t0, valid_to=t1, prov=[rec["turn_id"]])
+            g.add_edge("CONTAINS", tx_id, ins_id, valid_from=t0, valid_to=t1, prov=[rec["tx_id"]])
             if inst["target_id"]:
                 self._ensure_target(inst["target_id"], inst["target_kind"], inst["target_text"])
-                g.add_edge("TARGET", ins_id, inst["target_id"], valid_from=t0, prov=[rec["turn_id"]])
+                g.add_edge("TARGET", ins_id, inst["target_id"], valid_from=t0, prov=[rec["tx_id"]])
             for rid in inst["route_ids"]:
                 self._ensure_target(rid, "Taxiway", None)
-                g.add_edge("VIA", ins_id, rid, valid_from=t0, prov=[rec["turn_id"]])
+                g.add_edge("VIA", ins_id, rid, valid_from=t0, prov=[rec["tx_id"]])
             instructions.append({**inst, "ins_id": ins_id})
 
             if speaker == "ATCO" and flight_id:
