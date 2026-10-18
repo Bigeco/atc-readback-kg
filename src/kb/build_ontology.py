@@ -119,91 +119,96 @@ def schema_terms(node) -> set:
     return terms
 
 
-# FAA JO 7110.65BB 2-4-3 read-back levels. Each level is verified against the section text.
+# FAA JO 7110.65BB 2-4-3 read-back levels (level names are ours). Body items are controller duties ("Ensure");
+# NOTE 1 quotes the pilot guidance of the AIM ("should" / "may"). Each quote is verified against the section text.
+READBACK_REQUIRED_LEVELS = ("required_by_atc", "recommended_runway", "recommended_numbers", "team_rule")
 FAA_READBACK_BASIS = {
-    "acknowledge": ("2-4-3", r"Ensure pilots acknowledge all Air Traffic Clearances"),
-    "mandatory": ("2-4-3", r"Ensure the read back of hold short instructions"),
-    "runway_assignment": ("2-4-3", r"Initial read back of a taxi, departure or landing clearance should include the runway assignment"),
-    "numbers": ("2-4-3", r"pilots should read back the .numbers"),
+    "ack_only": ("2-4-3", "body (first sentence) + NOTE 1.a",
+                 r"Ensure pilots acknowledge all Air Traffic Clearances"),
+    "required_by_atc": ("2-4-3", "body b", r"Ensure the read back of hold short instructions"),
+    "recommended_runway": ("2-4-3", "NOTE 1.c",
+                           r"Initial read back of a taxi, departure or landing clearance should include the runway assignment"),
+    "recommended_numbers": ("2-4-3", "NOTE 1.a", r"pilots should read back the .numbers"),
 }
 
 # Curated command types. dlr: (Type Main, Type Sub) rows of the DLR table; sub None = empty cell, "*" = any.
-# faa: (section, phraseology regex found in that section). faa_readback: level from FAA_READBACK_BASIS, "design" when
-# 7110.65 does not state it and we require it for runway safety, None when an acknowledgement suffices.
+# faa: (section, phraseology regex found in that section). faa_readback: level from FAA_READBACK_BASIS, "team_rule" when
+# 7110.65 does not state it and we require it for runway safety, "ack_only" when an acknowledgement suffices,
+# None for pilot utterances (ACK, REQUEST) that are not ATC instructions.
 COMMAND_TYPES = [
     {"name": "TAXI_VIA", "description": "taxi instruction with a route (VIA) and optional destination", "state": True,
      "targets": ["Runway", "Ramp", "Taxiway"], "dlr": [("TAXI", "Preposition")],
      "faa": [("3-7-2", r"taxi clearance/route must include the specific route")],
-     "faa_readback": "runway_assignment", "icao_readback": True},
+     "faa_readback": "recommended_runway", "icao_readback": True},
     {"name": "HOLD_SHORT", "description": "hold short of a runway or taxiway", "state": True,
      "targets": ["Runway", "Taxiway"], "dlr": [("HOLD_SHORT", None)],
      "faa": [("3-7-2", r"READ BACK HOLD INSTRUCTIONS"), ("2-4-3", r"read back of hold short instructions")],
-     "faa_readback": "mandatory", "icao_readback": True},
+     "faa_readback": "required_by_atc", "icao_readback": True},
     {"name": "CROSS_RUNWAY", "description": "runway crossing clearance", "state": True,
      "targets": ["Runway"], "dlr": [("CROSS", None)],
      "faa": [("3-7-2", r"CROSS \(runway\)")],
-     "faa_readback": "design", "icao_readback": True},
+     "faa_readback": "team_rule", "icao_readback": True},
     {"name": "HOLD_POSITION", "description": "hold position", "state": True,
      "targets": [], "dlr": [("HOLD_POSITION", None)],
      "faa": [("3-7-2", r"HOLD POSITION")],
-     "faa_readback": "design", "icao_readback": True},
+     "faa_readback": "team_rule", "icao_readback": True},
     {"name": "GIVE_WAY", "description": "give way to traffic", "state": False,
      "targets": [], "dlr": [("GIVE_WAY", None)], "faa": [],
-     "faa_readback": None, "icao_readback": False,
+     "faa_readback": "ack_only", "icao_readback": False,
      "note": "No GIVE WAY phraseology in JO 7110.65 (only the light-gun signal); kept because it occurs in US ground audio."},
     {"name": "FOLLOW", "description": "follow or pass behind traffic", "state": False,
      "targets": [], "dlr": [("FOLLOW", None)],
      "faa": [("3-7-2", r"FOLLOW \(traffic\)")],
-     "faa_readback": None, "icao_readback": False},
+     "faa_readback": "ack_only", "icao_readback": False},
     {"name": "CONTACT", "description": "frequency change, contact", "state": True,
      "targets": ["Facility"], "dlr": [("CONTACT", None), ("CONTACT_FREQUENCY", "*")],
      "faa": [("2-1-17", r"CONTACT \(facility name")],
-     "faa_readback": "numbers", "icao_readback": True},
+     "faa_readback": "recommended_numbers", "icao_readback": True},
     {"name": "MONITOR", "description": "frequency change, monitor", "state": True,
      "targets": ["Facility"], "dlr": [],
      "faa": [("2-1-17", r"Monitor Tower")],
-     "faa_readback": "numbers", "icao_readback": False,
+     "faa_readback": "recommended_numbers", "icao_readback": False,
      "note": "US extension: no DLR type; JO 7110.65 2-1-17 examples (\"Monitor Tower\", \"Monitor Ground\")."},
     {"name": "LINE_UP_AND_WAIT", "description": "line up and wait", "state": True,
      "targets": ["Runway"], "dlr": [("LINEUP", None)],
      "faa": [("3-9-4", r"LINE UP AND WAIT")],
-     "faa_readback": "design", "icao_readback": True},
+     "faa_readback": "team_rule", "icao_readback": True},
     {"name": "CLEARED_FOR_TAKEOFF", "description": "takeoff clearance", "state": True,
      "targets": ["Runway"], "dlr": [("CLEARED", "TAKEOFF")],
      "faa": [("3-9-10", r"CLEARED FOR TAKEOFF")],
-     "faa_readback": "runway_assignment", "icao_readback": True},
+     "faa_readback": "recommended_runway", "icao_readback": True},
     {"name": "CLEARED_TO_LAND", "description": "landing clearance", "state": True,
      "targets": ["Runway"], "dlr": [("CLEARED", "LANDING")],
      "faa": [("3-10-5", r"CLEARED TO LAND")],
-     "faa_readback": "runway_assignment", "icao_readback": True},
+     "faa_readback": "recommended_runway", "icao_readback": True},
     {"name": "TURN", "description": "turn left/right", "state": False,
      "targets": ["Taxiway"], "dlr": [("TURN", None)],
      "faa": [("3-10-9", r"TURN LEFT/RIGHT")],
-     "faa_readback": None, "icao_readback": False},
+     "faa_readback": "ack_only", "icao_readback": False},
     {"name": "CLIMB", "description": "climb", "state": False,
      "targets": [], "dlr": [("CLIMB", "*")],
      "faa": [("4-3-2", r"CLIMB AND MAINTAIN")],
-     "faa_readback": "numbers", "icao_readback": True},
+     "faa_readback": "recommended_numbers", "icao_readback": True},
     {"name": "DESCEND", "description": "descend", "state": False,
      "targets": [], "dlr": [("DESCEND", "*")],
      "faa": [("4-5-7", r"DESCEND AND MAINTAIN")],
-     "faa_readback": "numbers", "icao_readback": True},
+     "faa_readback": "recommended_numbers", "icao_readback": True},
     {"name": "HEADING", "description": "heading", "state": False,
      "targets": [], "dlr": [("HEADING", None)],
      "faa": [("5-6-2", r"TURN LEFT/RIGHT HEADING")],
-     "faa_readback": "numbers", "icao_readback": True},
+     "faa_readback": "recommended_numbers", "icao_readback": True},
     {"name": "SQUAWK", "description": "transponder code", "state": False,
      "targets": [], "dlr": [("SQUAWK", None)],
      "faa": [("5-2-1", r"SQUAWK \(code\)")],
-     "faa_readback": "numbers", "icao_readback": True},
+     "faa_readback": "recommended_numbers", "icao_readback": True},
     {"name": "TRAFFIC_INFO", "description": "traffic information (advisory)", "state": False,
      "targets": [], "dlr": [("INFORMATION", "TRAFFIC")],
      "faa": [("2-1-21", r"TRAFFIC, \(number\) O.CLOCK")],
-     "faa_readback": None, "icao_readback": False, "advisory": True},
+     "faa_readback": "ack_only", "icao_readback": False, "advisory": True},
     {"name": "WAKE_ADVISORY", "description": "wake turbulence advisory", "state": False,
      "targets": [], "dlr": [("CAUTION", "WAKE_TURBULENCE")],
      "faa": [("2-1-20", r"CAUTION WAKE TURBULENCE")],
-     "faa_readback": None, "icao_readback": False, "advisory": True},
+     "faa_readback": "ack_only", "icao_readback": False, "advisory": True},
     {"name": "ACK", "description": "roger / wilco / copy", "state": False,
      "targets": [], "dlr": [("AFFIRM", None)],
      "faa": [("2-4-3", r"Wilco.{0,6}Roger")],
@@ -496,7 +501,8 @@ def build(out_dir: Path):
                      if not re.search(rf"(?<!\w){re.escape(t)}(?!\w)", description))
     if missing:
         sys.exit(f"[onto] DLR description does not contain: {missing}")
-    readback_basis = {level: faa_evidence(faa, sec, pat) for level, (sec, pat) in FAA_READBACK_BASIS.items()}
+    readback_basis = {level: {**faa_evidence(faa, sec, pat), "part": part}
+                      for level, (sec, part, pat) in FAA_READBACK_BASIS.items()}
 
     command_types, readback, errors = {}, {}, []
     for ct in COMMAND_TYPES:
@@ -566,12 +572,12 @@ def build(out_dir: Path):
         "region_rules": REGION_RULES,
         "readback": readback,
         "readback_required": {
-            "FAA": [c["name"] for c in COMMAND_TYPES if c["faa_readback"]],
+            "FAA": [c["name"] for c in COMMAND_TYPES if c["faa_readback"] in READBACK_REQUIRED_LEVELS],
             "ICAO": [c["name"] for c in COMMAND_TYPES if c["icao_readback"]],
         },
         "readback_basis": {
             "FAA": {**readback_basis,
-                    "design": "Not stated in JO 7110.65; required here because the instruction authorizes runway "
+                    "team_rule": "Not stated in JO 7110.65; required here because the instruction authorizes runway "
                               "entry or a stop on the movement area."},
             "ICAO": ICAO_READBACK_SOURCE,
         },

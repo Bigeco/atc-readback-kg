@@ -141,21 +141,22 @@ FAA 복창 등급 & 각 등급의 근거 문장이 §2-4-3 본문에 있는가\\
 %==========================================================
 \section{FAA 복창 등급}\label{sec:levels}
 %==========================================================
-FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK)을 읽어 보면, 복창 요구의 강도가 지시마다 다르다. 그래서 ``복창 필수 여부''를 한 비트가 아니라 \textbf{등급}으로 기록했다.
+FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK, 79쪽)은 두 부분으로 되어 있다. \textbf{본문}(첫 문장과 a--c)은 관제사에게 ``Ensure''(반드시 ~하게 하라)로 쓴 \textbf{의무}이고, \textbf{NOTE 1}은 조종사 매뉴얼(AIM)을 옮긴 ``should/may''의 \textbf{권고}다. 같은 조항 안에 응답만 받으면 되는 지시, 복창이 의무인 지시, 복창이 권고인 지시가 섞여 있으므로, 각 명령이 복창 필수 목록에 \textbf{왜} 들어갔는지 남기려고 등급을 붙였다. 등급 이름은 우리가 붙였다.
 
 \begin{center}\small
-\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{4.3cm}@{}}
+\begin{tabularx}{\textwidth}{@{}l l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{4.0cm}@{}}
 \toprule
-등급 & 원문 근거 (§2-4-3) & 해당 종류\\\midrule
-\key{acknowledge} & ``Ensure pilots acknowledge all Air Traffic Clearances and ATC Instructions'' (모든 지시는 응답 필요) & 전체\\
-\key{mandatory} & ``Ensure the read back of hold short instructions'' & \cmd{HOLD\_SHORT}\\
-\key{runway\_assignment} & ``Initial read back of a taxi, departure or landing clearance should include the runway assignment'' & \cmd{TAXI\_VIA}, \cmd{CLEARED\_FOR\_TAKEOFF}, \cmd{CLEARED\_TO\_LAND}\\
-\key{numbers} & ``pilots should read back the `numbers'\,'' & \cmd{CONTACT}, \cmd{MONITOR}, \cmd{CLIMB}, \cmd{DESCEND}, \cmd{HEADING}, \cmd{SQUAWK}\\
-\key{design} & 규정에 명시 없음. 활주로 진입이나 이동 정지를 허가하는 지시라서 우리가 필수로 정함 & \cmd{CROSS\_RUNWAY}, \cmd{LINE\_UP\_AND\_WAIT}, \cmd{HOLD\_POSITION}\\
+등급 (우리 이름) & 위치 & 원문 & 해당 종류\\\midrule
+\key{ack\_only} & 본문 첫 문장, NOTE 1.a & ``Ensure pilots acknowledge all \ldots'', ``may acknowledge \ldots\ `Wilco,' `Roger' \ldots'' (응답만 하면 됨) & \cmd{GIVE\_WAY}, \cmd{FOLLOW}, \cmd{TURN}, \cmd{TRAFFIC\_INFO}, \cmd{WAKE\_ADVISORY}\\
+\key{required\_by\_atc} & 본문 b & ``Ensure the read back of hold short instructions'' (복창 의무) & \cmd{HOLD\_SHORT}\\
+\key{recommended\_runway} & NOTE 1.c & ``Initial read back of a taxi, departure or landing clearance should include the runway assignment'' (활주로 복창 권고) & \cmd{TAXI\_VIA}, \cmd{CLEARED\_FOR\_TAKEOFF}, \cmd{CLEARED\_TO\_LAND}\\
+\key{recommended\_numbers} & NOTE 1.a & ``pilots should read back the `numbers'\,'' (숫자 복창 권고) & \cmd{CONTACT}, \cmd{MONITOR}, \cmd{CLIMB}, \cmd{DESCEND}, \cmd{HEADING}, \cmd{SQUAWK}\\
+\key{team\_rule} & 없음 & 규정에 없음. 활주로 진입이나 이동 정지를 허가하는 지시라서 팀이 필수로 정함 & \cmd{CROSS\_RUNWAY}, \cmd{LINE\_UP\_AND\_WAIT}, \cmd{HOLD\_POSITION}\\
+\texttt{null} & -- & 조종사 발화라 관제 지시가 아님 & \cmd{ACK}, \cmd{REQUEST}\\
 \bottomrule
 \end{tabularx}
 \end{center}
-\noindent \texttt{rules.json}의 \key{readback\_required.FAA}는 등급이 있는 13개 종류이고, v0.1과 같은 목록이다. ICAO 목록은 입력 파일에 ICAO 문서가 없어서 \textbf{검증하지 못했다}고 \key{readback\_basis.ICAO}에 명시했다. 종류별 등급은 \key{readback}에 있다.
+\noindent \texttt{rules.json}의 \key{readback\_required.FAA}는 \key{ack\_only}와 \texttt{null}을 뺀 13개 종류이고, 이전 버전과 같은 목록이다. 등급별 원문 인용과 위치(\key{part})는 \key{readback\_basis.FAA}에 있다. 본문 a(복창 내용이 맞는지 확인)는 우리 불일치 검사, 본문 c(복창에 호출부호 포함)는 호출부호 누락 경고의 근거다. ICAO 목록은 입력 파일에 ICAO 문서가 없어서 \textbf{검증하지 못했다}고 \key{readback\_basis.ICAO}에 명시했다. 현재 코드는 등급을 경고 우선순위에 쓰지 않고 필수 목록만 사용한다.
 
 %==========================================================
 \section{매핑 결과 (20개 종류)}
@@ -165,22 +166,22 @@ FAA §2-4-3(PILOT ACKNOWLEDGMENT/READ BACK)을 읽어 보면, 복창 요구의 �
 \begin{longtable}{@{}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{2.6cm}@{}}
 \toprule
 우리 종류 & DLR (Main Sub) & FAA 조항 (검증된 표준 문구) & FAA 복창 등급\\\midrule\endhead
-\cmd{TAXI\_VIA} & TAXI Preposition (VIA/TO) & 3-7-2 ``taxi clearance/route must include the specific route'' & runway\_assignment\\
-\cmd{HOLD\_SHORT} & HOLD\_SHORT & 3-7-2 ``READ BACK HOLD INSTRUCTIONS'', 2-4-3 & mandatory\\
-\cmd{CROSS\_RUNWAY} & CROSS & 3-7-2 ``CROSS (runway)'' & design\\
-\cmd{HOLD\_POSITION} & HOLD\_POSITION & 3-7-2 ``HOLD POSITION'' & design\\
+\cmd{TAXI\_VIA} & TAXI Preposition (VIA/TO) & 3-7-2 ``taxi clearance/route must include the specific route'' & recommended\_runway\\
+\cmd{HOLD\_SHORT} & HOLD\_SHORT & 3-7-2 ``READ BACK HOLD INSTRUCTIONS'', 2-4-3 & required\_by\_atc\\
+\cmd{CROSS\_RUNWAY} & CROSS & 3-7-2 ``CROSS (runway)'' & team\_rule\\
+\cmd{HOLD\_POSITION} & HOLD\_POSITION & 3-7-2 ``HOLD POSITION'' & team\_rule\\
 \cmd{GIVE\_WAY} & GIVE\_WAY & \textit{없음} (표준 문구 없음, 신호등 설명에만 등장) & --\\
 \cmd{FOLLOW} & FOLLOW & 3-7-2 ``FOLLOW (traffic)'' & --\\
-\cmd{CONTACT} & CONTACT, CONTACT\_FREQUENCY & 2-1-17 ``CONTACT (facility name \ldots)'' & numbers\\
-\cmd{MONITOR} & \textit{없음 (미국 확장)} & 2-1-17 예문 ``Monitor Tower'', ``Monitor Ground'' & numbers\\
-\cmd{LINE\_UP\_AND\_WAIT} & LINEUP & 3-9-4 ``LINE UP AND WAIT'' & design\\
-\cmd{CLEARED\_\allowbreak FOR\_\allowbreak TAKEOFF} & CLEARED TAKEOFF & 3-9-10 ``CLEARED FOR TAKEOFF'' & runway\_assignment\\
-\cmd{CLEARED\_TO\_LAND} & CLEARED LANDING & 3-10-5 ``CLEARED TO LAND'' & runway\_assignment\\
+\cmd{CONTACT} & CONTACT, CONTACT\_FREQUENCY & 2-1-17 ``CONTACT (facility name \ldots)'' & recommended\_numbers\\
+\cmd{MONITOR} & \textit{없음 (미국 확장)} & 2-1-17 예문 ``Monitor Tower'', ``Monitor Ground'' & recommended\_numbers\\
+\cmd{LINE\_UP\_AND\_WAIT} & LINEUP & 3-9-4 ``LINE UP AND WAIT'' & team\_rule\\
+\cmd{CLEARED\_\allowbreak FOR\_\allowbreak TAKEOFF} & CLEARED TAKEOFF & 3-9-10 ``CLEARED FOR TAKEOFF'' & recommended\_runway\\
+\cmd{CLEARED\_TO\_LAND} & CLEARED LANDING & 3-10-5 ``CLEARED TO LAND'' & recommended\_runway\\
 \cmd{TURN} & TURN & 3-10-9 ``TURN LEFT/RIGHT (taxiway/runway)'' & --\\
-\cmd{CLIMB} & CLIMB & 4-3-2 ``CLIMB AND MAINTAIN'' & numbers\\
-\cmd{DESCEND} & DESCEND & 4-5-7 ``CLIMB/DESCEND AND MAINTAIN'' & numbers\\
-\cmd{HEADING} & HEADING (2개 행) & 5-6-2 ``TURN LEFT/RIGHT HEADING'' & numbers\\
-\cmd{SQUAWK} & SQUAWK & 5-2-1 ``SQUAWK (code)'' & numbers\\
+\cmd{CLIMB} & CLIMB & 4-3-2 ``CLIMB AND MAINTAIN'' & recommended\_numbers\\
+\cmd{DESCEND} & DESCEND & 4-5-7 ``CLIMB/DESCEND AND MAINTAIN'' & recommended\_numbers\\
+\cmd{HEADING} & HEADING (2개 행) & 5-6-2 ``TURN LEFT/RIGHT HEADING'' & recommended\_numbers\\
+\cmd{SQUAWK} & SQUAWK & 5-2-1 ``SQUAWK (code)'' & recommended\_numbers\\
 \cmd{TRAFFIC\_INFO} & INFORMATION TRAFFIC & 2-1-21 ``TRAFFIC, (number) O'CLOCK'' & --\\
 \cmd{WAKE\_ADVISORY} & CAUTION WAKE\_TURBULENCE & 2-1-20 ``CAUTION WAKE TURBULENCE'' & --\\
 \cmd{ACK} & AFFIRM (일부만 대응) & 2-4-3 ``Wilco,'' ``Roger,'' & --\\
@@ -240,9 +241,9 @@ ontology.json
 }
 
 rules.json
-"readback": {"HOLD_SHORT": {"FAA": "mandatory", "ICAO": true}, ...},
+"readback": {"HOLD_SHORT": {"FAA": "required_by_atc", "ICAO": true}, ...},
 "readback_required": {"FAA": ["TAXI_VIA", "HOLD_SHORT", ...], "ICAO": [...]},
-"readback_basis": {"FAA": {"mandatory": {"section": "2-4-3",
+"readback_basis": {"FAA": {"required_by_atc": {"section": "2-4-3", "part": "body b",
                    "quote": "... b. Ensure the read back of hold short instructions ..."}, ...}}
 \end{verbatim}
 }

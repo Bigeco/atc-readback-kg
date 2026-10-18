@@ -21,75 +21,75 @@
   },
   "readback": {
     "TAXI_VIA": {
-      "FAA": "runway_assignment",
+      "FAA": "recommended_runway",
       "ICAO": true
     },
     "HOLD_SHORT": {
-      "FAA": "mandatory",
+      "FAA": "required_by_atc",
       "ICAO": true
     },
     "CROSS_RUNWAY": {
-      "FAA": "design",
+      "FAA": "team_rule",
       "ICAO": true
     },
     "HOLD_POSITION": {
-      "FAA": "design",
+      "FAA": "team_rule",
       "ICAO": true
     },
     "GIVE_WAY": {
-      "FAA": null,
+      "FAA": "ack_only",
       "ICAO": false
     },
     "FOLLOW": {
-      "FAA": null,
+      "FAA": "ack_only",
       "ICAO": false
     },
     "CONTACT": {
-      "FAA": "numbers",
+      "FAA": "recommended_numbers",
       "ICAO": true
     },
     "MONITOR": {
-      "FAA": "numbers",
+      "FAA": "recommended_numbers",
       "ICAO": false
     },
     "LINE_UP_AND_WAIT": {
-      "FAA": "design",
+      "FAA": "team_rule",
       "ICAO": true
     },
     "CLEARED_FOR_TAKEOFF": {
-      "FAA": "runway_assignment",
+      "FAA": "recommended_runway",
       "ICAO": true
     },
     "CLEARED_TO_LAND": {
-      "FAA": "runway_assignment",
+      "FAA": "recommended_runway",
       "ICAO": true
     },
     "TURN": {
-      "FAA": null,
+      "FAA": "ack_only",
       "ICAO": false
     },
     "CLIMB": {
-      "FAA": "numbers",
+      "FAA": "recommended_numbers",
       "ICAO": true
     },
     "DESCEND": {
-      "FAA": "numbers",
+      "FAA": "recommended_numbers",
       "ICAO": true
     },
     "HEADING": {
-      "FAA": "numbers",
+      "FAA": "recommended_numbers",
       "ICAO": true
     },
     "SQUAWK": {
-      "FAA": "numbers",
+      "FAA": "recommended_numbers",
       "ICAO": true
     },
     "TRAFFIC_INFO": {
-      "FAA": null,
+      "FAA": "ack_only",
       "ICAO": false
     },
     "WAKE_ADVISORY": {
-      "FAA": null,
+      "FAA": "ack_only",
       "ICAO": false
     },
     "ACK": {
@@ -134,27 +134,31 @@
   },
   "readback_basis": {
     "FAA": {
-      "acknowledge": {
+      "ack_only": {
         "section": "2-4-3",
         "title": "PILOT ACKNOWLEDGMENT/READ BACK",
-        "quote": "Ensure pilots acknowledge all Air Traffic Clearances and ATC Instructions. When a pilot reads back an Air Traffi"
+        "quote": "Ensure pilots acknowledge all Air Traffic Clearances and ATC Instructions. When a pilot reads back an Air Traffi",
+        "part": "body (first sentence) + NOTE 1.a"
       },
-      "mandatory": {
+      "required_by_atc": {
         "section": "2-4-3",
         "title": "PILOT ACKNOWLEDGMENT/READ BACK",
-        "quote": "Instruction: a. Ensure that items read back are correct. b. Ensure the read back of hold short instructions, whether a part of taxi instructions or a LAHSO clearance."
+        "quote": "Instruction: a. Ensure that items read back are correct. b. Ensure the read back of hold short instructions, whether a part of taxi instructions or a LAHSO clearance.",
+        "part": "body b"
       },
-      "runway_assignment": {
+      "recommended_runway": {
         "section": "2-4-3",
         "title": "PILOT ACKNOWLEDGMENT/READ BACK",
-        "quote": "k unless they are specifically stated by the controller. c. Initial read back of a taxi, departure or landing clearance should include the runway assignment, including left, right, center, etc. if applicable. 2. Unti"
+        "quote": "k unless they are specifically stated by the controller. c. Initial read back of a taxi, departure or landing clearance should include the runway assignment, including left, right, center, etc. if applicable. 2. Unti",
+        "part": "NOTE 1.c"
       },
-      "numbers": {
+      "recommended_numbers": {
         "section": "2-4-3",
         "title": "PILOT ACKNOWLEDGMENT/READ BACK",
-        "quote": "ead Back guidance for pilots in the AIM states: a. Although pilots should read back the “numbers,” unless otherwise required by procedure or controller requ"
+        "quote": "ead Back guidance for pilots in the AIM states: a. Although pilots should read back the “numbers,” unless otherwise required by procedure or controller requ",
+        "part": "NOTE 1.a"
       },
-      "design": "Not stated in JO 7110.65; required here because the instruction authorizes runway entry or a stop on the movement area."
+      "team_rule": "Not stated in JO 7110.65; required here because the instruction authorizes runway entry or a stop on the movement area."
     },
     "ICAO": "ICAO Doc 4444 PANS-ATM, read-back requirements (runway, level, heading, SSR code, frequency). Not among data/ontology inputs; not verified by this script."
   },

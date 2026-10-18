@@ -253,7 +253,7 @@ $R$ & 경로 (순서 있는 유도로 목록) & \texttt{[M, L3]} & TAXI VIA의 V
 %==========================================================
 \section{복창 규정}\label{sec:readback}
 %==========================================================
-지역 $\rho$의 복창 필수 집합 $\mathcal{T}_{\mathrm{req}}^{\rho}$를 규정별로 정의한다(\texttt{region\_rules}: US$\to$FAA, KR·JP$\to$ICAO). 이 규칙들은 어휘·구조와 분리해 \texttt{configs/rules.json}에 둔다. FAA 목록은 §2-4-3 원문에 따라 등급(mandatory, runway\_assignment, numbers, design)으로 기록했다.
+지역 $\rho$의 복창 필수 집합 $\mathcal{T}_{\mathrm{req}}^{\rho}$를 규정별로 정의한다(\texttt{region\_rules}: US$\to$FAA, KR·JP$\to$ICAO). 이 규칙들은 어휘·구조와 분리해 \texttt{configs/rules.json}에 둔다. FAA 목록은 §2-4-3 원문에 따라 등급(본문 의무 required\_by\_atc, NOTE 권고 recommended\_runway·recommended\_numbers, 팀 설계 team\_rule, 응답만 ack\_only)으로 기록했다.
 \begin{itemize}
 \item \textbf{FAA:} 관제사는 조종사가 지시를 수신 확인하게 하고, 복창 내용이 맞는지 확인해야 한다. hold short 지시는 복창이 없으면 복창을 요청해야 한다 \cite{faa7110}. 우리 목록: \cmd{TAXI\_VIA}(활주로 배정 포함), \cmd{HOLD\_SHORT}, \cmd{CROSS\_RUNWAY}, \cmd{HOLD\_POSITION}, \cmd{CONTACT}, \cmd{MONITOR}, \cmd{LINE\_UP\_AND\_WAIT}, \cmd{CLEARED\_FOR\_TAKEOFF}, \cmd{CLEARED\_TO\_LAND}, \cmd{CLIMB}, \cmd{DESCEND}, \cmd{HEADING}, \cmd{SQUAWK}.
 \item \textbf{ICAO (Doc 4444):} 활주로 진입·착륙·이륙·대기·횡단·택시 허가, 고도, 기수, 트랜스폰더 코드 등 \cite{icao4444}. MONITOR는 ICAO 표현이 아니라서 제외했다.
