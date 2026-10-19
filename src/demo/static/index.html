@@ -47,6 +47,7 @@
     <section class="work">
       <nav class="tabs" id="tabs">
         <button data-tab="airfield" class="active">Airfield at t</button>
+        <button data-tab="kg">KG explorer</button>
         <button data-tab="flight">Flight timeline</button>
         <button data-tab="graph">Event graph</button>
         <button data-tab="eval">Quality</button>
@@ -54,6 +55,19 @@
       <div class="tab-body">
         <div id="tab-airfield" class="tab active"></div>
         <div id="tab-flight" class="tab"><p class="hint">Select a flight from the list on the left or from an alert.</p></div>
+        <div id="tab-kg" class="tab kg-tab">
+          <div class="kg-bar">
+            <div class="seg" id="kg-mode">
+              <button data-mode="entity" class="on" title="Entity linking (M3): callsign mentions, flights, airlines, airport places">Entity linking</button>
+              <button data-mode="event" title="Temporal layer (M4): transmissions, instructions, readbacks">Event layer</button>
+            </div>
+            <span class="kg-window" id="kg-window"></span>
+            <label class="kg-find"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5" stroke="currentColor" stroke-width="1.5"/></svg><input id="kg-find" type="search" placeholder="Find node (DAL1489, 9L, E)"></label>
+            <button class="btn" id="kg-fit">Fit</button>
+          </div>
+          <div class="kg-stage"><div id="kgcy"></div><div class="kg-detail hidden" id="kg-detail"></div></div>
+          <div class="kg-legend" id="kg-legend"></div>
+        </div>
         <div id="tab-graph" class="tab"><div id="cy"></div><div class="legend" id="legend"></div></div>
         <div id="tab-eval" class="tab"></div>
       </div>

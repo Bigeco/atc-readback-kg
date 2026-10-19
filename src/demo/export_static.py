@@ -16,7 +16,7 @@ SRC_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SRC_ROOT))
 
 from common.paths import display_path, run_dir
-from demo.server import STATIC_DIR, DemoState
+from demo.server import KG_BIN_SEC, STATIC_DIR, DemoState
 from reasoning import queries as Q
 
 
@@ -65,6 +65,12 @@ def export(run_name: str, out_dir: Path):
                            "route": [r.split(":")[-1] for r in p.get("route_ids", [])], "value": p.get("value"),
                            "since": p["valid_from"], "valid_to": p.get("valid_to"), "ins_id": nid})
     dump(states, data / "states.json")
+
+    start, end = state.summary["utc_range"]
+    for b in range(int((end - start) // KG_BIN_SEC) + 1):
+        for mode in ("entity", "event"):
+            t0 = start + b * KG_BIN_SEC
+            dump(strip_paths(Q.window_subgraph(state.graph, t0, t0 + KG_BIN_SEC, mode)), data / "kg" / f"{mode}_{b:03d}.json")
     dump(state.alerts, data / "alerts.json")
 
     tx = {}

@@ -25,6 +25,7 @@ from reasoning import queries as Q
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+KG_BIN_SEC = 600   # the KG explorer shows one 10-minute window at a time
 
 
 class DemoState:
@@ -128,6 +129,11 @@ def create_app(state: DemoState) -> FastAPI:
     @app.get("/api/flight/graph")
     def flight_graph(id: str):
         return Q.flight_subgraph(state.graph, id)
+
+    @app.get("/api/kg")
+    def kg_window(bin: int, mode: str = "entity"):
+        t0 = state.summary["utc_range"][0] + bin * KG_BIN_SEC
+        return Q.window_subgraph(state.graph, t0, t0 + KG_BIN_SEC, mode)
 
     @app.get("/api/snapshot")
     def snapshot(t: float):

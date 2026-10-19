@@ -130,3 +130,68 @@ def flight_subgraph(graph, flight_id: str, max_tx: int = 40) -> dict:
     nodes = [{"id": n, "label": graph.nodes[n]["label"], "props": graph.nodes[n]["props"]} for n in keep]
     edges = [e for e in graph.edges if e["src"] in keep and e["dst"] in keep and e["type"] != "PART_OF"]
     return {"nodes": nodes, "edges": edges}
+
+
+def window_subgraph(graph, t0: float, t1: float, mode: str = "entity") -> dict:
+    """Node-link view of the KG for transmissions starting in [t0, t1).
+
+    entity: the linking result (M3) - CallsignMention -ALIAS- Flight -OPERATED_BY- Airline, and Flight -> place edges
+            aggregated from the instructions (label = instruction types, status = worst readback status),
+            places PART_OF the airport.
+    event:  the temporal layer - Transmission, Instruction, READBACK_OF, NEXT, CONTAINS, ADDRESSES, TARGET, VIA.
+    """
+    txs = [nid for nid, n in graph.nodes.items()
+           if n["label"] == "Transmission" and t0 <= n["props"]["utc_start_epoch"] < t1]
+    keep, edges = set(), []
+
+    def node(nid):
+        n = graph.nodes[nid]
+        return {"id": nid, "label": n["label"], "props": n["props"]}
+
+    if mode == "event":
+        for tx in txs:
+            keep.add(tx)
+            for e in graph.out_edges(tx):
+                if e["type"] in ("ADDRESSES", "CONTAINS", "READBACK_OF"):
+                    keep.add(e["dst"])
+                    if e["type"] == "CONTAINS":
+                        for t in graph.out_edges(e["dst"], "TARGET") + graph.out_edges(e["dst"], "VIA"):
+                            keep.add(t["dst"])
+        edges = [e for e in graph.edges if e["src"] in keep and e["dst"] in keep and e["type"] not in ("SPOKEN_BY", "PART_OF")]
+        return {"nodes": [node(n) for n in keep], "edges": edges}
+
+    rank = {None: 0, "MATCH": 1, "PARTIAL": 2, "MISMATCH": 3}
+    links = {}
+    for tx in txs:
+        for e in graph.out_edges(tx, "ADDRESSES"):
+            fid = e["dst"]
+            keep.add(fid)
+            for a in graph.out_edges(fid, "ALIAS") + graph.out_edges(fid, "OPERATED_BY"):
+                keep.add(a["dst"])
+        for ins in graph.instructions_of(tx):
+            p = ins["props"]
+            fid = f"Flight:{p['flight_id']}" if p.get("flight_id") else None
+            if not fid or fid not in graph.nodes:
+                continue
+            rb = graph.in_edges(p["tx_node"], "READBACK_OF")
+            status = rb[0]["props"]["status"] if rb else None
+            for t in graph.out_edges(ins["id"], "TARGET") + graph.out_edges(ins["id"], "VIA"):
+                key = (fid, t["dst"])
+                link = links.setdefault(key, {"types": set(), "status": None, "n": 0})
+                link["types"].add(p["type"])
+                link["n"] += 1
+                if rank[status] > rank[link["status"]]:
+                    link["status"] = status
+                keep.update(key)
+    places = {n for n in keep if graph.nodes[n]["label"] in ("Runway", "Taxiway", "Ramp", "Facility")}
+    for e in graph.edges:
+        if e["src"] in keep and e["dst"] in keep and e["type"] in ("ALIAS", "OPERATED_BY"):
+            edges.append(e)
+    for pl in places:
+        for e in graph.out_edges(pl, "PART_OF"):
+            keep.add(e["dst"])
+            edges.append(e)
+    for (fid, dst), link in links.items():
+        edges.append({"id": f"L:{fid}>{dst}", "type": "INSTRUCTED", "src": fid, "dst": dst,
+                      "props": {"types": sorted(link["types"]), "status": link["status"], "n": link["n"]}})
+    return {"nodes": [node(n) for n in keep], "edges": edges}

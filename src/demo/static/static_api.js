@@ -33,6 +33,8 @@
         return (await flightFile(p.id)).timeline;
       case "/api/flight/graph":
         return (await flightFile(p.id)).graph;
+      case "/api/kg":
+        return load(`kg/${p.mode || "entity"}_${String(Number(p.bin)).padStart(3, "0")}.json`);
       case "/api/snapshot": {
         const t = Number(p.t);
         const out = {};

@@ -95,7 +95,10 @@ function setTime(t, { refresh = true } = {}) {
   drawHistogram();
   if (!refresh) return;
   clearTimeout(timeDebounce);
-  timeDebounce = setTimeout(() => { loadStrips(); loadSnapshot(); if ($("#near-only").checked) renderAlerts(); }, 120);
+  timeDebounce = setTimeout(() => {
+    loadStrips(); loadSnapshot(); if ($("#near-only").checked) renderAlerts();
+    if ($("#tab-kg").classList.contains("active")) loadKg();
+  }, 120);
 }
 
 // ------------------------------------------------------------------ strips
@@ -201,6 +204,131 @@ async function loadGraph(fid) {
   $("#legend").innerHTML = Object.entries(NODE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("") +
     `<span><i class="ln" style="background:#eb6834"></i>READBACK_OF</span><span><i class="ln dash" style="color:#2a78d6"></i>NEXT (time order)</span>`;
 }
+
+// ------------------------------------------------------------------ KG explorer (whole graph, one 10-min window)
+const KG_BIN = 600;
+const KG_COLORS = { ...NODE_COLORS, Airport: "#0b0b0b" };
+const STATUS_COLORS = { MATCH: "#0a7d3c", PARTIAL: "#e0a100", MISMATCH: "#c93434" };
+const KG = { mode: "entity", bin: null, cy: null, hidden: new Set(), data: null };
+function kgLabel(n) {
+  const p = n.props;
+  if (n.label === "Transmission") return `${p.speaker} ${hhmmss(p.utc_start_epoch)}`;
+  if (n.label === "Instruction") return shortType(p.type);
+  if (n.label === "CallsignMention") return `"${p.surface}"`;
+  if (n.label === "Airport") return p.location_indicator || n.id.split(":").pop();
+  return n.id.split(":").pop();
+}
+async function loadKg(force = false) {
+  if (!S.hist || S.t === null) return;
+  const bin = Math.floor((S.t - S.hist.start) / KG_BIN);
+  if (!force && bin === KG.bin && KG.cy) return;
+  KG.bin = bin;
+  const t0 = S.hist.start + bin * KG_BIN;
+  $("#kg-window").textContent = `${hhmmss(t0).slice(0, 5)}–${hhmmss(t0 + KG_BIN).slice(0, 5)}Z`;
+  const g = await api(`/api/kg?bin=${bin}&mode=${KG.mode}`);
+  KG.data = g;
+  const deg = {};
+  g.edges.forEach((e) => { deg[e.src] = (deg[e.src] || 0) + 1; deg[e.dst] = (deg[e.dst] || 0) + 1; });
+  const elements = [
+    ...g.nodes.map((n) => ({ data: { id: n.id, label: kgLabel(n), kind: n.label, deg: deg[n.id] || 0 } })),
+    ...g.edges.map((e) => ({ data: { id: e.id, source: e.src, target: e.dst, type: e.type,
+      status: e.props.status || "", label: e.type === "INSTRUCTED" ? e.props.types.map(shortType).join(", ")
+        : e.type === "READBACK_OF" ? `READBACK ${e.props.status}` : e.type } })),
+  ];
+  if (KG.cy) KG.cy.destroy();
+  KG.cy = cytoscape({
+    container: $("#kgcy"), elements, wheelSensitivity: 0.3, minZoom: 0.15, maxZoom: 3,
+    style: [
+      { selector: "node", style: { label: "data(label)", "font-family": "JetBrains Mono, monospace", "font-size": 8, color: "#52514e",
+        "text-valign": "bottom", "text-margin-y": 2, "background-color": (n) => KG_COLORS[n.data("kind")] || "#999",
+        width: (n) => 8 + Math.min(18, Math.sqrt(n.data("deg")) * 3), height: (n) => 8 + Math.min(18, Math.sqrt(n.data("deg")) * 3),
+        "border-width": 1.5, "border-color": "#fff" } },
+      { selector: "node[kind = 'Flight']", style: { "font-size": 10, "font-weight": 600, color: "#0b0b0b" } },
+      { selector: "node[kind = 'Airport']", style: { width: 34, height: 34, "font-size": 11, color: "#0b0b0b", "font-weight": 600 } },
+      { selector: "node[kind = 'Transmission']", style: { shape: "round-rectangle" } },
+      { selector: "node[kind = 'CallsignMention']", style: { shape: "diamond" } },
+      { selector: "edge", style: { width: 1, "line-color": "#dcdbd5", "curve-style": "bezier", "target-arrow-shape": "triangle",
+        "target-arrow-color": "#dcdbd5", "arrow-scale": 0.6, label: "", "font-size": 7, color: "#52514e", "text-rotation": "autorotate",
+        "text-background-color": "#fff", "text-background-opacity": 0.85, "text-background-padding": 1 } },
+      { selector: "edge[type = 'PART_OF']", style: { "line-color": "#eeede8", "target-arrow-shape": "none" } },
+      { selector: "edge[type = 'ALIAS']", style: { "line-style": "dotted", "line-color": "#b8b6ae", "target-arrow-shape": "none" } },
+      { selector: "edge[type = 'INSTRUCTED']", style: { width: 1.6, "line-color": "#9ab8de", "target-arrow-color": "#9ab8de" } },
+      ...Object.entries(STATUS_COLORS).map(([k, c]) => ({ selector: `edge[status = '${k}']`, style: { width: 2, "line-color": c, "target-arrow-color": c } })),
+      { selector: "edge[type = 'NEXT']", style: { "line-style": "dashed", "line-color": "#2a78d6", "target-arrow-color": "#2a78d6" } },
+      { selector: ".faded", style: { opacity: 0.12 } },
+      { selector: "edge.hl", style: { label: "data(label)", opacity: 1 } },
+      { selector: "node.hl", style: { opacity: 1, "font-size": 10, color: "#0b0b0b" } },
+      { selector: "node:selected", style: { "border-color": "#2a78d6", "border-width": 3 } },
+    ],
+    layout: { name: "cose", animate: false, nodeRepulsion: KG.mode === "entity" ? 12000 : 8000, idealEdgeLength: 55,
+      gravity: 0.6, numIter: 1500, randomize: true },
+  });
+  applyKgFilter();
+  KG.cy.on("tap", "node", (ev) => focusKgNode(ev.target));
+  KG.cy.on("tap", (ev) => { if (ev.target === KG.cy) clearKgFocus(); });
+  KG.cy.on("dbltap", "node", (ev) => openKgNode(ev.target.id(), ev.target.data("kind")));
+  renderKgLegend();
+}
+function focusKgNode(n) {
+  const hood = n.closedNeighborhood();
+  KG.cy.elements().addClass("faded").removeClass("hl");
+  hood.removeClass("faded").addClass("hl");
+  const node = KG.data.nodes.find((x) => x.id === n.id());
+  const rows = Object.entries(node.props).filter(([k, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length) && !["layer", "iri", "backend"].includes(k))
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(typeof v === "number" && k.includes("epoch") ? hhmmss(v) + "Z" : Array.isArray(v) ? v.map((x) => String(x).split(":").pop()).join(", ") : String(v).split(":").pop())}</td></tr>`).join("");
+  const links = n.connectedEdges().map((e) => {
+    const other = e.source().id() === n.id() ? e.target() : e.source();
+    return `<li><span class="et">${esc(e.data("type") === "INSTRUCTED" ? e.data("label") : e.data("type"))}</span>${e.source().id() === n.id() ? "→" : "←"} <b>${esc(other.data("label"))}</b> <small>${esc(other.data("kind"))}</small></li>`;
+  }).join("");
+  const act = node.label === "Flight" ? `<button class="btn" onclick="openKgNode('${esc(node.id)}','Flight')">Open flight timeline</button>`
+    : node.label === "Transmission" ? `<button class="btn" onclick="openKgNode('${esc(node.id)}','Transmission')">Show evidence</button>` : "";
+  $("#kg-detail").innerHTML = `<div class="kd-head"><span class="kd-kind" style="background:${KG_COLORS[node.label] || "#999"}"></span>
+      <b>${esc(kgLabel(node))}</b><small>${esc(node.label)}</small><button class="close" onclick="clearKgFocus()">✕</button></div>
+    <table>${rows}</table><h4>${n.connectedEdges().length} links</h4><ul>${links}</ul>${act}`;
+  $("#kg-detail").classList.remove("hidden");
+}
+function clearKgFocus() {
+  if (KG.cy) KG.cy.elements().removeClass("faded hl");
+  $("#kg-detail").classList.add("hidden");
+}
+function openKgNode(id, kind) {
+  if (kind === "Flight") selectFlight(id.split(":").slice(1).join(":"));
+  else if (kind === "Transmission") showEvidence(id);
+}
+function applyKgFilter() {
+  if (!KG.cy) return;
+  KG.cy.nodes().forEach((n) => n.style("display", KG.hidden.has(n.data("kind")) ? "none" : "element"));
+}
+function renderKgLegend() {
+  const kinds = [...new Set(KG.data.nodes.map((n) => n.label))].sort();
+  const count = (k) => KG.data.nodes.filter((n) => n.label === k).length;
+  const edgeKeys = KG.mode === "entity"
+    ? [["MATCH", STATUS_COLORS.MATCH, "instructed · read back"], ["PARTIAL", STATUS_COLORS.PARTIAL, "partial"], ["MISMATCH", STATUS_COLORS.MISMATCH, "mismatch"], ["", "#9ab8de", "no readback link"]]
+    : [["", STATUS_COLORS.MATCH, "READBACK_OF match"], ["", STATUS_COLORS.PARTIAL, "partial"], ["", STATUS_COLORS.MISMATCH, "mismatch"], ["", "#2a78d6", "NEXT"]];
+  $("#kg-legend").innerHTML = kinds.map((k) => `<button data-k="${k}" class="${KG.hidden.has(k) ? "off" : ""}" title="Show / hide">
+      <i style="background:${KG_COLORS[k] || "#999"}"></i>${k} <small>${count(k)}</small></button>`).join("") +
+    `<span class="sep"></span>` + edgeKeys.map(([, c, t]) => `<span><i class="ln" style="background:${c}"></i>${t}</span>`).join("") +
+    `<span class="hint">Click: neighbours · double-click: open</span>`;
+  document.querySelectorAll("#kg-legend button").forEach((b) => b.addEventListener("click", () => {
+    KG.hidden.has(b.dataset.k) ? KG.hidden.delete(b.dataset.k) : KG.hidden.add(b.dataset.k);
+    b.classList.toggle("off"); applyKgFilter();
+  }));
+}
+document.querySelectorAll("#kg-mode button").forEach((b) => b.addEventListener("click", () => {
+  KG.mode = b.dataset.mode;
+  document.querySelectorAll("#kg-mode button").forEach((x) => x.classList.toggle("on", x === b));
+  KG.hidden.clear(); clearKgFocus(); loadKg(true);
+}));
+$("#kg-fit").addEventListener("click", () => KG.cy && KG.cy.fit(undefined, 30));
+$("#kg-find").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !KG.cy) return;
+  const q = e.target.value.trim().toUpperCase();
+  const hit = KG.cy.nodes().filter((n) => String(n.data("label")).toUpperCase().replace(/"/g, "") === q || n.id().toUpperCase().endsWith(":" + q))[0]
+    || KG.cy.nodes().filter((n) => String(n.data("label")).toUpperCase().includes(q))[0];
+  if (!hit) { toast(`"${e.target.value}" is not in this 10-min window`); return; }
+  KG.cy.animate({ center: { eles: hit }, zoom: 1.6 }, { duration: 300 });
+  hit.select(); focusKgNode(hit);
+});
 
 // ------------------------------------------------------------------ alerts + evidence
 async function loadAlerts() {
@@ -311,6 +439,7 @@ function switchTab(name) {
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === `tab-${name}`));
   if (name === "graph" && S.cy) S.cy.resize();
+  if (name === "kg") { if (KG.cy) KG.cy.resize(); loadKg(); }
 }
 document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 $("#time").addEventListener("input", (e) => setTime(S.hist.start + Number(e.target.value)));
