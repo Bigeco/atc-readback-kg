@@ -66,8 +66,8 @@ def group_words_to_digits(text: str) -> str:
         return "\x01" + TENS[m.group(1).lower()] + unit
 
     out = GROUP.sub(two_digits, text)
-    out = DIGIT_RUN.sub(lambda m: m.group(0).replace(" ", ""), " ".join(
-        DIGIT_WORDS.get(t.lower(), t) for t in out.split(" ")))
+    out = re.sub(r"[A-Za-z]+", lambda m: DIGIT_WORDS.get(m.group(0).lower(), m.group(0)), out)
+    out = DIGIT_RUN.sub(lambda m: m.group(0).replace(" ", ""), out)
     prev = None
     while prev != out:
         prev, out = out, re.sub(r"(\d+)\s+\x01(\d\d)", r"\1\2", out)
@@ -80,7 +80,7 @@ DIGIT_RUN = re.compile(r"\b\d(?: \d){1,3}\b")
 def digit_words_to_digits(text: str) -> str:
     if GROUP.search(text):
         text = group_words_to_digits(text)
-    tokens = re.split(r"(\s+|,)", text)
+    tokens = re.split(r"(\s+|[,.?!;:])", text)  # "zero." / "two," still count as number words
     out = []
     for tok in tokens:
         low = tok.lower()

@@ -288,7 +288,8 @@ LEXICAL_CUES = {
     "TURN": r"\bturn|\bleft\b|\bright\b",
     "CLIMB": r"\bclimb",
     "DESCEND": r"\bdescend",
-    "HEADING": r"\bheading\b|\bfly\s+\d",
+    # controllers often drop the word "heading": "turn right, three six zero" / "left turn, one two zero"
+    "HEADING": r"\bheading\b|\bfly\s+\d|\bturn\s+(left|right)[\s,]+\d{3}\b|\b(left|right)\s+turn[\s,]+\d{3}\b",
     "SQUAWK": r"squawk",
     "TRAFFIC_INFO": r"traffic|o'?clock|from\s+your|company",
     "WAKE_ADVISORY": r"wake|heavy\s+departed|caution",

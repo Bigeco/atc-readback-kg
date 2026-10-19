@@ -1083,7 +1083,7 @@
     "TURN": "\\bturn|\\bleft\\b|\\bright\\b",
     "CLIMB": "\\bclimb",
     "DESCEND": "\\bdescend",
-    "HEADING": "\\bheading\\b|\\bfly\\s+\\d",
+    "HEADING": "\\bheading\\b|\\bfly\\s+\\d|\\bturn\\s+(left|right)[\\s,]+\\d{3}\\b|\\b(left|right)\\s+turn[\\s,]+\\d{3}\\b",
     "SQUAWK": "squawk",
     "TRAFFIC_INFO": "traffic|o'?clock|from\\s+your|company",
     "WAKE_ADVISORY": "wake|heavy\\s+departed|caution"
