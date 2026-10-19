@@ -161,7 +161,6 @@ async function selectFlight(fid, { tab = "flight" } = {}) {
   const all = data.timeline.map((m) => m.tx_id);
   if ($("#play-all")) $("#play-all").addEventListener("click", () => playTx(all[0], all.slice(1)));
   switchTab(tab);
-  loadGraph(fid);
 }
 
 function renderMsg(m) {
@@ -177,39 +176,33 @@ function renderMsg(m) {
 
 const NODE_COLORS = { Flight: "#eb6834", Transmission: "#2a78d6", Instruction: "#1baf7a", Runway: "#52514e", Taxiway: "#eda100",
   Ramp: "#e87ba4", Facility: "#6250d6", Airline: "#008300", CallsignMention: "#c3c2b7" };
-async function loadGraph(fid) {
-  const g = await api(`/api/flight/graph?id=${encodeURIComponent(fid)}`);
-  const label = (n) => n.label === "Transmission" ? `${n.props.speaker} ${hhmmss(n.props.utc_start_epoch)}`
-    : n.label === "Instruction" ? shortType(n.props.type) : n.label === "CallsignMention" ? `"${n.props.surface}"` : n.id.split(":").pop();
-  const elements = [
-    ...g.nodes.map((n) => ({ data: { id: n.id, label: label(n), kind: n.label } })),
-    ...g.edges.map((e) => ({ data: { id: e.id, source: e.src, target: e.dst, label: e.type === "READBACK_OF" ? `READBACK ${e.props.status}` : e.type, type: e.type } })),
-  ];
-  if (S.cy) S.cy.destroy();
-  S.cy = cytoscape({
-    container: $("#cy"), elements,
-    style: [
-      { selector: "node", style: { label: "data(label)", "font-family": "JetBrains Mono, monospace", "font-size": 9, "text-valign": "bottom", "text-margin-y": 3,
-        "background-color": (n) => NODE_COLORS[n.data("kind")] || "#999", width: 16, height: 16, color: "#0b0b0b" } },
-      { selector: "node[kind = 'Flight']", style: { width: 30, height: 30, "font-size": 12, "font-weight": 600 } },
-      { selector: "node[kind = 'Transmission']", style: { shape: "round-rectangle", width: 22, height: 12 } },
-      { selector: "edge", style: { width: 1, "line-color": "#d6d5cf", "target-arrow-shape": "triangle", "target-arrow-color": "#d6d5cf", "curve-style": "bezier",
-        label: "data(label)", "font-size": 7, color: "#898781", "text-rotation": "autorotate" } },
-      { selector: "edge[type = 'READBACK_OF']", style: { width: 2.5, "line-color": "#eb6834", "target-arrow-color": "#eb6834", color: "#a8461f" } },
-      { selector: "edge[type = 'NEXT']", style: { "line-style": "dashed", "line-color": "#2a78d6", "target-arrow-color": "#2a78d6" } },
-    ],
-    layout: { name: "cose", animate: false, nodeRepulsion: 9000, idealEdgeLength: 70 },
-  });
-  S.cy.on("tap", "node[kind = 'Transmission']", (ev) => showEvidence(ev.target.id()));
-  $("#legend").innerHTML = Object.entries(NODE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("") +
-    `<span><i class="ln" style="background:#eb6834"></i>READBACK_OF</span><span><i class="ln dash" style="color:#2a78d6"></i>NEXT (time order)</span>`;
-}
 
 // ------------------------------------------------------------------ KG explorer (whole graph, one 10-min window)
 const KG_BIN = 600;
 const KG_COLORS = { ...NODE_COLORS, Airport: "#0b0b0b" };
 const STATUS_COLORS = { MATCH: "#0a7d3c", PARTIAL: "#e0a100", MISMATCH: "#c93434" };
-const KG = { mode: "entity", bin: null, cy: null, hidden: new Set(), data: null };
+// Relation styles: edges carry no text; the key in the top-right corner explains each line style.
+const EDGE_STYLES = {
+  entity: [
+    { type: "INSTRUCTED", status: "MATCH", color: STATUS_COLORS.MATCH, width: 2.4, name: "Instructed to · read back" },
+    { type: "INSTRUCTED", status: "PARTIAL", color: STATUS_COLORS.PARTIAL, width: 2.4, name: "Instructed to · partial readback" },
+    { type: "INSTRUCTED", status: "MISMATCH", color: STATUS_COLORS.MISMATCH, width: 2.4, name: "Instructed to · mismatch" },
+    { type: "INSTRUCTED", status: "", color: "#8fb3e3", width: 1.6, name: "Instructed to · no readback link" },
+    { type: "ALIAS", color: "#a9a79f", width: 1.2, dash: "dotted", name: "ALIAS · spoken as" },
+    { type: "OPERATED_BY", color: "#7fbf7f", width: 1.2, name: "OPERATED_BY · airline" },
+    { type: "PART_OF", color: "#dddcd6", width: 1, name: "PART_OF · airport" },
+  ],
+  event: [
+    { type: "READBACK_OF", status: "MATCH", color: STATUS_COLORS.MATCH, width: 2.6, name: "READBACK_OF · match" },
+    { type: "READBACK_OF", status: "PARTIAL", color: STATUS_COLORS.PARTIAL, width: 2.6, name: "READBACK_OF · partial" },
+    { type: "READBACK_OF", status: "MISMATCH", color: STATUS_COLORS.MISMATCH, width: 2.6, name: "READBACK_OF · mismatch" },
+    { type: "NEXT", color: "#2a78d6", width: 1.2, dash: "dashed", name: "NEXT · flight's next instruction" },
+    { type: "CONTAINS", color: "#c3c2b7", width: 1, name: "CONTAINS · instruction in transmission" },
+    { type: "TARGET", color: "#e0b45c", width: 1, name: "TARGET / VIA · place" },
+    { type: "VIA", color: "#e0b45c", width: 1, name: null },
+  ],
+};
+const KG = { mode: "entity", bin: null, cy: null, hidden: new Set(), data: null, focus: null, touched: false };
 function kgLabel(n) {
   const p = n.props;
   if (n.label === "Transmission") return `${p.speaker} ${hhmmss(p.utc_start_epoch)}`;
@@ -217,6 +210,50 @@ function kgLabel(n) {
   if (n.label === "CallsignMention") return `"${p.surface}"`;
   if (n.label === "Airport") return p.location_indicator || n.id.split(":").pop();
   return n.id.split(":").pop();
+}
+function edgeText(d) {
+  if (d.type === "INSTRUCTED") return `${d.types} → readback ${d.status || "none"}`;
+  if (d.type === "READBACK_OF") return `READBACK_OF · ${d.status}`;
+  return d.type;
+}
+function kgStyle() {
+  const s = [
+    { selector: "node", style: { label: "data(label)", "font-family": "Inter, sans-serif", "font-size": 9, "font-weight": 500, color: "#3d3c39",
+      "text-valign": "bottom", "text-margin-y": 3, "text-outline-color": "#fff", "text-outline-width": 2.5, "text-outline-opacity": 0.95,
+      "background-color": (n) => KG_COLORS[n.data("kind")] || "#999", "min-zoomed-font-size": 6,
+      width: (n) => 10 + Math.min(20, Math.sqrt(n.data("deg")) * 3.2), height: (n) => 10 + Math.min(20, Math.sqrt(n.data("deg")) * 3.2),
+      "border-width": 2, "border-color": "#fff", "transition-property": "opacity, width, height, border-width", "transition-duration": "180ms" } },
+    // overview shows the names of well-connected flights; the rest appear when zooming in
+    { selector: "node[kind = 'Flight']", style: { "font-family": "JetBrains Mono, monospace", "font-size": 10, "font-weight": 600, color: "#0b0b0b",
+      "min-zoomed-font-size": (n) => (n.data("deg") >= 5 ? 5 : 9) } },
+    { selector: "node[kind = 'Runway'], node[kind = 'Taxiway'], node[kind = 'Ramp'], node[kind = 'Facility']",
+      style: { "font-size": 12, "font-weight": 700, color: "#0b0b0b", shape: "round-rectangle" } },
+    { selector: "node[kind = 'Airport']", style: { width: 38, height: 38, "font-size": 13, "font-weight": 700, color: "#0b0b0b" } },
+    { selector: "node[kind = 'Airline']", style: { shape: "hexagon", "font-size": 10, "font-weight": 600 } },
+    { selector: "node[kind = 'CallsignMention']", style: { shape: "diamond", width: 8, height: 8, "font-size": 8, color: "#6f6e69", "min-zoomed-font-size": 11 } },
+    { selector: "node[kind = 'Transmission']", style: { shape: "round-rectangle" } },
+    { selector: "edge", style: { width: 1, "line-color": "#dcdbd5", "curve-style": "bezier", "target-arrow-shape": "triangle",
+      "target-arrow-color": "#dcdbd5", "arrow-scale": 0.7, "transition-property": "opacity, width", "transition-duration": "180ms" } },
+    ...EDGE_STYLES[KG.mode].map((e) => ({
+      selector: `edge[type = '${e.type}']${e.status !== undefined ? `[status = '${e.status}']` : ""}`,
+      style: { "line-color": e.color, "target-arrow-color": e.color, width: e.width, "line-style": e.dash || "solid",
+        "target-arrow-shape": ["ALIAS", "PART_OF"].includes(e.type) ? "none" : "triangle" } })),
+    { selector: "edge[hide = 1]", style: { display: "none" } },
+    { selector: "node[kind = 'Tick']", style: { shape: "rectangle", width: 1, height: 8, "background-color": "#c3c2b7", "border-width": 0,
+      "text-valign": "top", "text-margin-y": -3, "font-size": 9, color: "#898781", "min-zoomed-font-size": 0, events: "no" } },
+  ];
+  if (KG.mode === "event") s.push(
+    { selector: "node[kind = 'Flight']", style: { "text-valign": "center", "text-halign": "left", "text-margin-x": -7, "text-margin-y": 0, "min-zoomed-font-size": 0 } },
+    { selector: "node[kind = 'Transmission']", style: { label: "", width: 10, height: 10 } },
+    // instruction names only on hover / focus, or once zoomed in far enough that they no longer collide (~2x)
+    { selector: "node[kind = 'Instruction']", style: { "font-size": 7, width: 8, height: 8, "text-margin-y": 1, "min-zoomed-font-size": 14 } });
+  s.push(
+    { selector: ".dim", style: { opacity: 0.18 } },
+    { selector: ".faded", style: { opacity: 0.08 } },
+    { selector: "node.hl, node.hover", style: { opacity: 1, "min-zoomed-font-size": 0, label: "data(label)", "z-index": 10 } },
+    { selector: "edge.hl, edge.hover", style: { opacity: 1, "z-index": 9 } },
+    { selector: "node.core", style: { "border-color": "#2a78d6", "border-width": 4, width: 34, height: 34, "font-size": 13 } });
+  return s;
 }
 async function loadKg(force = false) {
   if (!S.hist || S.t === null) return;
@@ -231,53 +268,31 @@ async function loadKg(force = false) {
   g.edges.forEach((e) => { deg[e.src] = (deg[e.src] || 0) + 1; deg[e.dst] = (deg[e.dst] || 0) + 1; });
   const elements = [
     ...g.nodes.map((n) => ({ data: { id: n.id, label: kgLabel(n), kind: n.label, deg: deg[n.id] || 0 } })),
-    ...g.edges.map((e) => ({ data: { id: e.id, source: e.src, target: e.dst, type: e.type,
-      status: e.props.status || "", label: e.type === "INSTRUCTED" ? e.props.types.map(shortType).join(", ")
-        : e.type === "READBACK_OF" ? `READBACK ${e.props.status}` : e.type } })),
+    ...g.edges.map((e) => ({ data: { id: e.id, source: e.src, target: e.dst, type: e.type, status: e.props.status || "",
+      types: e.type === "INSTRUCTED" ? e.props.types.map(shortType).join(", ") : "" } })),
   ];
   const positions = KG.mode === "event" ? eventPositions(g, t0, elements) : null;
   if (KG.mode === "event" && !KG.touched) ["Runway", "Taxiway", "Ramp", "Facility"].forEach((k) => KG.hidden.add(k));
   if (KG.cy) KG.cy.destroy();
-  KG.cy = cytoscape({
-    container: $("#kgcy"), elements, wheelSensitivity: 0.3, minZoom: 0.1, maxZoom: 3,
-    style: [
-      { selector: "node", style: { label: "data(label)", "font-family": "JetBrains Mono, monospace", "font-size": 8, color: "#52514e",
-        "text-valign": "bottom", "text-margin-y": 2, "background-color": (n) => KG_COLORS[n.data("kind")] || "#999", "min-zoomed-font-size": 7,
-        width: (n) => 8 + Math.min(18, Math.sqrt(n.data("deg")) * 3), height: (n) => 8 + Math.min(18, Math.sqrt(n.data("deg")) * 3),
-        "border-width": 1.5, "border-color": "#fff" } },
-      { selector: "node[kind = 'Flight']", style: { "font-size": 9, "font-weight": 600, color: "#0b0b0b" } },
-      { selector: "node[kind = 'Airport']", style: { width: 34, height: 34, "font-size": 11, color: "#0b0b0b", "font-weight": 600 } },
-      { selector: "node[kind = 'Transmission']", style: { shape: "round-rectangle" } },
-      { selector: "node[kind = 'CallsignMention']", style: { shape: "diamond", "font-size": 7, "min-zoomed-font-size": 9, color: "#898781" } },
-      { selector: "node[kind = 'Runway'], node[kind = 'Taxiway'], node[kind = 'Ramp'], node[kind = 'Facility']", style: { "font-size": 10, "font-weight": 600, color: "#0b0b0b" } },
-      { selector: "edge", style: { width: 1, "line-color": "#dcdbd5", "curve-style": "bezier", "target-arrow-shape": "triangle",
-        "target-arrow-color": "#dcdbd5", "arrow-scale": 0.6, label: "", "font-size": 7, color: "#52514e", "text-rotation": "autorotate",
-        "text-background-color": "#fff", "text-background-opacity": 0.85, "text-background-padding": 1 } },
-      { selector: "edge[type = 'PART_OF']", style: { "line-color": "#eeede8", "target-arrow-shape": "none" } },
-      { selector: "edge[type = 'ALIAS']", style: { "line-style": "dotted", "line-color": "#b8b6ae", "target-arrow-shape": "none" } },
-      { selector: "edge[type = 'INSTRUCTED']", style: { width: 1.6, "line-color": "#9ab8de", "target-arrow-color": "#9ab8de" } },
-      ...Object.entries(STATUS_COLORS).map(([k, c]) => ({ selector: `edge[status = '${k}']`, style: { width: 2, "line-color": c, "target-arrow-color": c } })),
-      { selector: "edge[type = 'NEXT']", style: { "line-style": "dashed", "line-color": "#2a78d6", "target-arrow-color": "#2a78d6" } },
-      { selector: "node[kind = 'Tick']", style: { shape: "rectangle", width: 1, height: 8, "background-color": "#c3c2b7", "border-width": 0,
-        "text-valign": "top", "text-margin-y": -3, "font-size": 9, color: "#898781", "min-zoomed-font-size": 0 } },
-      { selector: "node[kind = 'Flight']", style: KG.mode === "event" ? { "text-valign": "center", "text-halign": "left", "text-margin-x": -6, "text-margin-y": 0 } : {} },
-      { selector: "edge[hide = 1]", style: { display: "none" } },
-      ...(KG.mode === "event" ? [   // the axis gives the time: transmissions unlabeled, instruction types small
-        { selector: "node[kind = 'Transmission']", style: { label: "", width: 9, height: 9 } },
-        { selector: "node[kind = 'Instruction']", style: { "font-size": 6, width: 7, height: 7, "text-margin-y": 1, "min-zoomed-font-size": 5 } },
-      ] : []),
-      { selector: ".faded", style: { opacity: 0.12 } },
-      { selector: "edge.hl", style: { label: "data(label)", opacity: 1 } },
-      { selector: "node.hl", style: { opacity: 1, "font-size": 10, color: "#0b0b0b", "min-zoomed-font-size": 0, label: "data(label)" } },
-      { selector: "node:selected", style: { "border-color": "#2a78d6", "border-width": 3 } },
-    ],
-    layout: positions ? { name: "preset", positions: (n) => positions[n.id()], fit: false } : kgLayout(),
-  });
+  KG.focus = null;
+  $("#kg-detail").classList.add("hidden");
+  $("#kg-tip").classList.remove("show");
+  KG.cy = cytoscape({ container: $("#kgcy"), elements, style: kgStyle(), wheelSensitivity: 0.3, minZoom: 0.1, maxZoom: 3,
+    userZoomingEnabled: KG.mode !== "event", layout: { name: "null" } });
   applyKgFilter();
-  kgFit();
-  KG.cy.on("tap", "node[kind != 'Tick']", (ev) => focusKgNode(ev.target));
-  KG.cy.on("tap", (ev) => { if (ev.target === KG.cy) clearKgFocus(); });
-  KG.cy.on("dbltap", "node", (ev) => openKgNode(ev.target.id(), ev.target.data("kind")));
+  KG.cy.on("viewport", clampKgViewport);
+  KG.cy.on("layoutstop", () => { setKgBounds(); clampKgViewport(); });
+  if (positions) {   // nodes slide from the centre onto the time axis
+    const c = { x: KG_BIN * 0.8, y: 200 };
+    KG.cy.nodes().positions(() => c);
+    KG.bounds = null;
+    kgFit(positions);
+    KG.cy.layout({ name: "preset", positions: (n) => positions[n.id()], fit: false, animate: true, animationDuration: 650, animationEasing: "ease-out-cubic" }).run();
+  } else {
+    KG.bounds = null;
+    KG.cy.layout(kgLayout()).run();
+  }
+  bindKgEvents();
   renderKgLegend();
 }
 // Event layer on a time axis: x = time in the 10-min window, one row per flight (instructions under their transmission).
@@ -309,35 +324,76 @@ function eventPositions(g, t0, elements) {
   return pos;
 }
 
-// fcose (spectral + force) separates hubs and clusters far better than plain cose; fall back if the CDN is blocked
+// fcose (spectral + force) separates hubs and clusters far better than plain cose; fall back if the CDN is blocked.
+// The layout is animated so the graph settles in front of the viewer; "Re-layout" runs it again.
 const HAS_FCOSE = typeof cytoscapeFcose !== "undefined" && (cytoscape.use(cytoscapeFcose), true);
 function kgLayout() {
-  const len = { ALIAS: 18, OPERATED_BY: 70, PART_OF: 140, INSTRUCTED: 60, CONTAINS: 22, ADDRESSES: 45, TARGET: 50, VIA: 50, NEXT: 40, READBACK_OF: 35 };
-  if (!HAS_FCOSE) return { name: "cose", animate: false, nodeRepulsion: 9000, idealEdgeLength: 55, gravity: 0.6, numIter: 1500 };
-  return { name: "fcose", quality: "proof", animate: false, randomize: true, packComponents: true, nodeSeparation: 60,
-    nodeRepulsion: () => (KG.mode === "entity" ? 9000 : 5000), idealEdgeLength: (e) => len[e.data("type")] || 50,
+  const len = { ALIAS: 22, OPERATED_BY: 80, PART_OF: 150, INSTRUCTED: 70, CONTAINS: 22, TARGET: 50, VIA: 50, NEXT: 40, READBACK_OF: 35 };
+  const base = { animate: true, animationDuration: 900, animationEasing: "ease-out-cubic", fit: true, padding: 40 };
+  if (!HAS_FCOSE) return { ...base, name: "cose", nodeRepulsion: 9000, idealEdgeLength: 60, gravity: 0.6, numIter: 1500 };
+  return { ...base, name: "fcose", quality: "proof", randomize: true, packComponents: true, nodeSeparation: 70,
+    nodeRepulsion: () => 11000, idealEdgeLength: (e) => len[e.data("type")] || 55,
     edgeElasticity: (e) => (e.data("type") === "PART_OF" ? 0.05 : 0.45), gravity: 0.25, gravityRange: 3.8, numIter: 2500 };
 }
-function focusKgNode(n) {
-  const hood = n.closedNeighborhood();
-  KG.cy.elements().addClass("faded").removeClass("hl");
+
+// hover: light up a node's neighbourhood and show a tooltip; click: keep it lit, zoom to it and open the detail card
+function bindKgEvents() {
+  const cy = KG.cy, tip = $("#kg-tip");
+  const showTip = (ev, html) => {
+    const p = ev.renderedPosition || ev.target.renderedMidpoint();
+    tip.innerHTML = html; tip.style.left = `${p.x + 14}px`; tip.style.top = `${p.y + 10}px`; tip.classList.add("show");
+  };
+  cy.on("mouseover", "node[kind != 'Tick']", (ev) => {
+    const n = ev.target;
+    $("#kgcy").style.cursor = "pointer";
+    showTip(ev, `<b>${esc(n.data("label"))}</b><span>${esc(n.data("kind"))} · ${n.degree()} links</span>`);
+    if (KG.focus) return;
+    cy.elements().addClass("dim");
+    n.closedNeighborhood().removeClass("dim").addClass("hover");
+  });
+  cy.on("mouseover", "edge", (ev) => {
+    const e = ev.target;
+    showTip(ev, `<b>${esc(edgeText(e.data()))}</b><span>${esc(e.source().data("label"))} → ${esc(e.target().data("label"))}</span>`);
+    if (!KG.focus) { cy.elements().addClass("dim"); e.union(e.connectedNodes()).removeClass("dim").addClass("hover"); }
+  });
+  cy.on("mouseout", "node, edge", () => {
+    $("#kgcy").style.cursor = ""; tip.classList.remove("show");
+    if (!KG.focus) cy.elements().removeClass("dim hover");
+  });
+  cy.on("tap", "node[kind != 'Tick']", (ev) => focusKgNode(ev.target, true));
+  cy.on("tap", (ev) => { if (ev.target === cy) clearKgFocus(); });
+  cy.on("dbltap", "node", (ev) => openKgNode(ev.target.id(), ev.target.data("kind")));
+  cy.on("grab", "node", () => tip.classList.remove("show"));
+}
+function focusKgNode(n, zoom = false) {
+  const cy = KG.cy, hood = n.closedNeighborhood();
+  KG.focus = n.id();
+  cy.elements().removeClass("dim hover core").addClass("faded").removeClass("hl");
   hood.removeClass("faded").addClass("hl");
+  n.addClass("core");
+  if (zoom) cy.animate({ fit: { eles: hood, padding: 90 } }, { duration: 450, easing: "ease-in-out-cubic",
+    complete: () => { if (cy.zoom() > 1.8) cy.animate({ zoom: { level: 1.8, position: n.position() } }, { duration: 200 }); } });
   const node = KG.data.nodes.find((x) => x.id === n.id());
   const rows = Object.entries(node.props).filter(([k, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length) && !["layer", "iri", "backend"].includes(k))
     .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(typeof v === "number" && k.includes("epoch") ? hhmmss(v) + "Z" : Array.isArray(v) ? v.map((x) => String(x).split(":").pop()).join(", ") : String(v).split(":").pop())}</td></tr>`).join("");
-  const links = n.connectedEdges().map((e) => {
-    const other = e.source().id() === n.id() ? e.target() : e.source();
-    return `<li><span class="et">${esc(e.data("type") === "INSTRUCTED" ? e.data("label") : e.data("type"))}</span>${e.source().id() === n.id() ? "→" : "←"} <b>${esc(other.data("label"))}</b> <small>${esc(other.data("kind"))}</small></li>`;
+  const links = n.connectedEdges().filter((e) => e.data("hide") !== 1).map((e) => {
+    const out = e.source().id() === n.id(), other = out ? e.target() : e.source();
+    const st = EDGE_STYLES[KG.mode].find((s) => s.type === e.data("type") && (s.status === undefined || s.status === e.data("status")));
+    return `<li data-id="${esc(other.id())}"><i class="sw" style="background:${st ? st.color : "#ccc"}"></i><span class="et">${esc(e.data("type") === "INSTRUCTED" ? e.data("types") : e.data("type"))}</span>${out ? "→" : "←"} <b>${esc(other.data("label"))}</b> <small>${esc(other.data("kind"))}</small></li>`;
   }).join("");
   const act = node.label === "Flight" ? `<button class="btn" onclick="openKgNode('${esc(node.id)}','Flight')">Open flight timeline</button>`
     : node.label === "Transmission" ? `<button class="btn" onclick="openKgNode('${esc(node.id)}','Transmission')">Show evidence</button>` : "";
   $("#kg-detail").innerHTML = `<div class="kd-head"><span class="kd-kind" style="background:${KG_COLORS[node.label] || "#999"}"></span>
       <b>${esc(kgLabel(node))}</b><small>${esc(node.label)}</small><button class="close" onclick="clearKgFocus()">✕</button></div>
-    <table>${rows}</table><h4>${n.connectedEdges().length} links</h4><ul>${links}</ul>${act}`;
+    <table>${rows}</table><h4>${n.connectedEdges().length} links <small>(click to jump)</small></h4><ul>${links}</ul>${act}`;
+  $("#kg-detail").querySelectorAll("li[data-id]").forEach((li) => li.addEventListener("click", () => {
+    const m = KG.cy.getElementById(li.dataset.id); if (m.nonempty()) focusKgNode(m, true);
+  }));
   $("#kg-detail").classList.remove("hidden");
 }
 function clearKgFocus() {
-  if (KG.cy) KG.cy.elements().removeClass("faded hl");
+  KG.focus = null;
+  if (KG.cy) KG.cy.elements().removeClass("faded hl dim hover core");
   $("#kg-detail").classList.add("hidden");
 }
 function openKgNode(id, kind) {
@@ -351,40 +407,88 @@ function applyKgFilter() {
 function renderKgLegend() {
   const kinds = [...new Set(KG.data.nodes.map((n) => n.label))].sort();
   const count = (k) => KG.data.nodes.filter((n) => n.label === k).length;
-  const edgeKeys = KG.mode === "entity"
-    ? [["MATCH", STATUS_COLORS.MATCH, "instructed · read back"], ["PARTIAL", STATUS_COLORS.PARTIAL, "partial"], ["MISMATCH", STATUS_COLORS.MISMATCH, "mismatch"], ["", "#9ab8de", "no readback link"]]
-    : [["", STATUS_COLORS.MATCH, "READBACK_OF match"], ["", STATUS_COLORS.PARTIAL, "partial"], ["", STATUS_COLORS.MISMATCH, "mismatch"], ["", "#2a78d6", "NEXT"]];
   $("#kg-legend").innerHTML = kinds.map((k) => `<button data-k="${k}" class="${KG.hidden.has(k) ? "off" : ""}" title="Show / hide">
       <i style="background:${KG_COLORS[k] || "#999"}"></i>${k} <small>${count(k)}</small></button>`).join("") +
-    `<span class="sep"></span>` + edgeKeys.map(([, c, t]) => `<span><i class="ln" style="background:${c}"></i>${t}</span>`).join("") +
-    `<span class="hint">Click: neighbours · double-click: open</span>`;
+    `<span class="hint">${KG.mode === "event" ? "Scroll: move · Ctrl/⌘ + scroll: zoom" : "Scroll: zoom"} · hover: links · click: focus · double-click: open</span>`;
   document.querySelectorAll("#kg-legend button").forEach((b) => b.addEventListener("click", () => {
     KG.hidden.has(b.dataset.k) ? KG.hidden.delete(b.dataset.k) : KG.hidden.add(b.dataset.k);
     KG.touched = true;
-    b.classList.toggle("off"); applyKgFilter();
+    b.classList.toggle("off"); applyKgFilter(); setKgBounds(); clampKgViewport();
   }));
+  // relation key (top-right of the canvas): one line sample per relation style present in this window
+  const present = new Set(KG.data.edges.map((e) => `${e.type}|${e.props.status || ""}`));
+  const keys = EDGE_STYLES[KG.mode].filter((s) => s.name && [...present].some((p) => p.startsWith(s.type + "|") && (s.status === undefined || p === `${s.type}|${s.status}`)));
+  const line = (s) => `<svg viewBox="0 0 30 8" aria-hidden="true"><line x1="1" y1="4" x2="${["ALIAS", "PART_OF"].includes(s.type) ? 29 : 23}" y2="4" stroke="${s.color}" stroke-width="${s.width}"
+      ${s.dash === "dotted" ? 'stroke-dasharray="1.5 2.5" stroke-linecap="round"' : s.dash === "dashed" ? 'stroke-dasharray="4 3"' : ""}/>${["ALIAS", "PART_OF"].includes(s.type) ? "" : `<path d="M23 1 29 4 23 7z" fill="${s.color}"/>`}</svg>`;
+  $("#kg-edgekey").innerHTML = `<h4 title="Show / hide">Relations<span class="chev">▾</span></h4><div class="keys">` +
+    keys.map((s) => `<div>${line(s)}<span>${esc(s.name)}</span></div>`).join("") + "</div>";
+  $("#kg-edgekey h4").onclick = () => $("#kg-edgekey").classList.toggle("collapsed");
 }
 document.querySelectorAll("#kg-mode button").forEach((b) => b.addEventListener("click", () => {
   KG.mode = b.dataset.mode;
   document.querySelectorAll("#kg-mode button").forEach((x) => x.classList.toggle("on", x === b));
   KG.hidden.clear(); KG.touched = false; clearKgFocus(); loadKg(true);
 }));
-$("#kg-fit").addEventListener("click", kgFit);
+$("#kg-fit").addEventListener("click", () => kgFit());
+$("#kg-relayout").addEventListener("click", () => { if (KG.cy && KG.mode === "entity") { clearKgFocus(); KG.cy.layout(kgLayout()).run(); } else kgFit(); });
+// Viewport limits. Event layer: never narrower than the full time axis (min zoom = fit to width) and never panned past the
+// content, so there is no empty canvas. Entity view: zoom out at most a little beyond "fit", and the graph stays in view.
+const KG_PAD = 28;
+function setKgBounds() {
+  const cy = KG.cy;
+  if (!cy) return;
+  const bb = cy.elements(":visible").boundingBox();
+  if (!bb.w) return;
+  const w = cy.width() - 2 * KG_PAD, h = cy.height() - 2 * KG_PAD;
+  const fitW = w / bb.w, fit = Math.min(fitW, h / Math.max(bb.h, 1));
+  if (KG.mode === "event") { cy.minZoom(Math.min(fitW, 1.5)); cy.maxZoom(Math.max(3, fitW * 4)); }
+  else { cy.minZoom(fit * 0.85); cy.maxZoom(Math.max(2.5, fit * 6)); }
+  KG.bounds = bb;
+}
+let clamping = false;
+function clampKgViewport() {
+  const cy = KG.cy;
+  if (!cy || clamping || !KG.bounds) return;
+  const bb = KG.bounds, z = cy.zoom(), pan = cy.pan(), W = cy.width(), H = cy.height();
+  const axis = (lo, hi, size, p, alignStart) => {
+    const len = (hi - lo) * z;
+    if (len + 2 * KG_PAD <= size) return alignStart ? KG_PAD - lo * z : (size - len) / 2 - lo * z;
+    return Math.min(KG_PAD - lo * z, Math.max(size - KG_PAD - hi * z, p));
+  };
+  const x = axis(bb.x1, bb.x2, W, pan.x, false), y = axis(bb.y1, bb.y2, H, pan.y, KG.mode === "event");
+  if (Math.abs(x - pan.x) > 0.5 || Math.abs(y - pan.y) > 0.5) { clamping = true; cy.pan({ x, y }); clamping = false; }
+}
+// Event layer reads like a timeline: the wheel scrolls (shift = sideways), ctrl/cmd + wheel or a pinch zooms at the cursor.
+$("#kgcy").addEventListener("wheel", (e) => {
+  if (!KG.cy || KG.mode !== "event") return;
+  e.preventDefault();
+  const r = $("#kgcy").getBoundingClientRect();
+  if (e.ctrlKey || e.metaKey) {
+    const level = Math.min(KG.cy.maxZoom(), Math.max(KG.cy.minZoom(), KG.cy.zoom() * Math.exp(-e.deltaY * 0.0025)));
+    KG.cy.zoom({ level, renderedPosition: { x: e.clientX - r.left, y: e.clientY - r.top } });
+  } else {
+    KG.cy.panBy(e.shiftKey ? { x: -e.deltaY, y: 0 } : { x: -e.deltaX, y: -e.deltaY });
+  }
+}, { passive: false });
+window.addEventListener("resize", () => { if (KG.cy) { setKgBounds(); clampKgViewport(); } });
+
 // event layer: fit the time axis to the panel width and start at the top (scroll down by dragging the background)
-function kgFit() {
+function kgFit(positions = null) {
   if (!KG.cy) return;
-  if (KG.mode !== "event") { KG.cy.fit(undefined, 30); return; }
-  const bb = KG.cy.elements(":visible").boundingBox(), z = Math.min(1.5, (KG.cy.width() - 60) / bb.w);
-  KG.cy.zoom(z); KG.cy.pan({ x: 30 - bb.x1 * z, y: 24 - bb.y1 * z });
+  if (KG.mode !== "event") { KG.cy.animate({ fit: { eles: KG.cy.elements(":visible"), padding: KG_PAD } }, { duration: 350 }); return; }
+  const pts = positions ? Object.values(positions) : KG.cy.nodes(":visible").map((n) => n.position());
+  const x1 = Math.min(...pts.map((p) => p.x)) - 60, x2 = Math.max(...pts.map((p) => p.x)) + 20, y1 = Math.min(...pts.map((p) => p.y)) - 20;
+  const z = Math.min(1.5, (KG.cy.width() - 40) / (x2 - x1));
+  KG.cy.zoom(z); KG.cy.pan({ x: 20 - x1 * z, y: 24 - y1 * z });
 }
 $("#kg-find").addEventListener("keydown", (e) => {
   if (e.key !== "Enter" || !KG.cy) return;
-  const q = e.target.value.trim().toUpperCase();
-  const hit = KG.cy.nodes().filter((n) => String(n.data("label")).toUpperCase().replace(/"/g, "") === q || n.id().toUpperCase().endsWith(":" + q))[0]
-    || KG.cy.nodes().filter((n) => String(n.data("label")).toUpperCase().includes(q))[0];
+  const q = e.target.value.trim().toUpperCase().replace(/"/g, "");
+  const nodes = KG.cy.nodes("[kind != 'Tick']");
+  const hit = nodes.filter((n) => String(n.data("label")).toUpperCase().replace(/"/g, "") === q || n.id().toUpperCase().endsWith(":" + q))[0]
+    || nodes.filter((n) => String(n.data("label")).toUpperCase().includes(q))[0];
   if (!hit) { toast(`"${e.target.value}" is not in this 10-min window`); return; }
-  KG.cy.animate({ center: { eles: hit }, zoom: 1.6 }, { duration: 300 });
-  hit.select(); focusKgNode(hit);
+  focusKgNode(hit, true);
 });
 
 // ------------------------------------------------------------------ alerts + evidence
@@ -495,7 +599,6 @@ function renderEval(ev, sm) {
 function switchTab(name) {
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === `tab-${name}`));
-  if (name === "graph" && S.cy) S.cy.resize();
   if (name === "kg") { if (KG.cy) KG.cy.resize(); loadKg(); }
 }
 document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));

@@ -52,7 +52,6 @@
         <button data-tab="airfield" class="active">Airfield at t</button>
         <button data-tab="kg">KG explorer</button>
         <button data-tab="flight">Flight timeline</button>
-        <button data-tab="graph">Event graph</button>
         <button data-tab="eval">Quality</button>
       </nav>
       <div class="tab-body">
@@ -66,12 +65,12 @@
             </div>
             <span class="kg-window" id="kg-window"></span>
             <label class="kg-find"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5" stroke="currentColor" stroke-width="1.5"/></svg><input id="kg-find" type="search" placeholder="Find node (DAL1489, 8R, E)"></label>
+            <button class="btn" id="kg-relayout" title="Run the layout again">Re-layout</button>
             <button class="btn" id="kg-fit">Fit</button>
           </div>
-          <div class="kg-stage"><div id="kgcy"></div><div class="kg-detail hidden" id="kg-detail"></div></div>
+          <div class="kg-stage"><div id="kgcy"></div><div class="kg-edgekey" id="kg-edgekey"></div><div class="kg-detail hidden" id="kg-detail"></div><div class="kg-tip" id="kg-tip"></div></div>
           <div class="kg-legend" id="kg-legend"></div>
         </div>
-        <div id="tab-graph" class="tab"><div id="cy"></div><div class="legend" id="legend"></div></div>
         <div id="tab-eval" class="tab"></div>
       </div>
     </section>
