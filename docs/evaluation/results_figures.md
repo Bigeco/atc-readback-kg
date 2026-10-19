@@ -35,16 +35,19 @@ that the graph is well-formed, not that its facts are correct (see Figure 2).
 
 ![](figures/fig2_e2_precision.png)
 
-**Caption.** Precision of five fact types sampled from the KG (10 per relation, 50 in total, 11 archives), judged against
-the transcript. Strict: the fact is stated in the transcript; lenient: also accepts a reasonable repair of a recognition
-error. Error bars: Wilson 95% CI of the strict precision. Labels are provisional (single annotator, not yet adjudicated).
+**Caption.** Precision of five fact types sampled from the KG (10 per relation, 50 in total, 11-archive KG), each
+judged against the transcript of its source transmission. Strict: the fact is fully stated in the transcript; lenient:
+also accepts a partially correct fact (right entity or number, but wrong role or an inferred detail). Error bars: Wilson
+95% CI of the strict precision. Labels are provisional (single annotator, not yet adjudicated).
 
 **Results.** Overall precision is 66% (strict; 95% CI 52-78%) and 78% (lenient). Route (VIA, 80%) and target (TARGET,
-70% strict, 100% lenient) facts are the most reliable, which is the information the readback check compares. The
-weakest fact type is the instruction type (50%): approach transmissions such as "runway eight left, descend" were
-extracted as taxi instructions, and phonetic letters belonging to callsigns ("three eight Alpha") were read as
-taxiways. Flight attribution (ADDRESSES, 60%) suffers from frequencies and altitudes read as callsigns. The wide
-intervals reflect the small sample.
+70% strict, 100% lenient) facts are the most reliable; every TARGET error names a place from the transmission but in the
+wrong role (e.g. the route "Lima" or the entry point "Mike two" instead of the destination runway 9L). The weakest fact
+type is the instruction type (50%): approach clearances such as "runway eight left, descend" and a hold-short ("three
+eight Alpha, hold short of eight left") were typed TAXI_VIA. Flight attribution (ADDRESSES, 60%) fails when a number is
+read as a callsign: the frequency readback "nineteen one" became flight UNK191 and "Delta twenty twenty four" became
+DAL224. The intervals are wide (about +/-25 points per relation) because of the small sample, so differences between
+relations are indicative only.
 
 ---
 
