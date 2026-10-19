@@ -21,6 +21,7 @@ from evaluation.metrics import rate
 from pipeline.m2_extract import LLMExtractor, RuleExtractor
 from pipeline.m3_canonicalize import Canonicalizer
 from pipeline.m4_graph import TemporalEventGraph
+from common.atc_text import digit_words_to_digits
 from reasoning.rules import compare_readback
 
 
@@ -87,7 +88,7 @@ def evaluate_batch(items, extractor, canon_factory, required):
     for (pair, text), ext in zip(items, extractions):
         canon = canon_factory(pair["atco_flight"], pair["t"])
         rec = canon.canonicalize({**pair["turn"], "text": text, "tx_id": "inj"}, ext)
-        result = compare_readback(pair["atco_instructions"], rec["instructions"], required)
+        result = compare_readback(pair["atco_instructions"], rec["instructions"], required, pair.get("atco_text"))
         outcomes.append({"status": result["status"], "flight": rec["flight_id"], "callsign_flags": rec["callsign"]["flags"]})
     return outcomes
 
@@ -143,8 +144,10 @@ def main():
         pilot = graph.nodes[edge["src"]]["props"]
         atco_tx = edge["dst"]
         pairs.append({
-            "pilot_tx": edge["src"], "atco_tx": atco_tx, "text": pilot["text"], "t": pilot["utc_start_epoch"],
-            "atco_flight": graph.nodes[atco_tx]["props"]["flight_id"],
+            "pilot_tx": edge["src"], "atco_tx": atco_tx,
+            # MOSS writes numbers as words; perturbations work on digits ("8 left", "Delta 2425")
+            "text": digit_words_to_digits(pilot["text"]), "t": pilot["utc_start_epoch"],
+            "atco_flight": graph.nodes[atco_tx]["props"]["flight_id"], "atco_text": graph.nodes[atco_tx]["props"]["text"],
             "turn": turns[pilot["tx_id"]],
             "atco_instructions": [{**n["props"], "ins_id": n["id"]} for n in graph.instructions_of(atco_tx)],
         })

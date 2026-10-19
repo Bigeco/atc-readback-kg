@@ -9,12 +9,48 @@ Rules (system_module.pdf, M5):
   rho6 KB_VIOLATION         target not present in the airport static KB
   rho7 SIMILAR_CALLSIGN     two active callsigns that differ by one digit (hint)
 """
+import re
 from typing import Dict, List, Optional, Set, Tuple
 
+from common.atc_text import PHONETIC, find_runways, find_taxiways, normalize_text
 
-def concept_match(a: dict, p: dict) -> Tuple[bool, List[str]]:
+
+def said_in(place_id: str, text: str) -> bool:
+    """True if the controller's transmission text names this place (runway side must match exactly)."""
+    kind, name = place_id.split(":")[0], place_id.split(":")[-1]
+    norm = normalize_text(re.sub(r"[^\w\s]", " ", text))[0].lower()
+    if kind == "Runway":
+        return name.upper() in {rw.upper() for rw, _, _ in find_runways(norm)}
+    numbers = set(re.findall(r"\d+", norm))
+    if kind == "Taxiway":
+        names = {tw.upper() for tw, _, _ in find_taxiways(norm)}
+        letters = {PHONETIC[w] for w in PHONETIC if re.search(rf"\b{w}\b", norm)}
+        m = re.fullmatch(r"([A-Z]+)(\d*)", name.upper())
+        # exact name, or its letter is spoken and its number appears in the controller's text (a pilot's
+        # "echo nineteen one" or "echo eight right" extracted as E19 / E8 is not a different taxiway)
+        return name.upper() in names or bool(m and m.group(1) in letters and (not m.group(2) or m.group(2) in numbers
+                                                                             or any(n.startswith(m.group(2)) for n in numbers)))
+    if kind == "Ramp":
+        return name in numbers
+    return name.lower() in norm
+
+
+def concept_match(a: dict, p: dict, atco_text: Optional[str] = None) -> Tuple[bool, List[str]]:
     """Compare one controller instruction with one pilot concept of the same type."""
     reasons = []
+    if a.get("type") == "TAXI_VIA":
+        # Destination vs route is not stable in either transmission ("nine left to Mike two taxi via Mike" may give
+        # target 9L or M2, route [M]), so compare places as one set: the readback may omit places but must not name
+        # a place the controller did not say. A place missing from the controller's extraction but present in the
+        # controller's text (extraction miss) is not a conflict.
+        said = {a.get("target_id")} | set(a.get("route_ids") or [])
+        read = {p.get("target_id")} | set(p.get("route_ids") or [])
+        extra = (read - said) - {None}
+        if atco_text:
+            extra = {x for x in extra if not said_in(x, atco_text)}
+        if extra:
+            reasons.append("place")
+        return not reasons, reasons
     if a.get("target_id") and p.get("target_id") and a["target_id"] != p["target_id"]:
         reasons.append("target")
     if a.get("route_ids") and p.get("route_ids"):
@@ -27,7 +63,8 @@ def concept_match(a: dict, p: dict) -> Tuple[bool, List[str]]:
     return not reasons, reasons
 
 
-def compare_readback(atco_instructions: List[dict], pilot_instructions: List[dict], required: Set[str]) -> dict:
+def compare_readback(atco_instructions: List[dict], pilot_instructions: List[dict], required: Set[str],
+                     atco_text: Optional[str] = None) -> dict:
     req = [a for a in atco_instructions if a["type"] in required]
     pilot = [p for p in pilot_instructions if p["type"] not in ("ACK", "REQUEST")]
 
@@ -37,7 +74,11 @@ def compare_readback(atco_instructions: List[dict], pilot_instructions: List[dic
         if not same_type:
             missing.append({"ins_id": a["ins_id"], "type": a["type"], "target_id": a.get("target_id")})
             continue
-        results = [(p, *concept_match(a, p)) for p in same_type]
+        if a["type"] == "TAXI_VIA" and len(same_type) > 1:
+            # a pilot may split one taxi route over several readback items: compare against their union
+            places = {x.get("target_id") for x in same_type} | {r for x in same_type for r in x.get("route_ids") or []}
+            same_type = [{**same_type[0], "target_id": None, "route_ids": sorted(places - {None})}]
+        results = [(p, *concept_match(a, p, atco_text)) for p in same_type]
         hit = next((r for r in results if r[1]), None)
         if hit:
             matched.append({"ins_id": a["ins_id"], "pilot_ins_id": hit[0]["ins_id"], "type": a["type"]})

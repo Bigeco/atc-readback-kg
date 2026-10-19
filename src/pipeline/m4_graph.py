@@ -293,7 +293,7 @@ class GraphBuilder:
 
         g.nodes[target]["props"]["pilot_reply_in_window"] = True
         atco_instrs = [{**n["props"], "ins_id": n["id"]} for n in g.instructions_of(target)]
-        result = compare_readback(atco_instrs, pilot_instrs, self.required)
+        result = compare_readback(atco_instrs, pilot_instrs, self.required, g.nodes[target]["props"]["text"])
         if result["status"] == "NO_REQUIRED":
             return
         concepts = [i for i in pilot_instrs if i["type"] not in ("ACK", "REQUEST")]
