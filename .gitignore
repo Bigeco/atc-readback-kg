@@ -20,5 +20,7 @@ docs/problem_definition/stt_sample/*.txt
 .venv/
 .ipynb_checkpoints/
 
-# reference documents (DLR copyright notice; FAA PDF is large) - not redistributed
+# reference documents: DLR PDFs carry a copyright notice (no use without DLR's written consent) - not redistributed;
+# FAA JO 7110.65BB is a U.S. Government work (public domain) and is committed
 data/ontology/*.pdf
+!data/ontology/FAA규정.pdf
