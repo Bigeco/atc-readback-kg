@@ -3,27 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ATC-KG Strip Board</title>
+  <title>ATC Readback KG</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
-      <span class="brand-mark">ATC·KG</span>
-      <span class="brand-sub" id="run-label">loading…</span>
+      <span class="brand-logo" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 2 18 10 10 18 2 10z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="10" cy="10" r="2.2" fill="currentColor"/></svg></span>
+      <div class="brand-text">
+        <span class="brand-mark">ATC Readback KG</span>
+        <span class="brand-sub"><span id="run-label">loading…</span><span class="badge" id="mode-badge" hidden title="LiveATC 약관상 음성·전사 원문은 재배포할 수 없어, 추출된 지시와 판정만 공개합니다">공개판 · 원문·음성 제외</span></span>
+      </div>
     </div>
     <div class="kpis" id="kpis"></div>
+    <a class="btn dl" id="download" href="atc_readback_kg_public.zip" download hidden><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0-3-3m3 3 3-3M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>Download KG</a>
     <label class="search">
-      <span>CALLSIGN</span>
-      <input id="search" type="search" placeholder="DAL2642" autocomplete="off">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5" stroke="currentColor" stroke-width="1.5"/></svg>
+      <input id="search" type="search" placeholder="Callsign (DAL2642)" autocomplete="off">
     </label>
   </header>
 
   <section class="scrubber">
-    <button id="play" class="play" title="재생">▶</button>
+    <button id="play" class="play" title="타임라인 자동 진행 (소리 없음)"><svg class="i-play" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></svg><svg class="i-pause" viewBox="0 0 16 16"><path d="M4.5 3.5h2.5v9H4.5zM9 3.5h2.5v9H9z" fill="currentColor"/></svg><span>Auto-advance</span></button>
     <div class="scrub-track">
       <canvas id="histogram" height="56"></canvas>
       <input id="time" type="range" min="0" max="1" step="1" value="0">
@@ -34,7 +38,7 @@
   <main class="board">
     <aside class="bay">
       <div class="bay-head">
-        <h2>Strip bay</h2>
+        <h2>Flights</h2>
         <small id="bay-note">±10 min</small>
       </div>
       <div id="strips" class="strips"></div>
@@ -42,7 +46,7 @@
 
     <section class="work">
       <nav class="tabs" id="tabs">
-        <button data-tab="airfield" class="active">Airfield @ t</button>
+        <button data-tab="airfield" class="active">Airfield at t</button>
         <button data-tab="flight">Flight timeline</button>
         <button data-tab="graph">Event graph</button>
         <button data-tab="eval">Quality</button>
@@ -67,6 +71,7 @@
   </main>
 
   <audio id="player" preload="none"></audio>
+  <div id="toast" class="toast" role="status"></div>
   <script>window.ATC_STATIC = true;</script>
   <script src="static_api.js"></script>
   <script src="app.js"></script>
