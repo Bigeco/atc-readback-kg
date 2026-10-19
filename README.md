@@ -1,89 +1,115 @@
-# ATC-KG: Event-Centric Temporal Knowledge Graph of U.S. ATC Radio Communications
+# ATC Readback KG: a temporal knowledge graph of U.S. ATC radio communications
 
-> Team project for **XAI616-00 Knowledge-Based Systems** (Fall 2026, Department of Artificial Intelligence, Korea University) — Team 6.
+> Team project for **XAI616-00 Knowledge-Based Systems** (Fall 2026, Department of Artificial Intelligence, Korea University), Team 6.
 
-**[Live demo → bigeco.github.io/atc-readback-kg](https://bigeco.github.io/atc-readback-kg/)**
+**[Live demo: bigeco.github.io/atc-readback-kg](https://bigeco.github.io/atc-readback-kg/)**
 
-[![demo](docs/report/figures/demo_timeline.png)](https://bigeco.github.io/atc-readback-kg/)
+This project turns air traffic control radio recordings (LiveATC) into an **event-centric temporal knowledge graph**.
+The graph is then used to check **controller–pilot readbacks** (did the pilot repeat the instruction correctly?)
+and to answer **time-aware situational-awareness queries** (which flights hold short of runway 8R at 01:33Z?).
 
-The live demo is a static build of KATL Ground (2024-08-26, 00:00–05:30Z): a flight-strip board, a UTC time scrubber,
-the airfield state at time *t*, two-lane radio logs with readback verdicts, per-flight event graphs, and evaluation results.
-Audio playback is available only in the local server mode (`bash scripts/run_demo.sh`), because LiveATC audio may not be redistributed.
+The released graph covers Atlanta (KATL) on 2024-08-26: 38 half-hour archives from ground, approach and departure
+frequencies (7,641 transmissions, 1,624 flights, 4,865 instructions, 337 readback links).
 
-This repository turns raw VHF air traffic control audio (LiveATC) into an **event-centric temporal knowledge graph**.
-On that graph it then checks **controller–pilot readbacks** and answers **time-aware situational-awareness queries**,
-and a web demo presents the results.
+[![KG explorer, entity linking view](assets/demo_kg_entity.png)](https://bigeco.github.io/atc-readback-kg/)
 
-- Problem definition and literature: `docs/problem_definition/`
-- Formal module specification (M0–M7): `docs/system_design/system_module.pdf`
-- Presentation write-up (Team 2 structure): `docs/report/team6_kg_report.pdf`
+## Live demo
+
+The public demo is built from the public KG, so it carries **no audio and no transcripts** (LiveATC terms forbid
+redistribution); each transmission shows the instructions extracted from it instead. Audio playback and transcripts
+are available in the local server mode (`bash scripts/run_demo.sh`).
+
+| | |
+|---|---|
+| ![KG explorer: neighbours of runway 8R](assets/demo_kg_focus.png) | ![KG explorer: event layer on a time axis](assets/demo_kg_event.png) |
+| **KG explorer, entity linking.** Callsign mentions are linked to flights, flights to airlines and to the runways, taxiways, ramps and facilities they were instructed to use (edge colour = readback result), places to the airport. Click a node to see its neighbours and properties. | **KG explorer, event layer.** One row per flight on a 10-minute time axis: transmissions, the instructions they contain, readback links and NEXT links between a flight's successive instructions. |
+| ![Flight timeline](assets/demo_timeline.png) | ![Airfield state at time t](assets/demo_airfield.png) |
+| **Flight timeline.** Controller and pilot transmissions of one flight with the readback verdict and the evidence panel. | **Airfield at t.** Instructions whose validity interval contains the selected time, grouped by state (taxiing, holding short, handed off), with the rule alerts on the right. |
 
 ## Pipeline
 
 | Stage | Module | Code | Output |
 |---|---|---|---|
 | M0 | Static airport KB (OurAirports + OpenStreetMap) | `src/kb/build_static_kb.py` | `data/static_kb/<icao>.json` |
-| KB | Ontology + rule base from DLR v3.00 spec/table and FAA JO 7110.65BB (PDFs in `data/ontology/`, not redistributed) | `src/kb/build_ontology.py` | `configs/ontology.json`, `configs/rules.json` |
-| M1a | **M1 STT** — archive discovery, context from file names, facility filter, VAD | `src/pipeline/m1_ingest.py` | archive records |
-| M1b | **M1 STT** — context-biased Whisper large-v3 + hallucination filter + language id (alternative: MOSS-ATC joint transcription + diarization of whole archives, which replaces M1a's VAD) | `src/pipeline/m1_asr.py`, `src/run_asr.py`, `src/run_asr_moss.py` | `results/<run>/stt/`, `data/raw/text/` |
-| M2a | **M2 extraction** — speaker role decision: LLM labels each MOSS speaker ATCO/PILOT (rule vote fallback; Whisper path: per-transmission rules) | `src/pipeline/m2_role.py` | `turns.jsonl`, `speaker_roles.json` |
-| M2b | **M2 extraction** — ontology-grounded extraction (LLM few-shot + rule grammar, hybrid; also decides speaker role) | `src/pipeline/m2_extract.py`, `src/prompt/prompt.py` | `extraction.jsonl` |
-| M3 | Entity linking: callsigns, runways, taxiways and facilities to KB entities (incl. number-only and misrecognized callsigns) | `src/pipeline/m3_canonicalize.py` | `canonical.jsonl` |
-| M4 | Incremental bi-temporal event graph, readback linking, invalidation | `src/pipeline/m4_graph.py` | `kg/graph.json`, `kg/neo4j/` |
-| M5 | Concept-level readback comparison and anomaly rules ρ1–ρ7 | `src/reasoning/rules.py` | `alerts.json` |
-| M6 | Snapshot / timeline / competency queries | `src/reasoning/queries.py` | API + demo |
-| M7 | Evaluation harness E1–E4 | `src/evaluation/` | `results/<run>/eval/` |
+| KB | Ontology and rule base from the DLR ATC command ontology and FAA JO 7110.65BB | `src/kb/build_ontology.py` | `configs/ontology.json`, `configs/rules.json` |
+| M1 | Speech-to-text: MOSS-ATC joint transcription and speaker diarization of whole archives (Whisper large-v3 path also available) | `src/run_asr_moss.py`, `src/run_asr.py` | `data/raw/text/` |
+| M2a | Speaker role decision: an LLM labels each diarized speaker ATCO or PILOT, with a callsign-position rule override | `src/pipeline/m2_role.py` | `turns.jsonl` |
+| M2b | Ontology-grounded instruction extraction (LLM few-shot + validation against the transmission + rule grammar) | `src/pipeline/m2_extract.py` | `extraction.jsonl` |
+| M3 | Entity linking: callsigns to flights and airlines, places to airport KB entities | `src/pipeline/m3_canonicalize.py` | `canonical.jsonl` |
+| M4 | Bi-temporal event graph: validity intervals, readback links, supersession | `src/pipeline/m4_graph.py` | `kg/graph.json`, `kg/neo4j/` |
+| M5 | Readback comparison and anomaly rules (MISMATCH, PARTIAL, NO_READBACK, NO_CALLSIGN, …) | `src/reasoning/rules.py` | `alerts.json` |
+| M6 | Snapshot, timeline and competency queries; web demo | `src/reasoning/queries.py`, `src/demo/` | API + demo |
+| M7 | Evaluation E0–E3 | `src/evaluation/` | `results/<run>/eval/` |
 
-`src/run_asr.py` (or `src/run_asr_moss.py`) runs M1; `src/build_kg.py` runs M2–M5. Modules were renumbered on 2026-10-18 (old M1–M2 → M1, M3–M4 → M2, M5–M9 → M3–M7).
+### KG schema
 
-## Layout
+- **Event layer** (time-stamped): `Transmission` (speaker, UTC start/end, archive offsets) and `Instruction` (type, value,
+  validity interval `[valid_from, valid_to)`).
+- **Entity layer**: `Flight` (resolved callsign) and `CallsignMention` (the callsign as spoken).
+- **Static KB layer**: `Role`, `Airline` (designator, country), `Airport` (location indicator, country), and the
+  instruction targets `Runway`, `Taxiway`, `Ramp`, `Facility`.
+- **Edges**: `SPOKEN_BY`, `CONTAINS`, `ADDRESSES`, `ALIAS`, `OPERATED_BY`, `TARGET`, `VIA`, `PART_OF`,
+  `NEXT` (successive instructions of a flight) and `READBACK_OF` (pilot transmission → controller transmission,
+  status MATCH / PARTIAL / MISMATCH).
 
-```
-configs/                 ontology.json (vocabulary: DLR-based command types), rules.json (FAA/ICAO readback, supersession), kg_build.json (readback window, max validity), airlines.json (telephony)
-data/
-  raw/liveatc/<airport>/<feed>/*.mp3   LiveATC archives (not committed)
-  static_kb/<icao>.json                M0 output
-  gold/                                hand-labeled sets for E4
-docs/                    problem definition, system design (LaTeX), report (LaTeX)
-scripts/                 setup, download, pipeline, eval, demo
-src/
-  common/  kb/  pipeline/  prompt/  reasoning/  evaluation/  demo/
-results/<run>/           all generated artifacts (not committed)
-```
+## Evaluation
+
+| Goal | Experiment | Result (38-archive KG unless noted) |
+|---|---|---|
+| (1) KG quality | E0 intrinsic quality without gold labels (Text2KGBench-style) | ontology conformance 93.4%; schema-valid edges, valid intervals and consistent readback edges 100% |
+| | E2 precision of sampled facts against the transcript (50 facts, 11-archive KG, provisional single-annotator labels) | 66% strict, 78% lenient |
+| (2) Readback recognition | E3 detection of errors injected into correct readbacks | 76–100% per error type, 3.5% false alarms on unperturbed readbacks |
+| (3) Situational awareness | E1 competency questions (instruction history, hold-short at t, post-hand-off instructions, state at t) | all answerable and traceable to the source archive and offset |
+
+| | |
+|---|---|
+| ![Figure 1](assets/fig1_e0_intrinsic.png) | ![Figure 2](assets/fig2_e2_precision.png) |
+| **Figure 1.** (a) Structural quality; (b) hallucination rates of the raw LLM output before validation. | **Figure 2.** Precision by relation; error bars are Wilson 95% CIs. |
+| ![Figure 3](assets/fig3_e3_detection.png) | ![Figure 4](assets/fig4_readback_alerts.png) |
+| **Figure 3.** Detection rate per injected error type; orange = false alarms on unperturbed readbacks. | **Figure 4.** (a) Readback verdicts; (b) rule alerts. |
+
+**Limitations.** The E2 labels are provisional (one annotator); recall is not measured (no gold instruction set);
+E3 injects errors into clean text, so its rates are upper bounds (on real recordings about 42% of sampled MISMATCH
+alerts are genuine); E1 checks answerability, not correctness against a gold timeline. Altitudes, headings and
+frequencies read as callsigns create spurious flights and inflate NO_READBACK.
 
 ## Quick start
 
 ```bash
-bash scripts/setup_env.sh                     # conda env "atc-kg" (python 3.11, torch cu124)
-bash scripts/download_liveatc.sh katl "Gnd"   # or put archives under data/raw/liveatc/<airport>/
+bash scripts/setup_env.sh                       # conda env "atc-kg" (python 3.11, torch cu124)
+bash scripts/download_liveatc.sh katl "Gnd"     # or put archives under data/raw/liveatc/<airport>/
 bash scripts/build_static_kb.sh KATL
-CUDA_VISIBLE_DEVICES=3 RUN_NAME=katl_gnd bash scripts/run_pipeline.sh
-RUN_NAME=katl_gnd bash scripts/run_eval.sh
-RUN_NAME=katl_gnd PORT=8800 bash scripts/run_demo.sh   # http://127.0.0.1:8800
+CUDA_VISIBLE_DEVICES=0 python src/run_asr_moss.py --help                        # M1
+python src/build_kg.py --run-name katl_moss38 --stt-dir data/raw/text           # M2-M5
+RUN_NAME=katl_moss38 bash scripts/run_eval.sh                                   # E1-E3
+RUN_NAME=katl_moss38 PORT=8800 bash scripts/run_demo.sh                         # http://127.0.0.1:8800
 ```
 
-To view the demo from a laptop when it runs on a remote server: `ssh -L 8800:127.0.0.1:8800 <server>`.
+From a laptop, when the demo runs on a remote server: `ssh -L 8800:127.0.0.1:8800 <server>`.
 
-**Static demo (GitHub Pages)**: https://bigeco.github.io/atc-readback-kg/ — served from the `gh-pages` branch.
-Rebuild and publish with `RUN_NAME=katl_gnd PUBLISH=1 bash scripts/export_site.sh`. The static site has no audio (LiveATC terms); playback works only in the local server mode.
+- **Public KG**: `python src/demo/public_kg.py --run-name katl_moss38` writes the graph without transcripts
+  (`graph.json`, Neo4j CSV, alerts, README). The live demo offers it as a zip ("Download KG").
+- **Static site**: `RUN_NAME=katl_moss38 PUBLISH=1 bash scripts/export_site.sh` builds the public demo and pushes it to `gh-pages`.
+- `build_kg.py --extractor rule` runs a GPU-free baseline; `--reuse-roles` and `--reuse-extraction` skip M2a / M2b;
+  `--llm-backend openai --llm-base-url http://host:8000/v1` uses an OpenAI-compatible server.
 
-Useful switches
-- `build_kg.py --extractor rule` runs a GPU-free baseline. `--stt-from <run>` reuses another run's ASR output. `--reuse-extraction` skips M2b.
-- `run_asr.py --language auto --segment-lang` enables language identification for RQ4 (non-English segments become `UNSUPPORTED_LANG`).
-- `build_kg.py --llm-backend openai --llm-base-url http://host:8000/v1` uses an OpenAI-compatible server instead.
-  **Restricted recordings (e.g. Korean data) must use the local `hf` backend.**
+## Layout
 
-## Evaluation
-
-| | What | How |
-|---|---|---|
-| E1 | Competency questions CQ1–CQ8 (qualitative) | `e1_competency.py`: each CQ must be answerable, non-empty, and traceable to audio |
-| E2 | Precision against evidence | `e2_precision_audit.py sample` → fill `label` in the CSV → `score`. An optional `judge` step adds an LLM second opinion (use a different model from the extractor) |
-| E3 | Detection of injected readback errors and control false alarms | `e3_error_injection.py`: L/R runway swap, taxiway swap, callsign digit, dropped hold-short, dropped callsign |
-| E4 | RQ4 cross-region diagnosis | `e4_rq4_diagnosis.py template` → label gold → `score --region JP --condition a` → `compare` |
+```
+assets/        README images
+configs/       ontology.json, rules.json, kg_build.json, airlines.json, fewshot_examples.json
+data/          static_kb/ (committed), ontology/FAA규정.pdf; raw/ (LiveATC audio and transcripts, not committed)
+scripts/       setup, download, pipeline, eval, demo, site export
+src/           common/ kb/ pipeline/ prompt/ reasoning/ evaluation/ demo/
+results/<run>/ generated artifacts (not committed)
+```
 
 ## Data and licenses
 
-- LiveATC recordings (via HF `nyuuzyou/liveatc`) are for **personal, non-commercial use**. Redistribution requires LiveATC's permission. Audio and transcripts are git-ignored.
-- OurAirports data is public domain. Taxiway names come from OpenStreetMap (ODbL).
+- LiveATC recordings (via the Hugging Face dataset `nyuuzyou/liveatc`) are for **personal, non-commercial use**;
+  redistribution needs LiveATC's permission. Audio and transcripts are therefore never committed or published:
+  the public KG and demo keep only extracted instructions, readback results, times and the archive name + offsets.
+- DLR ATC command ontology documents are not redistributed (no use without DLR's written consent).
+  FAA JO 7110.65BB is a U.S. Government work.
+- OurAirports data is public domain; taxiway names come from OpenStreetMap (ODbL).
 - `configs/airlines.json` is a curated subset of FAA JO 7340.2 telephony designators.

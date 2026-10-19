@@ -27,3 +27,6 @@ data/ontology/*.pdf
 
 # local team-share bundles (LiveATC-derived data, not redistributed)
 share/
+
+# design notes, reports and evaluation write-ups stay local (README images live in assets/)
+docs/

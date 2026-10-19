@@ -8,6 +8,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/layout-base@2.0.1/layout-base.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cose-base@2.2.0/cose-base.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -62,7 +65,7 @@
               <button data-mode="event" title="Temporal layer (M4): transmissions, instructions, readbacks">Event layer</button>
             </div>
             <span class="kg-window" id="kg-window"></span>
-            <label class="kg-find"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5" stroke="currentColor" stroke-width="1.5"/></svg><input id="kg-find" type="search" placeholder="Find node (DAL1489, 9L, E)"></label>
+            <label class="kg-find"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5" stroke="currentColor" stroke-width="1.5"/></svg><input id="kg-find" type="search" placeholder="Find node (DAL1489, 8R, E)"></label>
             <button class="btn" id="kg-fit">Fit</button>
           </div>
           <div class="kg-stage"><div id="kgcy"></div><div class="kg-detail hidden" id="kg-detail"></div></div>

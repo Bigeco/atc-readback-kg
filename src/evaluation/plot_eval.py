@@ -1,8 +1,8 @@
 """Paper-style evaluation figures (English, no in-figure titles; captions live in docs/evaluation/results_figures.md).
 
-    python src/evaluation/plot_eval.py --run katl_moss38 --e2-run katl_moss11 --old-run katl_all
+    python src/evaluation/plot_eval.py --run katl_moss38 --e2-run katl_moss11
 
-Writes docs/evaluation/figures/fig{1..5}_*.{pdf,png}.
+Writes docs/evaluation/figures/fig{1..4}_*.{pdf,png}.
 """
 import argparse
 import json
@@ -97,7 +97,6 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default="katl_moss38")
     ap.add_argument("--e2-run", default="katl_moss11")
-    ap.add_argument("--old-run", default="katl_all")
     ap.add_argument("--out", type=Path, default=PROJECT_ROOT / "docs" / "evaluation" / "figures")
     args = ap.parse_args()
     out = args.out
@@ -106,7 +105,7 @@ def main():
         old.unlink()
     ev = run_dir(args.run) / "eval"
 
-    # Figure 1: E3 injection detection rates
+    # Figure 3: E3 injection detection rates
     e3 = load(ev / "e3_injection.json")
     det = dict(e3["detection"])
     applicable = ev / "e3_injection_lr_swap_taxiway_swap.json"
@@ -125,17 +124,7 @@ def main():
     ax.patches[-1].set_color(C2)          # control bar = false-alarm rate
     save(fig, out, "fig3_e3_detection")
 
-    # Figure 2: before vs after
-    old = load(run_dir(args.old_run) / "eval" / "e3_injection.json")["detection"]
-    ks = ["callsign_digit", "drop_callsign", "taxiway_swap", "lr_swap"]
-    labels = ["Callsign\ndigit", "Callsign\nomitted", "Taxiway\nsubstituted", "Runway side\nswapped"]
-    fig, ax = plt.subplots(figsize=(SINGLE, 2.3))
-    grouped(ax, labels, [old[k]["rate"] * 100 for k in ks], [det[k]["rate"] * 100 for k in ks],
-            "Baseline", "Ours",
-            [pct_ci(old[k])[1] for k in ks], [pct_ci(det[k])[1] for k in ks], ylabel="Detection rate (%)")
-    save(fig, out, "fig4_e3_baseline_vs_ours")
-
-    # Figure 3: E2 precision by relation
+    # Figure 2: E2 precision by relation
     e2 = load(run_dir(args.e2_run) / "eval" / "e2_precision.json")["label"]
     rel = {"VIA": "VIA", "TARGET": "TARGET", "READBACK_OF": "READ-\nBACK_OF", "ADDRESSES": "ADDRE-\nSSES",
            "INSTRUCTION_TYPE": "Instr.\ntype"}
@@ -147,7 +136,7 @@ def main():
             [pct_ci(b["strict"])[1] for b in blocks], None, ylabel="Precision (%)")
     save(fig, out, "fig2_e2_precision")
 
-    # Figure 4: E0 intrinsic quality
+    # Figure 1: E0 intrinsic quality
     e0 = load(ev / "e0_intrinsic.json")
     x0, g0 = e0["extraction_raw_llm"], e0["graph"]
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(DOUBLE, 1.9), gridspec_kw={"width_ratios": [1.15, 1], "wspace": 1.0})
@@ -163,7 +152,7 @@ def main():
         ax.set_title(tag, loc="left", fontsize=8.5, pad=3)
     save(fig, out, "fig1_e0_intrinsic")
 
-    # Figure 5: readback status and alerts
+    # Figure 4: readback status and alerts
     s = load(run_dir(args.run) / "summary.json")
     rb, al = s["readback_status"], s["alerts"]
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(DOUBLE, 2.0), gridspec_kw={"width_ratios": [0.8, 1.3], "wspace": 0.75})
@@ -174,7 +163,7 @@ def main():
          percent=False)
     for ax, tag in ((a1, "(a)"), (a2, "(b)")):
         ax.set_title(tag, loc="left", fontsize=8.5, pad=3)
-    save(fig, out, "fig5_readback_alerts")
+    save(fig, out, "fig4_readback_alerts")
     print(f"[plot] -> {out}")
 
 

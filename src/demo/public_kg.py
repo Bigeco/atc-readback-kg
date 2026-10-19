@@ -107,7 +107,7 @@ def export(run_name: str, out_dir: Path):
     graph.export_neo4j(out_dir / "neo4j")
     save_json(redact_alerts(load_json(src / "alerts.json")), out_dir / "alerts.json")
     summary = load_json(src / "summary.json")
-    save_json({k: v for k, v in summary.items() if k in ("airport", "utc_range", "turns", "flights", "nodes", "edges",
+    save_json({k: v for k, v in summary.items() if k in ("airport", "utc_range", "transmissions", "files", "flights", "nodes", "edges",
                                                           "readback_status", "alerts")}, out_dir / "summary.json")
     n_tx = len(graph.nodes_by_label("Transmission"))
     n_flights = len(graph.nodes_by_label("Flight"))

@@ -60,7 +60,7 @@ function toast(msg) {
 function renderKpis(sm) {
   const rb = sm.readback_status || {};
   const items = [
-    ["Transmissions", sm.turns], ["Flights", sm.flights], ["ATCO instructions", sm.atco_instructions],
+    ["Transmissions", sm.transmissions ?? sm.turns], ["Flights", sm.flights], ["ATCO instructions", sm.atco_instructions],
     ["Match", rb.MATCH || 0, "match"], ["Partial", rb.PARTIAL || 0, "partial"], ["Mismatch", rb.MISMATCH || 0, "mismatch"],
     ["Alerts", Object.values(sm.alerts || {}).reduce((a, b) => a + b, 0)],
   ];
@@ -235,18 +235,21 @@ async function loadKg(force = false) {
       status: e.props.status || "", label: e.type === "INSTRUCTED" ? e.props.types.map(shortType).join(", ")
         : e.type === "READBACK_OF" ? `READBACK ${e.props.status}` : e.type } })),
   ];
+  const positions = KG.mode === "event" ? eventPositions(g, t0, elements) : null;
+  if (KG.mode === "event" && !KG.touched) ["Runway", "Taxiway", "Ramp", "Facility"].forEach((k) => KG.hidden.add(k));
   if (KG.cy) KG.cy.destroy();
   KG.cy = cytoscape({
-    container: $("#kgcy"), elements, wheelSensitivity: 0.3, minZoom: 0.15, maxZoom: 3,
+    container: $("#kgcy"), elements, wheelSensitivity: 0.3, minZoom: 0.1, maxZoom: 3,
     style: [
       { selector: "node", style: { label: "data(label)", "font-family": "JetBrains Mono, monospace", "font-size": 8, color: "#52514e",
-        "text-valign": "bottom", "text-margin-y": 2, "background-color": (n) => KG_COLORS[n.data("kind")] || "#999",
+        "text-valign": "bottom", "text-margin-y": 2, "background-color": (n) => KG_COLORS[n.data("kind")] || "#999", "min-zoomed-font-size": 7,
         width: (n) => 8 + Math.min(18, Math.sqrt(n.data("deg")) * 3), height: (n) => 8 + Math.min(18, Math.sqrt(n.data("deg")) * 3),
         "border-width": 1.5, "border-color": "#fff" } },
-      { selector: "node[kind = 'Flight']", style: { "font-size": 10, "font-weight": 600, color: "#0b0b0b" } },
+      { selector: "node[kind = 'Flight']", style: { "font-size": 9, "font-weight": 600, color: "#0b0b0b" } },
       { selector: "node[kind = 'Airport']", style: { width: 34, height: 34, "font-size": 11, color: "#0b0b0b", "font-weight": 600 } },
       { selector: "node[kind = 'Transmission']", style: { shape: "round-rectangle" } },
-      { selector: "node[kind = 'CallsignMention']", style: { shape: "diamond" } },
+      { selector: "node[kind = 'CallsignMention']", style: { shape: "diamond", "font-size": 7, "min-zoomed-font-size": 9, color: "#898781" } },
+      { selector: "node[kind = 'Runway'], node[kind = 'Taxiway'], node[kind = 'Ramp'], node[kind = 'Facility']", style: { "font-size": 10, "font-weight": 600, color: "#0b0b0b" } },
       { selector: "edge", style: { width: 1, "line-color": "#dcdbd5", "curve-style": "bezier", "target-arrow-shape": "triangle",
         "target-arrow-color": "#dcdbd5", "arrow-scale": 0.6, label: "", "font-size": 7, color: "#52514e", "text-rotation": "autorotate",
         "text-background-color": "#fff", "text-background-opacity": 0.85, "text-background-padding": 1 } },
@@ -255,19 +258,65 @@ async function loadKg(force = false) {
       { selector: "edge[type = 'INSTRUCTED']", style: { width: 1.6, "line-color": "#9ab8de", "target-arrow-color": "#9ab8de" } },
       ...Object.entries(STATUS_COLORS).map(([k, c]) => ({ selector: `edge[status = '${k}']`, style: { width: 2, "line-color": c, "target-arrow-color": c } })),
       { selector: "edge[type = 'NEXT']", style: { "line-style": "dashed", "line-color": "#2a78d6", "target-arrow-color": "#2a78d6" } },
+      { selector: "node[kind = 'Tick']", style: { shape: "rectangle", width: 1, height: 8, "background-color": "#c3c2b7", "border-width": 0,
+        "text-valign": "top", "text-margin-y": -3, "font-size": 9, color: "#898781", "min-zoomed-font-size": 0 } },
+      { selector: "node[kind = 'Flight']", style: KG.mode === "event" ? { "text-valign": "center", "text-halign": "left", "text-margin-x": -6, "text-margin-y": 0 } : {} },
+      { selector: "edge[hide = 1]", style: { display: "none" } },
+      ...(KG.mode === "event" ? [   // the axis gives the time: transmissions unlabeled, instruction types small
+        { selector: "node[kind = 'Transmission']", style: { label: "", width: 9, height: 9 } },
+        { selector: "node[kind = 'Instruction']", style: { "font-size": 6, width: 7, height: 7, "text-margin-y": 1, "min-zoomed-font-size": 5 } },
+      ] : []),
       { selector: ".faded", style: { opacity: 0.12 } },
       { selector: "edge.hl", style: { label: "data(label)", opacity: 1 } },
-      { selector: "node.hl", style: { opacity: 1, "font-size": 10, color: "#0b0b0b" } },
+      { selector: "node.hl", style: { opacity: 1, "font-size": 10, color: "#0b0b0b", "min-zoomed-font-size": 0, label: "data(label)" } },
       { selector: "node:selected", style: { "border-color": "#2a78d6", "border-width": 3 } },
     ],
-    layout: { name: "cose", animate: false, nodeRepulsion: KG.mode === "entity" ? 12000 : 8000, idealEdgeLength: 55,
-      gravity: 0.6, numIter: 1500, randomize: true },
+    layout: positions ? { name: "preset", positions: (n) => positions[n.id()], fit: false } : kgLayout(),
   });
   applyKgFilter();
-  KG.cy.on("tap", "node", (ev) => focusKgNode(ev.target));
+  kgFit();
+  KG.cy.on("tap", "node[kind != 'Tick']", (ev) => focusKgNode(ev.target));
   KG.cy.on("tap", (ev) => { if (ev.target === KG.cy) clearKgFocus(); });
   KG.cy.on("dbltap", "node", (ev) => openKgNode(ev.target.id(), ev.target.data("kind")));
   renderKgLegend();
+}
+// Event layer on a time axis: x = time in the 10-min window, one row per flight (instructions under their transmission).
+// The rows carry ADDRESSES, so those edges are not drawn; places are hidden by default (toggle in the legend).
+function eventPositions(g, t0, elements) {
+  const X = 1.6, ROW = 34, pos = {};
+  const tx = g.nodes.filter((n) => n.label === "Transmission");
+  const firstT = {};
+  tx.forEach((n) => { const f = n.props.flight_id || "-"; firstT[f] = Math.min(firstT[f] ?? Infinity, n.props.utc_start_epoch); });
+  const rows = Object.keys(firstT).sort((a, b) => firstT[a] - firstT[b]);
+  const rowOf = Object.fromEntries(rows.map((f, i) => [f, i * ROW + 40]));
+  rows.forEach((f) => { if (f !== "-") pos[`Flight:${f}`] = { x: -30, y: rowOf[f] }; });
+  const insOf = {};
+  g.edges.filter((e) => e.type === "CONTAINS").forEach((e) => (insOf[e.src] ||= []).push(e.dst));
+  tx.forEach((n) => {
+    const x = (n.props.utc_start_epoch - t0) * X, y = rowOf[n.props.flight_id || "-"];
+    pos[n.id] = { x, y };
+    (insOf[n.id] || []).forEach((i, k) => (pos[i] = { x: x + k * 12, y: y + 12 }));
+  });
+  const places = g.nodes.filter((n) => ["Runway", "Taxiway", "Ramp", "Facility"].includes(n.label));
+  places.forEach((n, i) => (pos[n.id] = { x: KG_BIN * X + 90 + (i % 3) * 60, y: 40 + Math.floor(i / 3) * 36 }));
+  g.nodes.forEach((n) => (pos[n.id] ||= { x: -140, y: 0 }));
+  for (let m = 0; m <= KG_BIN / 60; m++) {   // minute ticks along the top
+    const id = `tick:${m}`;
+    elements.push({ data: { id, label: hhmmss(t0 + m * 60).slice(0, 5), kind: "Tick", deg: 0 } });
+    pos[id] = { x: m * 60 * X, y: 0 };
+  }
+  elements.forEach((el) => { if (el.data.type === "ADDRESSES") el.data.hide = 1; });
+  return pos;
+}
+
+// fcose (spectral + force) separates hubs and clusters far better than plain cose; fall back if the CDN is blocked
+const HAS_FCOSE = typeof cytoscapeFcose !== "undefined" && (cytoscape.use(cytoscapeFcose), true);
+function kgLayout() {
+  const len = { ALIAS: 18, OPERATED_BY: 70, PART_OF: 140, INSTRUCTED: 60, CONTAINS: 22, ADDRESSES: 45, TARGET: 50, VIA: 50, NEXT: 40, READBACK_OF: 35 };
+  if (!HAS_FCOSE) return { name: "cose", animate: false, nodeRepulsion: 9000, idealEdgeLength: 55, gravity: 0.6, numIter: 1500 };
+  return { name: "fcose", quality: "proof", animate: false, randomize: true, packComponents: true, nodeSeparation: 60,
+    nodeRepulsion: () => (KG.mode === "entity" ? 9000 : 5000), idealEdgeLength: (e) => len[e.data("type")] || 50,
+    edgeElasticity: (e) => (e.data("type") === "PART_OF" ? 0.05 : 0.45), gravity: 0.25, gravityRange: 3.8, numIter: 2500 };
 }
 function focusKgNode(n) {
   const hood = n.closedNeighborhood();
@@ -311,15 +360,23 @@ function renderKgLegend() {
     `<span class="hint">Click: neighbours · double-click: open</span>`;
   document.querySelectorAll("#kg-legend button").forEach((b) => b.addEventListener("click", () => {
     KG.hidden.has(b.dataset.k) ? KG.hidden.delete(b.dataset.k) : KG.hidden.add(b.dataset.k);
+    KG.touched = true;
     b.classList.toggle("off"); applyKgFilter();
   }));
 }
 document.querySelectorAll("#kg-mode button").forEach((b) => b.addEventListener("click", () => {
   KG.mode = b.dataset.mode;
   document.querySelectorAll("#kg-mode button").forEach((x) => x.classList.toggle("on", x === b));
-  KG.hidden.clear(); clearKgFocus(); loadKg(true);
+  KG.hidden.clear(); KG.touched = false; clearKgFocus(); loadKg(true);
 }));
-$("#kg-fit").addEventListener("click", () => KG.cy && KG.cy.fit(undefined, 30));
+$("#kg-fit").addEventListener("click", kgFit);
+// event layer: fit the time axis to the panel width and start at the top (scroll down by dragging the background)
+function kgFit() {
+  if (!KG.cy) return;
+  if (KG.mode !== "event") { KG.cy.fit(undefined, 30); return; }
+  const bb = KG.cy.elements(":visible").boundingBox(), z = Math.min(1.5, (KG.cy.width() - 60) / bb.w);
+  KG.cy.zoom(z); KG.cy.pan({ x: 30 - bb.x1 * z, y: 24 - bb.y1 * z });
+}
 $("#kg-find").addEventListener("keydown", (e) => {
   if (e.key !== "Enter" || !KG.cy) return;
   const q = e.target.value.trim().toUpperCase();
