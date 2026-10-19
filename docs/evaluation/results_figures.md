@@ -104,11 +104,14 @@ procedure. The baseline also raised no false alarm on unperturbed pairs (0/200, 
 same flight within 20 s). (b) Alerts raised by the rule layer (M5).
 
 **Results.** Of the linked readbacks, 68% fully match, 22% omit at least one instruction that requires a readback and
-10% state a different value or place. NO_READBACK (1,049) and SIMILAR_CALLSIGN (671) dominate the alerts. Both are
-inflated by an identified error: altitudes, headings and frequencies read as callsigns create spurious flights (e.g.
-"one four thousand" becomes flight DAL1400 with 48 transmissions; UNK180 with 65), which then appear to receive
-instructions without readback and to have callsigns one digit apart from real flights. These counts should therefore be
-read as upper bounds until the callsign filter is fixed.
+10% state a different value or place. NO_READBACK (1,049) and SIMILAR_CALLSIGN (671) dominate the alerts, and neither is
+a verified error count. For about a quarter of the NO_READBACK alerts (276 of 1,049, by a heuristic check) a pilot reply
+containing the flight's number follows within 20 s, but the reply was attributed to another flight, mostly because a
+number in it was read as the callsign (e.g. "Twenty three eighty five, Delta fourteen eighty nine" became flight
+UNK2385). SIMILAR_CALLSIGN is a hint rule that fires whenever an addressed callsign is one digit edit away from a
+recently active callsign of the same airline (e.g. DAL342 and DAL348); with many Delta flights on frequency it fires
+often, and only 2 of the 671 involve a spurious flight. These counts are therefore upper bounds and should not be read
+as error rates.
 
 ---
 
