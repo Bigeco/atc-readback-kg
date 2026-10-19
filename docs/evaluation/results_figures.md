@@ -59,7 +59,10 @@ relations are indicative only.
 
 **Caption.** Detection rate of the readback check for seven error types injected into pilot readbacks that the system
 had judged MATCH (200 pairs; text-level injection, same LLM extractor as the KG). The orange bar is the false-alarm rate
-on the same readbacks without injection. Error bars: Wilson 95% confidence intervals. Runway-side and taxiway
+on the same readbacks without injection. An injection counts as detected when the system raises the alert expected
+for it: a PARTIAL or MISMATCH readback status for place, value and hold-short errors, a different flight or a
+SIMILAR_CALLSIGN flag for a changed callsign digit, and a NO_CALLSIGN flag for an omitted callsign. n is the number of
+pairs to which an injection type applies. Error bars: Wilson 95% confidence intervals. Runway-side and taxiway
 injections are applied only to pairs whose controller instruction contains a runway side or a taxiway.
 
 **Results.** The check detects heading changes (44/44) and omitted hold-short instructions (11/11) without miss, and
