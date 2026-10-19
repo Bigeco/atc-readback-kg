@@ -50,10 +50,10 @@ def hbar(ax, labels, values, cis=None, color=C1, fmt="{:.1f}", xmax=100.0, xlabe
         ax.errorbar(values, y, xerr=[lo, hi], fmt="none", ecolor=INK2, elinewidth=0.8, capsize=2, zorder=3)
         ends = [c[1] for c in cis]
     for yi, v, e in zip(y, values, ends):
-        ax.text(min(e, xmax) + xmax * 0.02, yi, fmt.format(v), va="center", fontsize=7.5)
+        ax.text(min(e, xmax) + xmax * 0.035, yi, fmt.format(v), va="center", fontsize=7.5)
     ax.set_yticks(y)
     ax.set_yticklabels(labels)
-    ax.set_xlim(0, xmax * 1.15)
+    ax.set_xlim(0, xmax * 1.2)
     ax.set_xlabel(xlabel)
     ax.xaxis.grid(True, color=GRID, lw=0.5, zorder=0)
     ax.tick_params(axis="y", length=0)
@@ -70,6 +70,10 @@ def grouped(ax, labels, a, b, la, lb, ci_a=None, ci_b=None, ylabel=""):
                         fmt="none", ecolor=INK2, elinewidth=0.8, capsize=2, zorder=3)
     ax.set_xticks(x)
     ax.set_xticklabels(labels)
+    for xs, vals in ((x - w / 2 - 0.01, a), (x + w / 2 + 0.01, b)):
+        for xi, v in zip(xs, vals):
+            if v == 0:                       # a zero bar is invisible: print the value
+                ax.text(xi - 0.07, 1.5, "0", ha="right", va="bottom", fontsize=7.5)
     ax.set_ylim(0, 110)
     ax.set_ylabel(ylabel)
     ax.yaxis.grid(True, color=GRID, lw=0.5, zorder=0)
@@ -118,7 +122,7 @@ def main():
     labels = ["Callsign\ndigit", "Callsign\nomitted", "Taxiway\nsubstituted", "Runway side\nswapped"]
     fig, ax = plt.subplots(figsize=(SINGLE, 2.3))
     grouped(ax, labels, [old[k]["rate"] * 100 for k in ks], [det[k]["rate"] * 100 for k in ks],
-            "Baseline (exact match)", "Ours (set + value match)",
+            "Baseline", "Ours",
             [pct_ci(old[k])[1] for k in ks], [pct_ci(det[k])[1] for k in ks], ylabel="Detection rate (%)")
     save(fig, out, "fig2_e3_baseline_vs_ours")
 
