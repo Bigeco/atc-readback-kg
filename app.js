@@ -19,7 +19,7 @@ const shortType = (t) => ({ TAXI_VIA: "TAXI", HOLD_SHORT: "HOLD SHORT", CROSS_RU
 function txText(m) {
   if (m.text) return `<div class="text">${esc(m.text)}</div>`;
   const ins = (m.instructions || []).filter((i) => !["REQUEST", "ACK"].includes(i.type)).map(insText);
-  return `<div class="text redacted">${ins.length ? esc(ins.join(" · ")) : "지시 없음"}<span class="redacted-note">원문 비공개</span></div>`;
+  return `<div class="text redacted">${ins.length ? esc(ins.join(" · ")) : "no instruction"}<span class="redacted-note">transcript withheld</span></div>`;
 }
 
 function insText(i) {
@@ -43,14 +43,14 @@ function playTx(txId, rest = []) {
   if (playingTx === txId && !player.paused) { player.pause(); queue = []; playingTx = null; markPlaying(); return; }
   queue = rest; playingTx = txId;
   player.src = `/audio/clip?tx=${encodeURIComponent(txId)}`;
-  player.play().catch((e) => { toast(`음성을 재생할 수 없습니다: ${e.message}`); playingTx = null; markPlaying(); });
+  player.play().catch((e) => { toast(`Cannot play audio: ${e.message}`); playingTx = null; markPlaying(); });
   markPlaying();
 }
 player.addEventListener("ended", () => { const next = queue.shift(); next ? playTx(next, queue) : ((playingTx = null), markPlaying()); });
-player.addEventListener("error", () => { toast("음성 파일을 불러오지 못했습니다 (data/raw/liveatc 에 원본 mp3가 있어야 합니다)."); playingTx = null; markPlaying(); });
+player.addEventListener("error", () => { toast("Audio not found (the source mp3 must be in data/raw/liveatc)."); playingTx = null; markPlaying(); });
 const playBtn = (tx) => STATIC
-  ? `<button class="play-btn off" title="공개 사이트에는 원음이 없습니다 (LiveATC 약관). 로컬 서버(scripts/run_demo.sh)에서 재생됩니다." disabled>${ICON_PLAY}</button>`
-  : `<button class="play-btn" data-tx="${esc(tx.tx_id)}" title="원음 재생" onclick='playTx(${JSON.stringify(tx.tx_id)}); event.stopPropagation();'>${ICON_PLAY}</button>`;
+  ? `<button class="play-btn off" title="No audio on the public site (LiveATC terms). Audio plays in the local server (scripts/run_demo.sh)." disabled>${ICON_PLAY}</button>`
+  : `<button class="play-btn" data-tx="${esc(tx.tx_id)}" title="Play audio" onclick='playTx(${JSON.stringify(tx.tx_id)}); event.stopPropagation();'>${ICON_PLAY}</button>`;
 function toast(msg) {
   const el = $("#toast"); el.textContent = msg; el.classList.add("show");
   clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 4000);
@@ -95,7 +95,10 @@ function setTime(t, { refresh = true } = {}) {
   drawHistogram();
   if (!refresh) return;
   clearTimeout(timeDebounce);
-  timeDebounce = setTimeout(() => { loadStrips(); loadSnapshot(); if ($("#near-only").checked) renderAlerts(); }, 120);
+  timeDebounce = setTimeout(() => {
+    loadStrips(); loadSnapshot(); if ($("#near-only").checked) renderAlerts();
+    if ($("#tab-kg").classList.contains("active")) loadKg();
+  }, 120);
 }
 
 // ------------------------------------------------------------------ strips
@@ -117,7 +120,7 @@ async function loadStrips() {
         ${rb.PARTIAL ? `<span class="pill PARTIAL">◐${rb.PARTIAL}</span>` : ""}
         ${rb.MISMATCH ? `<span class="pill MISMATCH">✕${rb.MISMATCH}</span>` : ""}
         ${alerts ? `<span class="pill flag">${alerts} alerts</span>` : ""}</div></div>`;
-  }).join("") || `<p class="hint" style="padding:8px">이 시점 주변에 교신이 없습니다.</p>`;
+  }).join("") || `<p class="hint" style="padding:8px">No transmissions around this time.</p>`;
   document.querySelectorAll(".strip").forEach((el) => el.addEventListener("click", () => selectFlight(el.dataset.f)));
 }
 
@@ -136,8 +139,8 @@ async function loadSnapshot() {
         <span class="what">${esc([r.route && r.route.length ? r.route.join("→") : "", r.target ? (k === "TAXI_VIA" ? "to " + r.target : r.target) : "", r.value || ""].filter(Boolean).join(" ") || "—")}</span>
         <span title="since ${hhmmss(r.since)}"><span class="dot"></span></span></li>`).join("")}
     </ul></div>`).join("");
-  $("#tab-airfield").innerHTML = `<div class="snap-title"><b>${hhmmss(S.t)}Z</b><small>유효 구간이 이 시점을 포함하는 관제 지시 ${total}건</small></div>
-    <div class="lanes">${lanes || '<p class="hint">이 시점에 유효한 상태형 지시가 없습니다.</p>'}</div>`;
+  $("#tab-airfield").innerHTML = `<div class="snap-title"><b>${hhmmss(S.t)}Z</b><small>${total} controller instructions valid at this time</small></div>
+    <div class="lanes">${lanes || '<p class="hint">No state-setting instruction is valid at this time.</p>'}</div>`;
   document.querySelectorAll(".lane li").forEach((el) => el.addEventListener("click", () => el.dataset.f && selectFlight(el.dataset.f)));
 }
 
@@ -152,7 +155,7 @@ async function selectFlight(fid, { tab = "flight" } = {}) {
       <span class="hint">${esc((c.surfaces || []).join(" · "))}</span>
       <span class="hint">${hhmmss(c.first)}–${hhmmss(c.last)}Z · ${c.n_tx} transmissions</span>
       ${Object.entries(c.readback || {}).map(([k, v]) => `<span class="pill ${k}">${k} ${v}</span>`).join(" ")}
-      ${STATIC ? "" : `<button class="btn" id="play-all">${ICON_PLAY} 교신 전체 듣기</button>`}</div>
+      ${STATIC ? "" : `<button class="btn" id="play-all">${ICON_PLAY} Play all</button>`}</div>
     <div class="radio">${data.timeline.map(renderMsg).join("")}</div>`;
   document.querySelectorAll(".msg").forEach((el) => el.addEventListener("click", () => showEvidence(el.dataset.tx)));
   const all = data.timeline.map((m) => m.tx_id);
@@ -199,8 +202,133 @@ async function loadGraph(fid) {
   });
   S.cy.on("tap", "node[kind = 'Transmission']", (ev) => showEvidence(ev.target.id()));
   $("#legend").innerHTML = Object.entries(NODE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("") +
-    `<span><i class="ln" style="background:#eb6834"></i>READBACK_OF</span><span><i class="ln dash" style="color:#2a78d6"></i>NEXT (시간순)</span>`;
+    `<span><i class="ln" style="background:#eb6834"></i>READBACK_OF</span><span><i class="ln dash" style="color:#2a78d6"></i>NEXT (time order)</span>`;
 }
+
+// ------------------------------------------------------------------ KG explorer (whole graph, one 10-min window)
+const KG_BIN = 600;
+const KG_COLORS = { ...NODE_COLORS, Airport: "#0b0b0b" };
+const STATUS_COLORS = { MATCH: "#0a7d3c", PARTIAL: "#e0a100", MISMATCH: "#c93434" };
+const KG = { mode: "entity", bin: null, cy: null, hidden: new Set(), data: null };
+function kgLabel(n) {
+  const p = n.props;
+  if (n.label === "Transmission") return `${p.speaker} ${hhmmss(p.utc_start_epoch)}`;
+  if (n.label === "Instruction") return shortType(p.type);
+  if (n.label === "CallsignMention") return `"${p.surface}"`;
+  if (n.label === "Airport") return p.location_indicator || n.id.split(":").pop();
+  return n.id.split(":").pop();
+}
+async function loadKg(force = false) {
+  if (!S.hist || S.t === null) return;
+  const bin = Math.floor((S.t - S.hist.start) / KG_BIN);
+  if (!force && bin === KG.bin && KG.cy) return;
+  KG.bin = bin;
+  const t0 = S.hist.start + bin * KG_BIN;
+  $("#kg-window").textContent = `${hhmmss(t0).slice(0, 5)}–${hhmmss(t0 + KG_BIN).slice(0, 5)}Z`;
+  const g = await api(`/api/kg?bin=${bin}&mode=${KG.mode}`);
+  KG.data = g;
+  const deg = {};
+  g.edges.forEach((e) => { deg[e.src] = (deg[e.src] || 0) + 1; deg[e.dst] = (deg[e.dst] || 0) + 1; });
+  const elements = [
+    ...g.nodes.map((n) => ({ data: { id: n.id, label: kgLabel(n), kind: n.label, deg: deg[n.id] || 0 } })),
+    ...g.edges.map((e) => ({ data: { id: e.id, source: e.src, target: e.dst, type: e.type,
+      status: e.props.status || "", label: e.type === "INSTRUCTED" ? e.props.types.map(shortType).join(", ")
+        : e.type === "READBACK_OF" ? `READBACK ${e.props.status}` : e.type } })),
+  ];
+  if (KG.cy) KG.cy.destroy();
+  KG.cy = cytoscape({
+    container: $("#kgcy"), elements, wheelSensitivity: 0.3, minZoom: 0.15, maxZoom: 3,
+    style: [
+      { selector: "node", style: { label: "data(label)", "font-family": "JetBrains Mono, monospace", "font-size": 8, color: "#52514e",
+        "text-valign": "bottom", "text-margin-y": 2, "background-color": (n) => KG_COLORS[n.data("kind")] || "#999",
+        width: (n) => 8 + Math.min(18, Math.sqrt(n.data("deg")) * 3), height: (n) => 8 + Math.min(18, Math.sqrt(n.data("deg")) * 3),
+        "border-width": 1.5, "border-color": "#fff" } },
+      { selector: "node[kind = 'Flight']", style: { "font-size": 10, "font-weight": 600, color: "#0b0b0b" } },
+      { selector: "node[kind = 'Airport']", style: { width: 34, height: 34, "font-size": 11, color: "#0b0b0b", "font-weight": 600 } },
+      { selector: "node[kind = 'Transmission']", style: { shape: "round-rectangle" } },
+      { selector: "node[kind = 'CallsignMention']", style: { shape: "diamond" } },
+      { selector: "edge", style: { width: 1, "line-color": "#dcdbd5", "curve-style": "bezier", "target-arrow-shape": "triangle",
+        "target-arrow-color": "#dcdbd5", "arrow-scale": 0.6, label: "", "font-size": 7, color: "#52514e", "text-rotation": "autorotate",
+        "text-background-color": "#fff", "text-background-opacity": 0.85, "text-background-padding": 1 } },
+      { selector: "edge[type = 'PART_OF']", style: { "line-color": "#eeede8", "target-arrow-shape": "none" } },
+      { selector: "edge[type = 'ALIAS']", style: { "line-style": "dotted", "line-color": "#b8b6ae", "target-arrow-shape": "none" } },
+      { selector: "edge[type = 'INSTRUCTED']", style: { width: 1.6, "line-color": "#9ab8de", "target-arrow-color": "#9ab8de" } },
+      ...Object.entries(STATUS_COLORS).map(([k, c]) => ({ selector: `edge[status = '${k}']`, style: { width: 2, "line-color": c, "target-arrow-color": c } })),
+      { selector: "edge[type = 'NEXT']", style: { "line-style": "dashed", "line-color": "#2a78d6", "target-arrow-color": "#2a78d6" } },
+      { selector: ".faded", style: { opacity: 0.12 } },
+      { selector: "edge.hl", style: { label: "data(label)", opacity: 1 } },
+      { selector: "node.hl", style: { opacity: 1, "font-size": 10, color: "#0b0b0b" } },
+      { selector: "node:selected", style: { "border-color": "#2a78d6", "border-width": 3 } },
+    ],
+    layout: { name: "cose", animate: false, nodeRepulsion: KG.mode === "entity" ? 12000 : 8000, idealEdgeLength: 55,
+      gravity: 0.6, numIter: 1500, randomize: true },
+  });
+  applyKgFilter();
+  KG.cy.on("tap", "node", (ev) => focusKgNode(ev.target));
+  KG.cy.on("tap", (ev) => { if (ev.target === KG.cy) clearKgFocus(); });
+  KG.cy.on("dbltap", "node", (ev) => openKgNode(ev.target.id(), ev.target.data("kind")));
+  renderKgLegend();
+}
+function focusKgNode(n) {
+  const hood = n.closedNeighborhood();
+  KG.cy.elements().addClass("faded").removeClass("hl");
+  hood.removeClass("faded").addClass("hl");
+  const node = KG.data.nodes.find((x) => x.id === n.id());
+  const rows = Object.entries(node.props).filter(([k, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length) && !["layer", "iri", "backend"].includes(k))
+    .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(typeof v === "number" && k.includes("epoch") ? hhmmss(v) + "Z" : Array.isArray(v) ? v.map((x) => String(x).split(":").pop()).join(", ") : String(v).split(":").pop())}</td></tr>`).join("");
+  const links = n.connectedEdges().map((e) => {
+    const other = e.source().id() === n.id() ? e.target() : e.source();
+    return `<li><span class="et">${esc(e.data("type") === "INSTRUCTED" ? e.data("label") : e.data("type"))}</span>${e.source().id() === n.id() ? "→" : "←"} <b>${esc(other.data("label"))}</b> <small>${esc(other.data("kind"))}</small></li>`;
+  }).join("");
+  const act = node.label === "Flight" ? `<button class="btn" onclick="openKgNode('${esc(node.id)}','Flight')">Open flight timeline</button>`
+    : node.label === "Transmission" ? `<button class="btn" onclick="openKgNode('${esc(node.id)}','Transmission')">Show evidence</button>` : "";
+  $("#kg-detail").innerHTML = `<div class="kd-head"><span class="kd-kind" style="background:${KG_COLORS[node.label] || "#999"}"></span>
+      <b>${esc(kgLabel(node))}</b><small>${esc(node.label)}</small><button class="close" onclick="clearKgFocus()">✕</button></div>
+    <table>${rows}</table><h4>${n.connectedEdges().length} links</h4><ul>${links}</ul>${act}`;
+  $("#kg-detail").classList.remove("hidden");
+}
+function clearKgFocus() {
+  if (KG.cy) KG.cy.elements().removeClass("faded hl");
+  $("#kg-detail").classList.add("hidden");
+}
+function openKgNode(id, kind) {
+  if (kind === "Flight") selectFlight(id.split(":").slice(1).join(":"));
+  else if (kind === "Transmission") showEvidence(id);
+}
+function applyKgFilter() {
+  if (!KG.cy) return;
+  KG.cy.nodes().forEach((n) => n.style("display", KG.hidden.has(n.data("kind")) ? "none" : "element"));
+}
+function renderKgLegend() {
+  const kinds = [...new Set(KG.data.nodes.map((n) => n.label))].sort();
+  const count = (k) => KG.data.nodes.filter((n) => n.label === k).length;
+  const edgeKeys = KG.mode === "entity"
+    ? [["MATCH", STATUS_COLORS.MATCH, "instructed · read back"], ["PARTIAL", STATUS_COLORS.PARTIAL, "partial"], ["MISMATCH", STATUS_COLORS.MISMATCH, "mismatch"], ["", "#9ab8de", "no readback link"]]
+    : [["", STATUS_COLORS.MATCH, "READBACK_OF match"], ["", STATUS_COLORS.PARTIAL, "partial"], ["", STATUS_COLORS.MISMATCH, "mismatch"], ["", "#2a78d6", "NEXT"]];
+  $("#kg-legend").innerHTML = kinds.map((k) => `<button data-k="${k}" class="${KG.hidden.has(k) ? "off" : ""}" title="Show / hide">
+      <i style="background:${KG_COLORS[k] || "#999"}"></i>${k} <small>${count(k)}</small></button>`).join("") +
+    `<span class="sep"></span>` + edgeKeys.map(([, c, t]) => `<span><i class="ln" style="background:${c}"></i>${t}</span>`).join("") +
+    `<span class="hint">Click: neighbours · double-click: open</span>`;
+  document.querySelectorAll("#kg-legend button").forEach((b) => b.addEventListener("click", () => {
+    KG.hidden.has(b.dataset.k) ? KG.hidden.delete(b.dataset.k) : KG.hidden.add(b.dataset.k);
+    b.classList.toggle("off"); applyKgFilter();
+  }));
+}
+document.querySelectorAll("#kg-mode button").forEach((b) => b.addEventListener("click", () => {
+  KG.mode = b.dataset.mode;
+  document.querySelectorAll("#kg-mode button").forEach((x) => x.classList.toggle("on", x === b));
+  KG.hidden.clear(); clearKgFocus(); loadKg(true);
+}));
+$("#kg-fit").addEventListener("click", () => KG.cy && KG.cy.fit(undefined, 30));
+$("#kg-find").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || !KG.cy) return;
+  const q = e.target.value.trim().toUpperCase();
+  const hit = KG.cy.nodes().filter((n) => String(n.data("label")).toUpperCase().replace(/"/g, "") === q || n.id().toUpperCase().endsWith(":" + q))[0]
+    || KG.cy.nodes().filter((n) => String(n.data("label")).toUpperCase().includes(q))[0];
+  if (!hit) { toast(`"${e.target.value}" is not in this 10-min window`); return; }
+  KG.cy.animate({ center: { eles: hit }, zoom: 1.6 }, { duration: 300 });
+  hit.select(); focusKgNode(hit);
+});
 
 // ------------------------------------------------------------------ alerts + evidence
 async function loadAlerts() {
@@ -224,7 +352,7 @@ function renderAlerts() {
       <div class="t">${hhmmss(a.utc_epoch)}<br>${esc(a.flight || "—")}</div>
       <div><div class="lbl ${esc(a.label)}">${esc(a.label)} <span class="hint">${esc(a.rule)}</span></div>
         <div class="m" title="${esc(a.message)}">${esc(a.message)}</div></div></div>`).join("") ||
-    `<p class="hint" style="padding:8px">조건에 맞는 경보가 없습니다.</p>`;
+    `<p class="hint" style="padding:8px">No alerts match the filter.</p>`;
   document.querySelectorAll(".alert").forEach((el) => el.addEventListener("click", () => openAlert(el.dataset.id)));
 }
 
@@ -251,12 +379,12 @@ async function showEvidence(txId, alert = null) {
   if (rb) {
     const name = (id) => (id || "").split(":").pop();
     const rows = [
-      ...rb.matched.map((m) => `<tr><td>${esc(m.type)}</td><td class="ok">일치</td><td></td></tr>`),
-      ...rb.missing.map((m) => `<tr><td>${esc(m.type)}</td><td class="miss">복창 누락</td><td>${esc(name(m.target_id))}</td></tr>`),
-      ...rb.conflicts.map((c) => `<tr><td>${esc(c.type)}</td><td class="bad">불일치 (${esc(c.reasons.join(","))})</td>
+      ...rb.matched.map((m) => `<tr><td>${esc(m.type)}</td><td class="ok">matched</td><td></td></tr>`),
+      ...rb.missing.map((m) => `<tr><td>${esc(m.type)}</td><td class="miss">not read back</td><td>${esc(name(m.target_id))}</td></tr>`),
+      ...rb.conflicts.map((c) => `<tr><td>${esc(c.type)}</td><td class="bad">mismatch (${esc(c.reasons.join(","))})</td>
         <td>${esc(name(c.atco_target) || (c.atco_route || []).map(name).join("→"))} ≠ ${esc(name(c.pilot_target) || (c.pilot_route || []).map(name).join("→"))}</td></tr>`),
     ].join("");
-    diff = `<table class="diff"><tr><th>필수 개념</th><th>판정: <span class="pill ${esc(rb.status)}">${esc(rb.status)}</span></th><th>근거</th></tr>${rows}</table>`;
+    diff = `<table class="diff"><tr><th>Required</th><th>Result: <span class="pill ${esc(rb.status)}">${esc(rb.status)}</span></th><th>Detail</th></tr>${rows}</table>`;
   }
   $("#evidence").innerHTML = `<h3><span>${alert ? esc(alert.label) + " · " : ""}Evidence</span><button class="close" onclick="$('#evidence').classList.add('hidden')">✕</button></h3>
     ${alert ? `<div class="hint" style="font-size:12px">${esc(alert.message)}</div>` : ""}
@@ -265,32 +393,43 @@ async function showEvidence(txId, alert = null) {
 }
 
 // ------------------------------------------------------------------ evaluation tab
+const CQ_EN = {
+  CQ1: (p) => `Instructions given to ${p.flight || "a flight"}, in time order`,
+  CQ2: (p) => `Flights told to hold short of ${p.target || "a place"}`,
+  CQ3: () => "Instructions without a readback, or read back without a callsign",
+  CQ4: () => "Readbacks whose taxiway or runway differs from the instruction",
+  CQ5: () => "Callsigns repaired from the transcript, with the source transmission",
+  CQ6: () => "Transmissions naming a taxiway or runway that is not in the airport KB",
+  CQ7: () => "Flights still receiving ground instructions after hand-off to the tower",
+  CQ8: (p) => `Ground state valid at ${p.t_utc || "time t"} (taxiing, holding, handed off)`,
+};
+const cqText = (r) => (CQ_EN[r.cq] ? CQ_EN[r.cq](r.params || {}) : r.question);
 function renderEval(ev, sm) {
   const pct = (x) => (x === null || x === undefined ? "-" : `${(x * 100).toFixed(1)}%`);
   const cards = [];
   if (ev.e1_competency) {
     const e = ev.e1_competency;
-    cards.push(`<div class="card"><h3>E1 · 역량 질문 (질적 평가)</h3>
-      <div class="big">${e.non_empty}/${e.n_cq}</div><div class="hint">답변 가능 ${e.answerable} · 근거 추적 가능 ${e.traceable}</div>
-      <table><tr><th>CQ</th><th>질문</th><th>답</th><th>근거</th></tr>
-      ${e.results.map((r) => `<tr><td>${r.cq}</td><td>${esc(r.question)}</td><td>${r.n_answers}</td><td>${r.traceable ? "✓" : "–"}</td></tr>`).join("")}</table></div>`);
+    cards.push(`<div class="card"><h3>E1 · Competency questions</h3>
+      <div class="big">${e.non_empty}/${e.n_cq}</div><div class="hint">answerable ${e.answerable} · traceable to source ${e.traceable}</div>
+      <table><tr><th>CQ</th><th>Question</th><th>Answers</th><th>Traceable</th></tr>
+      ${e.results.map((r) => `<tr><td>${r.cq}</td><td>${esc(cqText(r))}</td><td>${r.n_answers}</td><td>${r.traceable ? "✓" : "–"}</td></tr>`).join("")}</table></div>`);
   }
   if (ev.e3_injection) {
     const e = ev.e3_injection;
-    cards.push(`<div class="card"><h3>E3 · 주입 오류 탐지 (n=${e.n_pairs} MATCH 쌍, ${esc(e.extractor)})</h3>
-      <div class="hint">대조군 오경보 ${pct(e.control_false_alarm.rate)} (95% CI ${e.control_false_alarm.ci95.map(pct).join("–")})</div>
-      <table><tr><th>주입 유형</th><th>탐지율</th><th></th><th>n</th></tr>
+    cards.push(`<div class="card"><h3>E3 · Injected readback errors (n=${e.n_pairs} MATCH pairs)</h3>
+      <div class="hint">False alarms on unperturbed pairs ${pct(e.control_false_alarm.rate)} (95% CI ${e.control_false_alarm.ci95.map(pct).join("–")})</div>
+      <table><tr><th>Injected error</th><th>Detected</th><th></th><th>n</th></tr>
       ${Object.entries(e.detection).map(([k, r]) => `<tr><td>${esc(k)}</td><td>${pct(r.rate)}</td>
         <td style="width:40%"><div class="bar"><span style="width:${(r.rate || 0) * 100}%"></span></div></td><td>${r.n}</td></tr>`).join("")}</table></div>`);
   }
   if (ev.e2_precision && (ev.e2_precision.label || ev.e2_precision.label_llm)) {
     const e = ev.e2_precision.label || ev.e2_precision.label_llm;
-    const who = ev.e2_precision.label ? "사람 판정" : "LLM 판정 · 잠정, 사람 라벨 필요";
-    cards.push(`<div class="card"><h3>E2 · 근거 대비 정밀도 (${who})</h3>
+    const who = ev.e2_precision.label ? "human labels" : "LLM labels, provisional";
+    cards.push(`<div class="card"><h3>E2 · Precision against the source (${who})</h3>
       <div class="big">${pct(e.overall.strict.rate)}</div><div class="hint">95% CI ${e.overall.strict.ci95.map(pct).join("–")} · n=${e.overall.strict.n}</div>
-      <table><tr><th>관계</th><th>정밀도</th><th>n</th></tr>${Object.entries(e.by_relation).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${pct(v.strict.rate)}</td><td>${v.strict.n}</td></tr>`).join("")}</table></div>`);
+      <table><tr><th>Relation</th><th>Precision</th><th>n</th></tr>${Object.entries(e.by_relation).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${pct(v.strict.rate)}</td><td>${v.strict.n}</td></tr>`).join("")}</table></div>`);
   }
-  cards.push(`<div class="card"><h3>KG 구성</h3><table>
+  cards.push(`<div class="card"><h3>KG contents</h3><table>
     ${Object.entries(sm.nodes || {}).map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table></div>`);
   $("#tab-eval").innerHTML = `<div class="eval-grid">${cards.join("")}</div>`;
 }
@@ -300,6 +439,7 @@ function switchTab(name) {
   document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === `tab-${name}`));
   if (name === "graph" && S.cy) S.cy.resize();
+  if (name === "kg") { if (KG.cy) KG.cy.resize(); loadKg(); }
 }
 document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 $("#time").addEventListener("input", (e) => setTime(S.hist.start + Number(e.target.value)));
