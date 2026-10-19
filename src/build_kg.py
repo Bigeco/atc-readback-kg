@@ -79,6 +79,7 @@ def main():
     parser.add_argument("--run-name", default="katl_gnd")
     parser.add_argument("--stt-from", default=None, help="run name whose stt/ to read (default: --run-name)")
     parser.add_argument("--stt-dir", type=Path, default=None, help="read transcripts from this folder instead (e.g. data/raw/text)")
+    parser.add_argument("--reuse-roles", action="store_true", help="reuse results/<run>/turns.jsonl (skip M2a)")
     parser.add_argument("--role", choices=["llm", "rule"], default="llm",
                         help="M2a for rows with speaker IDs: LLM per speaker (rule vote as fallback) or rule vote only")
     parser.add_argument("--extractor", choices=["llm", "rule"], default="llm")
@@ -119,8 +120,13 @@ def main():
         rows = rows[: args.limit]
     # Whisper rows carry a language guess; non-English transmissions skip M2b (MOSS rows have no such field).
     foreign = {r["tx_id"] for r in rows if r.get("lang", "en") != "en" and r.get("lang_prob", 0) >= 0.5}
-    role_llm = get_llm(args) if args.role == "llm" and any(r.get("speaker") for r in rows) else None
-    turns, speaker_roles = decide_roles(rows, callsign_re, role_llm)
+    if args.reuse_roles and (out / "turns.jsonl").exists():
+        # M2a already ran for this run: keep its speaker roles and rerun only M2b onward
+        turns = load_jsonl(out / "turns.jsonl")
+        speaker_roles = load_json(out / "speaker_roles.json") if (out / "speaker_roles.json").exists() else {}
+    else:
+        role_llm = get_llm(args) if args.role == "llm" and any(r.get("speaker") for r in rows) else None
+        turns, speaker_roles = decide_roles(rows, callsign_re, role_llm)
     for t in turns:
         t["_foreign"] = t["tx_id"].split(".")[0] in foreign
     write_jsonl([{k: v for k, v in t.items() if not k.startswith("_")} for t in turns], out / "turns.jsonl")
