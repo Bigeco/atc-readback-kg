@@ -114,7 +114,7 @@ def main():
     hbar(ax, [f"{names[k]} (n={det[k]['n']})" for k in order] + [f"Unperturbed control (n={e3['control_false_alarm']['n']})"],
          list(vals) + [fa_v], list(cis) + [fa_ci], xlabel="Detection rate (%)")
     ax.patches[-1].set_color(C2)          # control bar = false-alarm rate
-    save(fig, out, "fig1_e3_detection")
+    save(fig, out, "fig3_e3_detection")
 
     # Figure 2: before vs after
     old = load(run_dir(args.old_run) / "eval" / "e3_injection.json")["detection"]
@@ -124,7 +124,7 @@ def main():
     grouped(ax, labels, [old[k]["rate"] * 100 for k in ks], [det[k]["rate"] * 100 for k in ks],
             "Baseline", "Ours",
             [pct_ci(old[k])[1] for k in ks], [pct_ci(det[k])[1] for k in ks], ylabel="Detection rate (%)")
-    save(fig, out, "fig2_e3_baseline_vs_ours")
+    save(fig, out, "fig4_e3_baseline_vs_ours")
 
     # Figure 3: E2 precision by relation
     e2 = load(run_dir(args.e2_run) / "eval" / "e2_precision.json")["label"]
@@ -136,7 +136,7 @@ def main():
     grouped(ax, [rel[k] for k in ks] + ["Overall"], [b["strict"]["rate"] * 100 for b in blocks],
             [b["lenient"]["rate"] * 100 for b in blocks], "Strict", "Lenient",
             [pct_ci(b["strict"])[1] for b in blocks], None, ylabel="Precision (%)")
-    save(fig, out, "fig3_e2_precision")
+    save(fig, out, "fig2_e2_precision")
 
     # Figure 4: E0 intrinsic quality
     e0 = load(ev / "e0_intrinsic.json")
@@ -152,7 +152,7 @@ def main():
          xlabel="Rate (%), lower is better")
     for ax, tag in ((a1, "(a)"), (a2, "(b)")):
         ax.set_title(tag, loc="left", fontsize=8.5, pad=3)
-    save(fig, out, "fig4_e0_intrinsic")
+    save(fig, out, "fig1_e0_intrinsic")
 
     # Figure 5: readback status and alerts
     s = load(run_dir(args.run) / "summary.json")
