@@ -78,15 +78,21 @@ MISMATCH alerts (8 of 19 sampled, 11 archives) correspond to genuine discrepanci
 
 ![](figures/fig4_e3_baseline_vs_ours.png)
 
-**Caption.** Detection rate of the baseline (Whisper transcripts, exact target/route match) and of the revised system
-(MOSS transcripts, set-based place match grounded in the controller's text, heading/altitude value match) on the four
-injection types measured in both runs. Error bars: Wilson 95% CI.
+**Caption.** Detection rate of the baseline (Whisper transcripts, exact target/route match; KG `katl_all`) and of the
+revised system (MOSS transcripts, set-based place match grounded in the controller's text, heading/altitude value
+match; KG `katl_moss38`) on the four injection types measured in both runs (same extractor, 200 MATCH pairs each).
+Error bars: Wilson 95% CI. n (baseline / ours): callsign digit 189/200, callsign omitted 168/169, taxiway 146/80,
+runway side 7/32.
 
-**Results.** The revised comparison raises taxiway-substitution detection from 33% to 76% and runway-side detection
-from 0/7 to 78%, and callsign-omission detection from 58% to 86%; callsign-digit detection stays above 90% in both.
-The baseline missed spatial errors because a correct readback and a wrong one were extracted with the same
-destination/route inconsistency, so exact matching could not tell them apart. Note that the two runs differ in both the
-transcription model and the comparison rule, so the gain is not attributable to the comparison alone.
+**Results.** The revised system detects taxiway substitutions in 76% of cases (baseline 33%), runway-side swaps in 78%
+(baseline 0 of 7) and omitted callsigns in 86% (baseline 58%); callsign-digit detection stays above 90% in both. In the
+baseline, a swapped place often left the comparison unchanged ("9 left at Mike 2" changed to "9 right" was still
+MATCH), and numbers read as callsigns hid an omitted callsign ("descend 3000, Delta 583" without the callsign became
+flight UNK3000). The comparison is not controlled: besides the transcription model and the comparison rule, the
+injection procedure also changed. The baseline injected taxiway swaps into pairs without a taxiway and replaced
+callsign words ("Delta 583" to "Victor 583"), which cannot be detected as a place error; the revised run injects only
+where the controller instruction contains the element. Part of the taxiway gain is therefore due to the evaluation
+procedure. The baseline also raised no false alarm on unperturbed pairs (0/200, vs. 3.5% for the revised system).
 
 ---
 
