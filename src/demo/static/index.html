@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,7 +27,7 @@
   </header>
 
   <section class="scrubber">
-    <button id="play" class="play" title="타임라인 자동 진행 (소리 없음)"><svg class="i-play" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></svg><svg class="i-pause" viewBox="0 0 16 16"><path d="M4.5 3.5h2.5v9H4.5zM9 3.5h2.5v9H9z" fill="currentColor"/></svg><span>Auto-advance</span></button>
+    <button id="play" class="play" title="Advance the timeline automatically (no sound)"><svg class="i-play" viewBox="0 0 16 16"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></svg><svg class="i-pause" viewBox="0 0 16 16"><path d="M4.5 3.5h2.5v9H4.5zM9 3.5h2.5v9H9z" fill="currentColor"/></svg><span>Auto-advance</span></button>
     <div class="scrub-track">
       <canvas id="histogram" height="56"></canvas>
       <input id="time" type="range" min="0" max="1" step="1" value="0">
@@ -53,7 +53,7 @@
       </nav>
       <div class="tab-body">
         <div id="tab-airfield" class="tab active"></div>
-        <div id="tab-flight" class="tab"><p class="hint">왼쪽 strip이나 경보를 눌러 항공편을 선택하세요.</p></div>
+        <div id="tab-flight" class="tab"><p class="hint">Select a flight from the list on the left or from an alert.</p></div>
         <div id="tab-graph" class="tab"><div id="cy"></div><div class="legend" id="legend"></div></div>
         <div id="tab-eval" class="tab"></div>
       </div>
@@ -63,7 +63,7 @@
       <div id="evidence" class="evidence hidden"></div>
       <div class="alerts-head">
         <h2>Alerts</h2>
-        <label class="near"><input type="checkbox" id="near-only"> 시점 ±15분</label>
+        <label class="near"><input type="checkbox" id="near-only"> ±15 min of t</label>
       </div>
       <div class="alert-filters" id="alert-filters"></div>
       <div id="alerts" class="alerts"></div>
