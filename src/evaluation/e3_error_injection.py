@@ -72,12 +72,29 @@ def drop_callsign(text, rng, kb):
     return new if new != text else None
 
 
+def change_heading(text, rng, kb):
+    m = re.search(r"\b(heading|left|right|turn)[\s,]+([0-3]\d{2})\b", text, re.I)
+    if not m:
+        return None
+    new = (int(m.group(2)) + 20 - 1) % 360 + 1
+    return text[: m.start(2)] + f"{new:03d}" + text[m.end(2):]
+
+
+def change_altitude(text, rng, kb):
+    m = re.search(r"\b(\d{1,2})(\s*thousand|,?000)\b", text, re.I)
+    if not m:
+        return None
+    return text[: m.start(1)] + str(int(m.group(1)) + 1) + text[m.end(1):]
+
+
 PERTURBATIONS = {
     "lr_swap": (swap_side, "MISMATCH"),
     "taxiway_swap": (swap_taxiway, "MISMATCH"),
     "callsign_digit": (change_callsign_digit, "WRONG_FLIGHT"),
     "drop_hold_short": (drop_hold_short, "PARTIAL"),
     "drop_callsign": (drop_callsign, "NO_CALLSIGN"),
+    "heading_change": (change_heading, "MISMATCH"),
+    "altitude_change": (change_altitude, "MISMATCH"),
 }
 
 

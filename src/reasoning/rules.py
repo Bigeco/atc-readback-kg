@@ -35,6 +35,38 @@ def said_in(place_id: str, text: str) -> bool:
     return name.lower() in norm
 
 
+def heading_value(value) -> Optional[int]:
+    """'070', 'heading 180', 'three six zero' -> degrees; None when no clean 3-digit heading is present."""
+    if value in (None, ""):
+        return None
+    m = re.search(r"(?<!\d)([0-3]\d{2})(?!\d)", normalize_text(str(value))[0])
+    return int(m.group(1)) if m and 1 <= int(m.group(1)) <= 360 else None
+
+
+def altitude_value(value) -> Optional[int]:
+    """'FL240' -> 24000, '5000' / 'five thousand' / '5' / '4.5' -> feet; None when ambiguous or implausible."""
+    if value in (None, ""):
+        return None
+    v = normalize_text(str(value))[0].lower().replace(",", "")
+    m = re.search(r"\bfl\s*(\d{2,3})\b|flight level\s*(\d{2,3})", v)
+    if m:
+        return int(m.group(1) or m.group(2)) * 100
+    m = re.search(r"(\d{1,2})\s*thousand(?:\s*(\d)\s*hundred)?", v)
+    if m:
+        return int(m.group(1)) * 1000 + int(m.group(2) or 0) * 100
+    m = re.search(r"(?<![\d.])(\d{4,5})(?![\d.])", v)          # "and maintain 5000"
+    if m and 1000 <= int(m.group(1)) <= 45000:
+        return int(m.group(1))
+    m = re.fullmatch(r"\s*(\d+(?:\.\d)?)\s*", v)
+    if m:
+        x = float(m.group(1))
+        if 1000 <= x <= 45000:
+            return int(x)
+        if 1 <= x <= 45:                       # "5" / "4.5" spoken as thousands
+            return int(x * 1000)
+    return None
+
+
 def concept_match(a: dict, p: dict, atco_text: Optional[str] = None) -> Tuple[bool, List[str]]:
     """Compare one controller instruction with one pilot concept of the same type."""
     reasons = []
@@ -60,6 +92,15 @@ def concept_match(a: dict, p: dict, atco_text: Optional[str] = None) -> Tuple[bo
             reasons.append("route")
     if a.get("type") in ("CONTACT", "MONITOR") and a.get("value") and p.get("value") and a["value"] != p["value"]:
         reasons.append("frequency")
+    # Heading / altitude: flag only when both sides give a clean value (an unreadable value is not a conflict)
+    if a.get("type") == "HEADING":
+        ha, hp = heading_value(a.get("value")), heading_value(p.get("value"))
+        if ha is not None and hp is not None and ha != hp:
+            reasons.append("heading")
+    if a.get("type") in ("CLIMB", "DESCEND"):
+        xa, xp = altitude_value(a.get("value")), altitude_value(p.get("value"))
+        if xa is not None and xp is not None and xa != xp:
+            reasons.append("altitude")
     return not reasons, reasons
 
 
