@@ -47,11 +47,42 @@ def _clause(text: str, start: int) -> str:
     return rest if not m else rest[: m.start() + 1]
 
 
+# Phonetic words that are not taxiways: part of a callsign ("Three eight Alpha", "Sierra Delta 759") or an ATIS letter.
+_PHON = "|".join(sorted(PHONETIC, key=len, reverse=True))
+AIR_FACILITIES = {"APP", "DEP"}                     # no taxi instructions on approach / departure frequencies
+TAXI_VERB = re.compile(r"\b(taxi|via|join|continue|proceed|ramp|follow|behind|(?:left|right) (?:on|at|onto))\b")
+# "taxi_verb" (rule TAXI_VIA only with a taxi verb) is off: it drops verbless pilot readbacks ("Lima one") and lost
+# 4 of 8 true readback errors on KATL MOSS; phonetic_mask + facility removed wrong TAXI_VIA without losing any.
+DEFAULT_FIXES = ("phonetic_mask", "facility")
+
+
+def mask_non_taxiway_phonetics(low: str) -> str:
+    """Blank phonetic words that belong to a callsign or ATIS letter so they are not read as taxiways.
+    Expects text in which recognised callsigns are already replaced by CALLSIGN."""
+    # "sierra CALLSIGN" is part of the callsign, but "turn on delta CALLSIGN" names taxiway D
+    low = re.sub(rf"(?<!\bon )(?<!\bvia )(?<!\bto )(?<!\bat )(?<!\bonto )\b({_PHON})(?=\s+callsign\b)", " ", low,
+                 flags=re.I)
+    low = re.sub(rf"^(\W*\d{{1,4}}\s+)({_PHON})\b", r"\1 ", low, flags=re.I)          # "38 alpha, ..." at the start
+    low = re.sub(rf"(\d{{1,4}}\s+)({_PHON})(?=\s*(?:,|\.|$))", r"\1 ", low, flags=re.I)  # "... 38 alpha."
+    low = re.sub(rf"\b(information|info)\s+({_PHON})\b", r"\1 ", low, flags=re.I)      # ATIS letter
+    low = re.sub(rf"\b(north|south|east|west)\s+({_PHON})\b", r"\1 ", low, flags=re.I)  # "3 north quebec": spot + ATIS
+    low = re.sub(rf"\b({_PHON})(?=\s+current\b)", " ", low, flags=re.I)                # "zulu current"
+    return low
+
+
+def taxiway_haystack(norm: str, callsign_re) -> str:
+    masked = norm
+    for hit in sorted(find_callsigns(norm, callsign_re, allow_bare=True), key=lambda h: -h["start"]):
+        masked = masked[: hit["start"]] + "CALLSIGN" + masked[hit["end"]:]
+    return mask_non_taxiway_phonetics(masked.lower())
+
+
 class RuleExtractor:
     name = "rule"
 
-    def __init__(self, callsign_re):
+    def __init__(self, callsign_re, phonetic_mask: bool = False):
         self.callsign_re = callsign_re
+        self.phonetic_mask = phonetic_mask
 
     def extract_one(self, text: str, role: str) -> dict:
         norm, edits = normalize_text(text)
@@ -61,6 +92,8 @@ class RuleExtractor:
         for hit in sorted(hits, key=lambda h: -h["start"]):
             masked = masked[: hit["start"]] + "CALLSIGN" + masked[hit["end"]:]
         low = masked.lower()
+        if self.phonetic_mask:
+            low = mask_non_taxiway_phonetics(low)
 
         instructions: List[dict] = []
         consumed = []
@@ -183,7 +216,8 @@ def split_extraction(rec: dict):
 class LLMExtractor:
     name = "llm"
 
-    def __init__(self, llm, ontology: dict, callsign_re, batch_size: int = 16, max_new_tokens: int = 320):
+    def __init__(self, llm, ontology: dict, callsign_re, batch_size: int = 16, max_new_tokens: int = 320,
+                 fixes=DEFAULT_FIXES):
         self.llm = llm
         self.ontology = ontology
         self.callsign_re = callsign_re
@@ -191,7 +225,8 @@ class LLMExtractor:
         self.max_new_tokens = max_new_tokens
         self.allowed = set(ontology["command_types"])
         self.cues = {k: re.compile(v, re.I) for k, v in ontology.get("lexical_cues", {}).items()}
-        self.fallback = RuleExtractor(callsign_re)
+        self.fixes = set(fixes)
+        self.fallback = RuleExtractor(callsign_re, phonetic_mask="phonetic_mask" in self.fixes)
         types = "\n".join(f"- {k}: {v['description']}" for k, v in ontology["command_types"].items())
         examples = "\n".join(
             f"transmission: {ex['text']}\noutput: {json.dumps(ex['output'])}"
@@ -208,6 +243,8 @@ class LLMExtractor:
     def _validate(self, raw: dict, turn: dict) -> dict:
         norm, edits = normalize_text(turn["text"])
         haystack = norm.lower()
+        places = taxiway_haystack(norm, self.callsign_re) if "phonetic_mask" in self.fixes else haystack
+        air = "facility" in self.fixes and turn.get("facility_class") in AIR_FACILITIES
         speaker = raw.get("speaker") if raw.get("speaker") in ("ATCO", "PILOT") else turn["role"]
         callsign = raw.get("callsign") if isinstance(raw.get("callsign"), (str, int)) else None
         if callsign is not None:
@@ -222,6 +259,9 @@ class LLMExtractor:
             if not isinstance(item, dict) or item.get("type") not in self.allowed:
                 dropped.append({"reason": "unknown_type", "item": item})
                 continue
+            if air and item["type"] == "TAXI_VIA":
+                dropped.append({"reason": "air_facility", "item": item})
+                continue
             cue = self.cues.get(item["type"])
             if cue is not None and not cue.search(haystack):
                 dropped.append({"reason": "no_lexical_cue", "item": item})
@@ -233,11 +273,11 @@ class LLMExtractor:
             inst["route"] = [canonical_taxiway(r) for r in (item.get("route") or []) if r]
             inst["route"] = [r for r in inst["route"] if r]
             if inst["target"] and not (valid_target_shape(inst["target"], haystack)
-                                       and grounded_in_text(inst["target"], haystack)):
+                                       and grounded_in_text(inst["target"], places)):
                 dropped.append({"reason": "ungrounded_target", "item": item})
                 inst["target"] = None
             inst["route"] = [r for r in inst["route"]
-                             if re.fullmatch(r"[A-Z]{1,2}\d{0,2}", r) and grounded_in_text(r, haystack)]
+                             if re.fullmatch(r"[A-Z]{1,2}\d{0,2}", r) and grounded_in_text(r, places)]
             instructions.append(inst)
 
         return {"speaker": speaker, "callsign": callsign, "instructions": instructions,
@@ -249,6 +289,14 @@ class LLMExtractor:
         rule = self.fallback.extract_one(turn["text"], result["speaker"])
         llm_types = {i["type"] for i in result["instructions"] if i["type"] not in ("REQUEST", "ACK")}
         added = [i for i in rule["instructions"] if i["type"] not in llm_types and i["type"] not in ("REQUEST", "ACK")]
+        if any(i["type"] == "TAXI_VIA" for i in added):
+            low = normalize_text(turn["text"])[0].lower()
+            def route_like(i):  # a verbless readback still names several places: "Lima, Lima one, nine left mike two"
+                return len(set(i["route"])) + bool(i["target"]) >= 2
+            if ("facility" in self.fixes and turn.get("facility_class") in AIR_FACILITIES):
+                added = [i for i in added if i["type"] != "TAXI_VIA"]
+            elif "taxi_verb" in self.fixes and not TAXI_VERB.search(low):
+                added = [i for i in added if i["type"] != "TAXI_VIA" or route_like(i)]
         if added:
             result["instructions"] = [i for i in result["instructions"] if i["type"] not in ("REQUEST", "ACK")] + added
             result["rule_added"] = [i["type"] for i in added]
