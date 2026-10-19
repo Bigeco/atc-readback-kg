@@ -8,3 +8,4 @@ torch>=2.4
 tqdm>=4.66
 transformers>=4.51
 uvicorn[standard]>=0.30
+matplotlib
