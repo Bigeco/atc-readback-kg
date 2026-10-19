@@ -3,13 +3,16 @@
     python src/demo/server.py --run-name katl_gnd --port 8800
 """
 import argparse
+import shutil
+import subprocess
 import sys
+from functools import lru_cache
 from collections import Counter, defaultdict
 from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 SRC_ROOT = Path(__file__).resolve().parents[1]
@@ -140,12 +143,26 @@ def create_app(state: DemoState) -> FastAPI:
             view["counterpart"] = Q.transmission_view(state.graph, other)
         return view
 
-    @app.get("/audio")
-    def audio(path: str):
-        target = (PROJECT_ROOT / path).resolve()
+    @lru_cache(maxsize=256)
+    def cut_clip(path: str, start: float, end: float) -> bytes:
+        # ffmpeg cuts the transmission out of the 30-min archive: the browser gets a small, seek-free mp3
+        # (LiveATC archives start with non-MP3 bytes, which breaks seeking in some browsers)
+        cmd = ["ffmpeg", "-v", "error", "-ss", f"{max(0.0, start - 0.3):.2f}", "-t", f"{end - start + 0.7:.2f}",
+               "-i", path, "-ac", "1", "-b:a", "64k", "-f", "mp3", "-"]
+        return subprocess.run(cmd, capture_output=True, check=True).stdout
+
+    @app.get("/audio/clip")
+    def audio_clip(tx: str):
+        p = state.tx.get(tx)
+        if not p:
+            raise HTTPException(404, f"unknown transmission {tx}")
+        target = (PROJECT_ROOT / p["file"]).resolve()
         if RAW_AUDIO_ROOT.resolve() not in target.parents or not target.exists():
-            raise HTTPException(404, "audio not found")
-        return FileResponse(target, media_type="audio/mpeg")
+            raise HTTPException(404, "audio file not found (data/raw/liveatc is not shared; download it locally)")
+        if not shutil.which("ffmpeg"):
+            raise HTTPException(500, "ffmpeg is not installed")
+        return Response(cut_clip(str(target), p["offset_start"], p["offset_end"]), media_type="audio/mpeg",
+                        headers={"Cache-Control": "max-age=3600"})
 
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
     return app

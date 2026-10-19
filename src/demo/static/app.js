@@ -6,6 +6,7 @@ const S = {
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const hhmmss = (ep) => new Date(ep * 1000).toISOString().slice(11, 19);
+const ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></svg>';
 const STATIC = Boolean(window.ATC_STATIC);
 const api = async (path) => {
   if (STATIC) return window.staticApi(path);
@@ -24,28 +25,40 @@ function insText(i) {
 }
 
 // ------------------------------------------------------------------ audio
+// Local server mode only: /audio/clip cuts one transmission out of the archive with ffmpeg.
+// The public static site carries no audio (LiveATC terms).
 const player = $("#player");
-let stopAt = null;
-player.addEventListener("timeupdate", () => { if (stopAt !== null && player.currentTime >= stopAt) { player.pause(); stopAt = null; } });
-function playClip(file, start, end) {
-  const src = `/audio?path=${encodeURIComponent(file)}`;
-  if (!player.src.endsWith(encodeURIComponent(file))) player.src = src;
-  const go = () => { player.currentTime = Math.max(0, start - 0.3); stopAt = end + 0.4; player.play(); };
-  if (player.readyState >= 1) go(); else player.addEventListener("loadedmetadata", go, { once: true });
+let queue = [], playingTx = null;
+function markPlaying() {
+  document.querySelectorAll(".play-btn").forEach((b) => b.classList.toggle("on", b.dataset.tx === playingTx));
 }
+function playTx(txId, rest = []) {
+  if (playingTx === txId && !player.paused) { player.pause(); queue = []; playingTx = null; markPlaying(); return; }
+  queue = rest; playingTx = txId;
+  player.src = `/audio/clip?tx=${encodeURIComponent(txId)}`;
+  player.play().catch((e) => { toast(`음성을 재생할 수 없습니다: ${e.message}`); playingTx = null; markPlaying(); });
+  markPlaying();
+}
+player.addEventListener("ended", () => { const next = queue.shift(); next ? playTx(next, queue) : ((playingTx = null), markPlaying()); });
+player.addEventListener("error", () => { toast("음성 파일을 불러오지 못했습니다 (data/raw/liveatc 에 원본 mp3가 있어야 합니다)."); playingTx = null; markPlaying(); });
 const playBtn = (tx) => STATIC
-  ? `<button class="play-btn off" title="공개 사이트에서는 원음을 제공하지 않습니다 (LiveATC 약관). 로컬 서버 모드에서 재생됩니다." disabled>▶</button>`
-  : `<button class="play-btn" title="원음 재생" onclick='playClip(${JSON.stringify(tx.file)}, ${tx.offset_start}, ${tx.offset_end}); event.stopPropagation();'>▶</button>`;
+  ? `<button class="play-btn off" title="공개 사이트에는 원음이 없습니다 (LiveATC 약관). 로컬 서버(scripts/run_demo.sh)에서 재생됩니다." disabled>${ICON_PLAY}</button>`
+  : `<button class="play-btn" data-tx="${esc(tx.tx_id)}" title="원음 재생" onclick='playTx(${JSON.stringify(tx.tx_id)}); event.stopPropagation();'>${ICON_PLAY}</button>`;
+function toast(msg) {
+  const el = $("#toast"); el.textContent = msg; el.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 4000);
+}
 
 // ------------------------------------------------------------------ header + scrubber
 function renderKpis(sm) {
   const rb = sm.readback_status || {};
   const items = [
-    ["transmissions", sm.turns], ["flights", sm.flights], ["ATCO instr.", sm.atco_instructions],
-    ["readback match", rb.MATCH || 0, "match"], ["partial", rb.PARTIAL || 0, "partial"], ["mismatch", rb.MISMATCH || 0, "mismatch"],
-    ["alerts", Object.values(sm.alerts || {}).reduce((a, b) => a + b, 0)],
+    ["Transmissions", sm.turns], ["Flights", sm.flights], ["ATCO instructions", sm.atco_instructions],
+    ["Match", rb.MATCH || 0, "match"], ["Partial", rb.PARTIAL || 0, "partial"], ["Mismatch", rb.MISMATCH || 0, "mismatch"],
+    ["Alerts", Object.values(sm.alerts || {}).reduce((a, b) => a + b, 0)],
   ];
-  $("#kpis").innerHTML = items.map(([k, v, c]) => `<div class="kpi ${c || ""}"><b>${v ?? "-"}</b><span>${k}</span></div>`).join("");
+  const fmt = (v) => (v ?? "-").toLocaleString("en-US");
+  $("#kpis").innerHTML = items.map(([k, v, c]) => `<div class="kpi ${c || ""}"><b>${fmt(v)}</b><span>${k}</span></div>`).join("");
 }
 
 function drawHistogram() {
@@ -56,14 +69,14 @@ function drawHistogram() {
   const n = h.tx.length, bw = w / n, max = Math.max(...h.tx, 1);
   h.tx.forEach((v, i) => {
     const bh = (v / max) * 40;
-    ctx.fillStyle = "#56656a"; ctx.fillRect(i * bw, 46 - bh, Math.max(bw - 1, 1), bh);
-    if (h.alerts[i]) { ctx.fillStyle = "#c98200"; ctx.fillRect(i * bw, 49, Math.max(bw - 1, 1), Math.min(6, 2 + h.alerts[i])); }
+    ctx.fillStyle = "#c3c2b7"; ctx.fillRect(i * bw, 46 - bh, Math.max(bw - 1, 1), bh);
+    if (h.alerts[i]) { ctx.fillStyle = "#eb6834"; ctx.fillRect(i * bw, 49, Math.max(bw - 1, 1), Math.min(6, 2 + h.alerts[i])); }
   });
-  ctx.fillStyle = "#8f9a9d"; ctx.font = "10px IBM Plex Mono";
+  ctx.fillStyle = "#898781"; ctx.font = "10px JetBrains Mono, monospace";
   for (let k = 0; k <= 6; k++) { const x = (k / 6) * w; ctx.fillText(hhmmss(h.start + (k / 6) * (h.end - h.start)).slice(0, 5), Math.min(x, w - 32), 10); }
   if (S.t !== null) {
     const x = ((S.t - h.start) / (h.end - h.start)) * w;
-    ctx.strokeStyle = "#c98200"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, 56); ctx.stroke();
+    ctx.strokeStyle = "#2a78d6"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, 56); ctx.stroke();
   }
 }
 
@@ -96,8 +109,8 @@ async function loadStrips() {
         ${rb.MATCH ? `<span class="pill MATCH">✓${rb.MATCH}</span>` : ""}
         ${rb.PARTIAL ? `<span class="pill PARTIAL">◐${rb.PARTIAL}</span>` : ""}
         ${rb.MISMATCH ? `<span class="pill MISMATCH">✕${rb.MISMATCH}</span>` : ""}
-        ${alerts ? `<span class="pill flag">⚑${alerts}</span>` : ""}</div></div>`;
-  }).join("") || `<p class="hint" style="color:#8f9a9d;padding:8px">이 시점 주변에 교신이 없습니다.</p>`;
+        ${alerts ? `<span class="pill flag">${alerts} alerts</span>` : ""}</div></div>`;
+  }).join("") || `<p class="hint" style="padding:8px">이 시점 주변에 교신이 없습니다.</p>`;
   document.querySelectorAll(".strip").forEach((el) => el.addEventListener("click", () => selectFlight(el.dataset.f)));
 }
 
@@ -131,9 +144,12 @@ async function selectFlight(fid, { tab = "flight" } = {}) {
     <div class="flight-head"><span class="cs">${esc(fid)}</span>
       <span class="hint">${esc((c.surfaces || []).join(" · "))}</span>
       <span class="hint">${hhmmss(c.first)}–${hhmmss(c.last)}Z · ${c.n_tx} transmissions</span>
-      ${Object.entries(c.readback || {}).map(([k, v]) => `<span class="pill ${k}">${k} ${v}</span>`).join(" ")}</div>
+      ${Object.entries(c.readback || {}).map(([k, v]) => `<span class="pill ${k}">${k} ${v}</span>`).join(" ")}
+      ${STATIC ? "" : `<button class="btn" id="play-all">${ICON_PLAY} 교신 전체 듣기</button>`}</div>
     <div class="radio">${data.timeline.map(renderMsg).join("")}</div>`;
   document.querySelectorAll(".msg").forEach((el) => el.addEventListener("click", () => showEvidence(el.dataset.tx)));
+  const all = data.timeline.map((m) => m.tx_id);
+  if ($("#play-all")) $("#play-all").addEventListener("click", () => playTx(all[0], all.slice(1)));
   switchTab(tab);
   loadGraph(fid);
 }
@@ -145,12 +161,12 @@ function renderMsg(m) {
   const chips = (m.instructions || []).filter((i) => !["REQUEST", "ACK"].includes(i.type))
     .map((i) => `<span class="chip ${m.speaker === "ATCO" ? "req" : ""}">${esc(insText(i))}</span>`).join("");
   return `<div class="msg ${esc(m.speaker)}" data-tx="${esc(m.tx_id)}">
-    <div class="meta">${playBtn(m)}<span>${hhmmss(m.utc_start_epoch)}</span><span>${esc(m.speaker)}</span>${rbTag}${flags}</div>
+    <div class="meta">${playBtn(m)}<span class="who">${esc(m.speaker)}</span><span>${hhmmss(m.utc_start_epoch)}Z</span>${rbTag}${flags}</div>
     <div class="text">${esc(m.text)}</div>${chips ? `<div class="chips">${chips}</div>` : ""}</div>`;
 }
 
-const NODE_COLORS = { Flight: "#c98200", Transmission: "#2f5d8a", Instruction: "#17766f", Taxiway: "#8a8f6b", Runway: "#5c5f62",
-  Ramp: "#a08a5b", Facility: "#7a5c8a", Airline: "#b5651d", CallsignMention: "#b9b2a0" };
+const NODE_COLORS = { Flight: "#eb6834", Transmission: "#2a78d6", Instruction: "#1baf7a", Runway: "#52514e", Taxiway: "#eda100",
+  Ramp: "#e87ba4", Facility: "#6250d6", Airline: "#008300", CallsignMention: "#c3c2b7" };
 async function loadGraph(fid) {
   const g = await api(`/api/flight/graph?id=${encodeURIComponent(fid)}`);
   const label = (n) => n.label === "Transmission" ? `${n.props.speaker} ${hhmmss(n.props.utc_start_epoch)}`
@@ -163,20 +179,20 @@ async function loadGraph(fid) {
   S.cy = cytoscape({
     container: $("#cy"), elements,
     style: [
-      { selector: "node", style: { label: "data(label)", "font-family": "IBM Plex Mono", "font-size": 9, "text-valign": "bottom", "text-margin-y": 3,
-        "background-color": (n) => NODE_COLORS[n.data("kind")] || "#999", width: 16, height: 16, color: "#1b2225" } },
+      { selector: "node", style: { label: "data(label)", "font-family": "JetBrains Mono, monospace", "font-size": 9, "text-valign": "bottom", "text-margin-y": 3,
+        "background-color": (n) => NODE_COLORS[n.data("kind")] || "#999", width: 16, height: 16, color: "#0b0b0b" } },
       { selector: "node[kind = 'Flight']", style: { width: 30, height: 30, "font-size": 12, "font-weight": 600 } },
       { selector: "node[kind = 'Transmission']", style: { shape: "round-rectangle", width: 22, height: 12 } },
-      { selector: "edge", style: { width: 1, "line-color": "#c9c2ae", "target-arrow-shape": "triangle", "target-arrow-color": "#c9c2ae", "curve-style": "bezier",
-        label: "data(label)", "font-size": 7, color: "#6a7276", "text-rotation": "autorotate" } },
-      { selector: "edge[type = 'READBACK_OF']", style: { width: 2.5, "line-color": "#c98200", "target-arrow-color": "#c98200", color: "#8a5a00" } },
-      { selector: "edge[type = 'NEXT']", style: { "line-style": "dashed", "line-color": "#17766f", "target-arrow-color": "#17766f" } },
+      { selector: "edge", style: { width: 1, "line-color": "#d6d5cf", "target-arrow-shape": "triangle", "target-arrow-color": "#d6d5cf", "curve-style": "bezier",
+        label: "data(label)", "font-size": 7, color: "#898781", "text-rotation": "autorotate" } },
+      { selector: "edge[type = 'READBACK_OF']", style: { width: 2.5, "line-color": "#eb6834", "target-arrow-color": "#eb6834", color: "#a8461f" } },
+      { selector: "edge[type = 'NEXT']", style: { "line-style": "dashed", "line-color": "#2a78d6", "target-arrow-color": "#2a78d6" } },
     ],
     layout: { name: "cose", animate: false, nodeRepulsion: 9000, idealEdgeLength: 70 },
   });
   S.cy.on("tap", "node[kind = 'Transmission']", (ev) => showEvidence(ev.target.id()));
   $("#legend").innerHTML = Object.entries(NODE_COLORS).map(([k, c]) => `<span><i style="background:${c}"></i>${k}</span>`).join("") +
-    `<span><i style="background:#c98200"></i>READBACK_OF</span><span><i style="background:#17766f"></i>NEXT (시간순)</span>`;
+    `<span><i class="ln" style="background:#eb6834"></i>READBACK_OF</span><span><i class="ln dash" style="color:#2a78d6"></i>NEXT (시간순)</span>`;
 }
 
 // ------------------------------------------------------------------ alerts + evidence
@@ -283,8 +299,8 @@ $("#time").addEventListener("input", (e) => setTime(S.hist.start + Number(e.targ
 $("#search").addEventListener("input", () => { clearTimeout(timeDebounce); timeDebounce = setTimeout(loadStrips, 200); });
 $("#near-only").addEventListener("change", renderAlerts);
 $("#play").addEventListener("click", () => {
-  if (S.playing) { clearInterval(S.playing); S.playing = null; $("#play").classList.remove("on"); $("#play").textContent = "▶"; return; }
-  $("#play").classList.add("on"); $("#play").textContent = "❚❚";
+  if (S.playing) { clearInterval(S.playing); S.playing = null; $("#play").classList.remove("on"); return; }
+  $("#play").classList.add("on");
   S.playing = setInterval(() => { const t = S.t + 20; if (t > S.hist.end) { $("#play").click(); return; } setTime(t); }, 400);
 });
 window.addEventListener("resize", drawHistogram);
@@ -294,7 +310,9 @@ window.addEventListener("resize", drawHistogram);
   S.summary = data.summary; S.hist = data.histogram;
   const sm = data.summary;
   if (STATIC) document.body.classList.add("static-mode");
-  $("#run-label").textContent = `${STATIC ? "static demo · " : ""}${sm.airport} · ${data.run_name} · ${hhmmss(S.hist.start).slice(0, 5)}–${hhmmss(S.hist.end).slice(0, 5)}Z · ${sm.extractor}${sm.llm_model ? " / " + sm.llm_model.split("/").pop() : ""}`;
+  const day = new Date(S.hist.start * 1000).toISOString().slice(0, 10);
+  $("#run-label").textContent = `${sm.airport} · ${day} · ${hhmmss(S.hist.start).slice(0, 5)}–${hhmmss(S.hist.end).slice(0, 5)}Z`;
+  if (STATIC) $("#mode-badge").hidden = false;
   renderKpis(sm);
   $("#time").max = Math.round(S.hist.end - S.hist.start);
   const busiest = S.hist.tx.indexOf(Math.max(...S.hist.tx));
