@@ -40,20 +40,29 @@ def save(fig, out, name):
     plt.close(fig)
 
 
-def hbar(ax, labels, values, cis=None, color=C1, fmt="{:.1f}", xmax=100.0, xlabel=""):
+def hbar(ax, labels, values, cis=None, color=C1, fmt="{:.1f}", xmax=100.0, xlabel="", percent=True):
+    """Horizontal bars. percent=True: the axis spans exactly 0-100 and a label that would not fit right of the bar
+    (or its CI) goes inside the bar in white."""
     y = np.arange(len(labels))[::-1]
     ax.barh(y, values, height=0.6, color=color, zorder=2)
-    ends = list(values)
+    los, ends = list(values), list(values)
     if cis:
         lo = [v - c[0] for v, c in zip(values, cis)]
         hi = [c[1] - v for v, c in zip(values, cis)]
         ax.errorbar(values, y, xerr=[lo, hi], fmt="none", ecolor=INK2, elinewidth=0.8, capsize=2, zorder=3)
-        ends = [c[1] for c in cis]
-    for yi, v, e in zip(y, values, ends):
-        ax.text(min(e, xmax) + xmax * 0.035, yi, fmt.format(v), va="center", fontsize=7.5)
+        los, ends = [c[0] for c in cis], [c[1] for c in cis]
+    top = 100.0 if percent else xmax * 1.2
+    for yi, v, lo_, e in zip(y, values, los, ends):
+        if e + top * 0.12 <= top:
+            ax.text(e + top * 0.02, yi, fmt.format(v), va="center", fontsize=7.5, zorder=4)
+        else:
+            ax.text(min(v, lo_) - top * 0.015, yi, fmt.format(v), va="center", ha="right", fontsize=7.5,
+                    color="white", zorder=4)
     ax.set_yticks(y)
     ax.set_yticklabels(labels)
-    ax.set_xlim(0, xmax * 1.2)
+    ax.set_xlim(0, top)
+    if percent:
+        ax.set_xticks(range(0, 101, 20))
     ax.set_xlabel(xlabel)
     ax.xaxis.grid(True, color=GRID, lw=0.5, zorder=0)
     ax.tick_params(axis="y", length=0)
@@ -148,7 +157,7 @@ def main():
           g0["readback_edge_consistent"]["rate"] * 100, x0["OC"]["rate"] * 100, g0["kb_grounded_target_via"]["rate"] * 100],
          xlabel="Rate (%), higher is better")
     hbar(a2, ["Object hallucination (OH)", "Subject hallucination (SH)", "Relation hallucination (RH)"],
-         [x0["OH"]["rate"] * 100, x0["SH"]["rate"] * 100, x0["RH"]["rate"] * 100], color=C2, xmax=30,
+         [x0["OH"]["rate"] * 100, x0["SH"]["rate"] * 100, x0["RH"]["rate"] * 100], color=C2,
          xlabel="Rate (%), lower is better")
     for ax, tag in ((a1, "(a)"), (a2, "(b)")):
         ax.set_title(tag, loc="left", fontsize=8.5, pad=3)
@@ -159,9 +168,10 @@ def main():
     rb, al = s["readback_status"], s["alerts"]
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(DOUBLE, 2.0), gridspec_kw={"width_ratios": [0.8, 1.3], "wspace": 0.75})
     hbar(a1, ["MATCH", "PARTIAL", "MISMATCH"], [rb["MATCH"], rb["PARTIAL"], rb["MISMATCH"]], fmt="{:,.0f}",
-         xmax=max(rb.values()), xlabel="Readback links")
+         xmax=max(rb.values()), xlabel="Readback links", percent=False)
     ks = sorted(al, key=lambda k: -al[k])
-    hbar(a2, ks, [al[k] for k in ks], fmt="{:,.0f}", xmax=max(al.values()), xlabel="Alerts")
+    hbar(a2, ks, [al[k] for k in ks], fmt="{:,.0f}", xmax=max(al.values()), xlabel="Alerts",
+         percent=False)
     for ax, tag in ((a1, "(a)"), (a2, "(b)")):
         ax.set_title(tag, loc="left", fontsize=8.5, pad=3)
     save(fig, out, "fig5_readback_alerts")
