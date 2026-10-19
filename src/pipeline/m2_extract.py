@@ -82,10 +82,11 @@ def value_from_text(kind: str, low: str) -> Optional[str]:
     if kind == "HEADING":
         m = re.search(r"\b(?:heading|turn\s+(?:left|right)|(?:left|right)\s+turn|left|right)[\s,]+([0-3]\d{2})\b", low)
         return m.group(1) if m else None
-    m = re.search(r"\b(?:climb|descend|maintain|down to|up to)\b[^.]*?\b(\d{1,2})\s*thousand(?:\s*(\d)\s*hundred)?", low)
+    # no \b before the digits: a restated "one four fourteen thousand" normalizes to "1414 thousand" -> 14000
+    m = re.search(r"\b(?:climb\w*|descend\w*|maintain|down to|up to)\b[^.]*?(\d{1,2})\s*thousand(?:\s*(\d)\s*hundred)?", low)
     if m:
         return str(int(m.group(1)) * 1000 + int(m.group(2) or 0) * 100)
-    m = re.search(r"\b(?:climb|descend|maintain)\b[^.]*?\b(?:flight level|fl)\s*(\d{2,3})\b", low)
+    m = re.search(r"\b(?:climb\w*|descend\w*|maintain)\b[^.]*?\b(?:flight level|fl)\s*(\d{2,3})\b", low)
     return f"FL{m.group(1)}" if m else None
 
 
@@ -290,8 +291,9 @@ class LLMExtractor:
                 inst["target"] = None
             inst["route"] = [r for r in inst["route"]
                              if re.fullmatch(r"[A-Z]{1,2}\d{0,2}", r) and grounded_in_text(r, places)]
-            if not inst["value"] and inst["type"] in ("HEADING", "CLIMB", "DESCEND"):
-                inst["value"] = value_from_text(inst["type"], haystack)  # LLM often leaves the number out
+            if inst["type"] in ("HEADING", "CLIMB", "DESCEND"):
+                # the number read from the text wins: the LLM leaves it out or garbles it ("one four thousand" -> 1400)
+                inst["value"] = value_from_text(inst["type"], haystack) or inst["value"]
             instructions.append(inst)
 
         return {"speaker": speaker, "callsign": callsign, "instructions": instructions,
