@@ -35,7 +35,9 @@ def swap_side(text, rng, kb):
 
 def swap_taxiway(text, rng, kb):
     words = "|".join(sorted(PHONETIC, key=len, reverse=True))
-    m = re.search(r"\b(" + words + r")(?:[\s-]*(\d{1,2}))?\b", text, re.I)
+    # skip phonetic words that start a callsign ("Delta 1848")
+    m = next((x for x in re.finditer(r"\b(" + words + r")(?:[\s-]*(\d{1,2}))?\b", text, re.I)
+              if not re.match(r"\s*\d{3,}", text[x.end(1):])), None)
     if not m:
         return None
     letter = PHONETIC[m.group(1).lower()]
@@ -129,6 +131,7 @@ def main():
     parser.add_argument("--llm-model", default="Qwen/Qwen3-4B-Instruct-2507")
     parser.add_argument("--max-pairs", type=int, default=200)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--only", default=None, help="comma-separated perturbation kinds; skips the control run")
     args = parser.parse_args()
 
     out = run_dir(args.run_name)
@@ -172,12 +175,26 @@ def main():
     pairs = pairs[: args.max_pairs]
     print(f"[E3] {len(pairs)} clean MATCH pairs available")
 
-    control = evaluate_batch([(p, p["text"]) for p in pairs], extractor, canon_factory, required)
+    kinds = args.only.split(",") if args.only else list(PERTURBATIONS)
+    control = [] if args.only else evaluate_batch([(p, p["text"]) for p in pairs], extractor, canon_factory, required)
     false_alarm = sum(c["status"] != "MATCH" for c in control)
 
     jobs = []
+    def applicable(kind, pair):
+        # inject only where the controller instruction has the element: a runway side or a taxiway
+        ins = pair["atco_instructions"]
+        if kind == "lr_swap":
+            return any((i.get("target_id") or "").startswith("Runway:") and i["target_id"][-1] in "LR" for i in ins)
+        if kind == "taxiway_swap":
+            return any(i.get("target_kind") == "Taxiway" or i.get("route_ids") for i in ins)
+        return True
+
     for kind, (fn, expect) in PERTURBATIONS.items():
+        if kind not in kinds:
+            continue
         for pair in pairs:
+            if not applicable(kind, pair):
+                continue
             text = fn(pair["text"], rng, kb)
             if text and text != pair["text"]:
                 jobs.append((kind, pair, text))
@@ -191,7 +208,8 @@ def main():
         if len(examples[kind]) < 4:
             examples[kind].append({"original": pair["text"], "perturbed": text, "outcome": outcome, "detected": ok})
     for kind, (_, expect) in PERTURBATIONS.items():
-        results[kind] = {"expected": expect, **rate(*tally[kind])}
+        if kind in kinds:
+            results[kind] = {"expected": expect, **rate(*tally[kind])}
 
     report = {
         "run_name": args.run_name, "extractor": args.extractor, "n_pairs": len(pairs),
@@ -200,11 +218,12 @@ def main():
         "note": "text-level injection on pilot readbacks judged MATCH; upper bound without ASR noise",
     }
     report["control_examples"] = [{"text": p["text"], "outcome": c} for p, c in zip(pairs, control) if c["status"] != "MATCH"][:8]
-    save_json(report, out / "eval" / "e3_injection.json")
+    report_path = out / "eval" / ("e3_injection.json" if not args.only else f"e3_injection_{'_'.join(kinds)}.json")
+    save_json(report, report_path)
     print(f"[E3] control false alarm {report['control_false_alarm']['rate']} (n={len(control)})")
     for kind, r in results.items():
         print(f"[E3] {kind:16s} detection {r['rate']} (95% CI {r['ci95']}, n={r['n']})")
-    print(f"[E3] -> {display_path(out / 'eval' / 'e3_injection.json')}")
+    print(f"[E3] -> {display_path(report_path)}")
 
 
 if __name__ == "__main__":
