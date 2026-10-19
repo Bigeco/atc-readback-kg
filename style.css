@@ -62,7 +62,12 @@ svg { display: block; }
 .scrub-track { position: relative; flex: 1; height: 56px; }
 .scrub-track canvas { position: absolute; inset: 0; width: 100%; height: 56px; }
 .scrub-track input { position: absolute; inset: 0; width: 100%; height: 56px; margin: 0; opacity: 0; cursor: ew-resize; }
-.clock { font-family: var(--mono); font-size: 22px; font-weight: 500; min-width: 140px; text-align: right; font-variant-numeric: tabular-nums; }
+.clock { display: flex; align-items: baseline; justify-content: flex-end; min-width: 150px; cursor: text; }
+.clock input { font-family: var(--mono); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ink); width: 9ch;
+  text-align: right; border: 1px solid transparent; border-radius: 6px; background: none; padding: 2px 4px; outline: none; transition: border-color .12s, background .12s; }
+.clock:hover input { border-color: var(--line-strong); }
+.clock input:focus { border-color: var(--accent); background: var(--surface); box-shadow: 0 0 0 3px var(--accent-soft); }
+.clock input.bad { border-color: var(--mismatch); box-shadow: 0 0 0 3px var(--mismatch-soft); }
 .clock small { font-size: 11px; color: var(--muted); margin-left: 4px; }
 
 /* ---------- board layout ---------- */

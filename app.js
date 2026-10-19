@@ -90,7 +90,7 @@ function drawHistogram() {
 let timeDebounce = null;
 function setTime(t, { refresh = true } = {}) {
   S.t = t;
-  $("#clock").textContent = hhmmss(t);
+  if (document.activeElement !== $("#clock")) $("#clock").value = hhmmss(t);
   $("#time").value = Math.round(t - S.hist.start);
   drawHistogram();
   if (!refresh) return;
@@ -252,7 +252,10 @@ function kgStyle() {
     { selector: ".faded", style: { opacity: 0.08 } },
     { selector: "node.hl, node.hover", style: { opacity: 1, "min-zoomed-font-size": 0, label: "data(label)", "z-index": 10 } },
     { selector: "edge.hl, edge.hover", style: { opacity: 1, "z-index": 9 } },
-    { selector: "node.core", style: { "border-color": "#2a78d6", "border-width": 4, width: 34, height: 34, "font-size": 13 } });
+    { selector: "node.ring", style: { "underlay-color": "#2a78d6", "underlay-opacity": 0.18, "underlay-padding": 6, "underlay-shape": "ellipse" } },
+    { selector: "node.core", style: KG.mode === "event"
+      ? { "border-color": "#2a78d6", "border-width": 3, width: 14, height: 14, "min-zoomed-font-size": 0 }
+      : { "border-color": "#2a78d6", "border-width": 4, width: 34, height: 34, "font-size": 13 } });
   return s;
 }
 async function loadKg(force = false) {
@@ -278,7 +281,9 @@ async function loadKg(force = false) {
   $("#kg-detail").classList.add("hidden");
   $("#kg-tip").classList.remove("show");
   KG.cy = cytoscape({ container: $("#kgcy"), elements, style: kgStyle(), wheelSensitivity: 0.3, minZoom: 0.1, maxZoom: 3,
+    autoungrabify: true,   // nodes are not draggable: positions carry meaning (time axis) and stay as laid out
     userZoomingEnabled: KG.mode !== "event", layout: { name: "null" } });
+  KG.prevView = null;
   applyKgFilter();
   KG.cy.on("viewport", clampKgViewport);
   KG.cy.on("layoutstop", () => { setKgBounds(); clampKgViewport(); });
@@ -347,6 +352,7 @@ function bindKgEvents() {
     const n = ev.target;
     $("#kgcy").style.cursor = "pointer";
     showTip(ev, `<b>${esc(n.data("label"))}</b><span>${esc(n.data("kind"))} · ${n.degree()} links</span>`);
+    n.addClass("ring");
     if (KG.focus) return;
     cy.elements().addClass("dim");
     n.closedNeighborhood().removeClass("dim").addClass("hover");
@@ -357,13 +363,12 @@ function bindKgEvents() {
     if (!KG.focus) { cy.elements().addClass("dim"); e.union(e.connectedNodes()).removeClass("dim").addClass("hover"); }
   });
   cy.on("mouseout", "node, edge", () => {
-    $("#kgcy").style.cursor = ""; tip.classList.remove("show");
+    $("#kgcy").style.cursor = ""; tip.classList.remove("show"); cy.nodes(".ring").removeClass("ring");
     if (!KG.focus) cy.elements().removeClass("dim hover");
   });
   cy.on("tap", "node[kind != 'Tick']", (ev) => focusKgNode(ev.target, true));
   cy.on("tap", (ev) => { if (ev.target === cy) clearKgFocus(); });
   cy.on("dbltap", "node", (ev) => openKgNode(ev.target.id(), ev.target.data("kind")));
-  cy.on("grab", "node", () => tip.classList.remove("show"));
 }
 function focusKgNode(n, zoom = false) {
   const cy = KG.cy, hood = n.closedNeighborhood();
@@ -371,8 +376,8 @@ function focusKgNode(n, zoom = false) {
   cy.elements().removeClass("dim hover core").addClass("faded").removeClass("hl");
   hood.removeClass("faded").addClass("hl");
   n.addClass("core");
-  if (zoom) cy.animate({ fit: { eles: hood, padding: 90 } }, { duration: 450, easing: "ease-in-out-cubic",
-    complete: () => { if (cy.zoom() > 1.8) cy.animate({ zoom: { level: 1.8, position: n.position() } }, { duration: 200 }); } });
+  if (zoom) zoomToKgNode(n, hood);
+  ripple(n);
   const node = KG.data.nodes.find((x) => x.id === n.id());
   const rows = Object.entries(node.props).filter(([k, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length) && !["layer", "iri", "backend"].includes(k))
     .map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(typeof v === "number" && k.includes("epoch") ? hhmmss(v) + "Z" : Array.isArray(v) ? v.map((x) => String(x).split(":").pop()).join(", ") : String(v).split(":").pop())}</td></tr>`).join("");
@@ -393,8 +398,40 @@ function focusKgNode(n, zoom = false) {
 }
 function clearKgFocus() {
   KG.focus = null;
-  if (KG.cy) KG.cy.elements().removeClass("faded hl dim hover core");
+  if (KG.cy) {
+    KG.cy.elements().removeClass("faded hl dim hover core");
+    if (KG.prevView) {   // fly back to where the viewer was before the first click
+      KG.cy.stop(); KG.cy.animate({ zoom: KG.prevView.zoom, pan: KG.prevView.pan }, { duration: 500, easing: "ease-in-out-cubic", complete: clampKgViewport });
+      KG.prevView = null;
+    }
+  }
   $("#kg-detail").classList.add("hidden");
+}
+// Click = fly to the node. Entity view: frame the node with its neighbours (at most 1.8x).
+// Event layer: centre the node at a zoom where instruction names are readable, keeping the time axis.
+function zoomToKgNode(n, hood) {
+  const cy = KG.cy;
+  if (!KG.prevView) KG.prevView = { zoom: cy.zoom(), pan: { ...cy.pan() } };
+  const clampZ = (z) => Math.min(cy.maxZoom(), Math.max(cy.minZoom(), z));
+  let level;
+  if (KG.mode === "event") level = clampZ(Math.max(cy.zoom() * 1.6, 2.2));
+  else {
+    const bb = hood.boundingBox();
+    level = clampZ(Math.min(1.8, (cy.width() - 180) / Math.max(bb.w, 1), (cy.height() - 180) / Math.max(bb.h, 1)));
+  }
+  const target = KG.mode === "event" ? n.position() : { x: (hood.boundingBox().x1 + hood.boundingBox().x2) / 2, y: (hood.boundingBox().y1 + hood.boundingBox().y2) / 2 };
+  // centre in the free area right of the detail card
+  const left = 320, cx = left + (cy.width() - left) / 2;
+  cy.stop();
+  cy.animate({ zoom: level, pan: { x: cx - target.x * level, y: cy.height() / 2 - target.y * level } },
+    { duration: 650, easing: "ease-in-out-cubic", complete: clampKgViewport });
+}
+// a ring that expands and fades around the clicked node
+function ripple(n) {
+  n.stop(true);
+  n.style({ "overlay-color": "#2a78d6", "overlay-opacity": 0.35, "overlay-padding": 3, "overlay-shape": "ellipse" });
+  n.animate({ style: { "overlay-opacity": 0, "overlay-padding": 22 } }, { duration: 650, easing: "ease-out-cubic",
+    complete: () => n.removeStyle("overlay-color overlay-opacity overlay-padding overlay-shape") });
 }
 function openKgNode(id, kind) {
   if (kind === "Flight") selectFlight(id.split(":").slice(1).join(":"));
@@ -409,7 +446,7 @@ function renderKgLegend() {
   const count = (k) => KG.data.nodes.filter((n) => n.label === k).length;
   $("#kg-legend").innerHTML = kinds.map((k) => `<button data-k="${k}" class="${KG.hidden.has(k) ? "off" : ""}" title="Show / hide">
       <i style="background:${KG_COLORS[k] || "#999"}"></i>${k} <small>${count(k)}</small></button>`).join("") +
-    `<span class="hint">${KG.mode === "event" ? "Scroll: move · Ctrl/⌘ + scroll: zoom" : "Scroll: zoom"} · hover: links · click: focus · double-click: open</span>`;
+    `<span class="hint">${KG.mode === "event" ? "Scroll: move · Ctrl/⌘ + scroll: zoom" : "Scroll: zoom"} · click a node: fly to it · click empty space: back · double-click: open</span>`;
   document.querySelectorAll("#kg-legend button").forEach((b) => b.addEventListener("click", () => {
     KG.hidden.has(b.dataset.k) ? KG.hidden.delete(b.dataset.k) : KG.hidden.add(b.dataset.k);
     KG.touched = true;
@@ -444,11 +481,15 @@ function setKgBounds() {
   if (KG.mode === "event") { cy.minZoom(Math.min(fitW, 1.5)); cy.maxZoom(Math.max(3, fitW * 4)); }
   else { cy.minZoom(fit * 0.85); cy.maxZoom(Math.max(2.5, fit * 6)); }
   KG.bounds = bb;
+  if (cy.zoom() < cy.minZoom()) {   // e.g. the panel got narrower: snap back to the smallest allowed view
+    const z = cy.minZoom(), pan = cy.pan(), k = z / cy.zoom();
+    cy.viewport({ zoom: z, pan: { x: pan.x * k, y: pan.y * k } });
+  }
 }
 let clamping = false;
 function clampKgViewport() {
   const cy = KG.cy;
-  if (!cy || clamping || !KG.bounds) return;
+  if (!cy || clamping || !KG.bounds || cy.animated() || KG.focus) return;   // a focused node may sit near an edge
   const bb = KG.bounds, z = cy.zoom(), pan = cy.pan(), W = cy.width(), H = cy.height();
   const axis = (lo, hi, size, p, alignStart) => {
     const len = (hi - lo) * z;
@@ -611,6 +652,25 @@ $("#play").addEventListener("click", () => {
   S.playing = setInterval(() => { const t = S.t + 20; if (t > S.hist.end) { $("#play").click(); return; } setTime(t); }, 400);
 });
 window.addEventListener("resize", drawHistogram);
+// the clock is editable: "0133", "1:33", "01:33:20" + Enter jumps there (Esc cancels)
+$("#clock").addEventListener("focus", (e) => e.target.select());
+$("#clock").addEventListener("blur", (e) => { e.target.value = hhmmss(S.t); e.target.classList.remove("bad"); });
+$("#clock").addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.target.blur(); return; }
+  if (e.key !== "Enter") return;
+  const m = e.target.value.trim().match(/^(\d{1,2}):?(\d{2})(?::?(\d{2}))?$/);
+  const ok = m && +m[1] < 24 && +m[2] < 60 && +(m[3] || 0) < 60;
+  if (!ok) { e.target.classList.add("bad"); toast("Enter a UTC time as HH:MM or HH:MM:SS"); return; }
+  const day = Math.floor(S.hist.start / 86400) * 86400;
+  let t = day + +m[1] * 3600 + +m[2] * 60 + +(m[3] || 0);
+  if (t < S.hist.start || t > S.hist.end) {
+    toast(`Data covers ${hhmmss(S.hist.start).slice(0, 5)}–${hhmmss(S.hist.end).slice(0, 5)}Z; moved to the nearest end`);
+    t = Math.min(S.hist.end, Math.max(S.hist.start, t));
+  }
+  e.target.classList.remove("bad");
+  setTime(t);
+  e.target.blur();
+});
 
 (async function boot() {
   const data = await api("/api/summary");
