@@ -15,6 +15,13 @@ const api = async (path) => {
 const shortType = (t) => ({ TAXI_VIA: "TAXI", HOLD_SHORT: "HOLD SHORT", CROSS_RUNWAY: "CROSS", MONITOR: "MONITOR", CONTACT: "CONTACT",
   GIVE_WAY: "GIVE WAY", FOLLOW: "FOLLOW", HOLD_POSITION: "HOLD POS", LINE_UP_AND_WAIT: "LUAW", CLEARED_FOR_TAKEOFF: "CTO", CLEARED_TO_LAND: "CTL" }[t] || t);
 
+// Public site: transcripts are not redistributed (LiveATC terms), so the extracted instructions stand in for the text.
+function txText(m) {
+  if (m.text) return `<div class="text">${esc(m.text)}</div>`;
+  const ins = (m.instructions || []).filter((i) => !["REQUEST", "ACK"].includes(i.type)).map(insText);
+  return `<div class="text redacted">${ins.length ? esc(ins.join(" · ")) : "지시 없음"}<span class="redacted-note">원문 비공개</span></div>`;
+}
+
 function insText(i) {
   if (!i) return "";
   const parts = [shortType(i.type)];
@@ -162,7 +169,7 @@ function renderMsg(m) {
     .map((i) => `<span class="chip ${m.speaker === "ATCO" ? "req" : ""}">${esc(insText(i))}</span>`).join("");
   return `<div class="msg ${esc(m.speaker)}" data-tx="${esc(m.tx_id)}">
     <div class="meta">${playBtn(m)}<span class="who">${esc(m.speaker)}</span><span>${hhmmss(m.utc_start_epoch)}Z</span>${rbTag}${flags}</div>
-    <div class="text">${esc(m.text)}</div>${chips ? `<div class="chips">${chips}</div>` : ""}</div>`;
+    ${txText(m)}${chips && m.text ? `<div class="chips">${chips}</div>` : ""}</div>`;
 }
 
 const NODE_COLORS = { Flight: "#eb6834", Transmission: "#2a78d6", Instruction: "#1baf7a", Runway: "#52514e", Taxiway: "#eda100",
@@ -237,7 +244,7 @@ async function showEvidence(txId, alert = null) {
   const rb = tx.readback ? tx.readback.props : null;
   const block = (t) => `<div class="ev-tx ${esc(t.speaker)}"><div class="meta">${playBtn(t)}<span>${hhmmss(t.utc_start_epoch)}</span>
       <span>${esc(t.speaker)}</span><span>${esc(t.flight || "")}</span></div>
-      <div>${esc(t.text)}</div>
+      ${txText(t)}
       <div class="chips">${(t.instructions || []).filter((i) => !["REQUEST", "ACK"].includes(i.type)).map((i) => `<span class="chip">${esc(insText(i))}</span>`).join("")}
       ${(t.flags || []).map((f) => `<span class="pill flag">${esc(f)}</span>`).join("")}</div></div>`;
   let diff = "";
@@ -312,7 +319,7 @@ window.addEventListener("resize", drawHistogram);
   if (STATIC) document.body.classList.add("static-mode");
   const day = new Date(S.hist.start * 1000).toISOString().slice(0, 10);
   $("#run-label").textContent = `${sm.airport} · ${day} · ${hhmmss(S.hist.start).slice(0, 5)}–${hhmmss(S.hist.end).slice(0, 5)}Z`;
-  if (STATIC) $("#mode-badge").hidden = false;
+  if (STATIC) { $("#mode-badge").hidden = false; $("#download").hidden = false; }
   renderKpis(sm);
   $("#time").max = Math.round(S.hist.end - S.hist.start);
   const busiest = S.hist.tx.indexOf(Math.max(...S.hist.tx));

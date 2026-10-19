@@ -2,7 +2,8 @@
 
     python src/demo/export_static.py --run-name katl_gnd --out-dir results/katl_gnd/site
 
-Audio is never exported (LiveATC terms forbid redistribution); the static page disables playback.
+The site is public, so it is built from the public KG (demo/public_kg.py): no audio, no transcripts
+(LiveATC terms forbid redistribution); the page shows the extracted instructions instead of the text.
 """
 import argparse
 import json
@@ -35,7 +36,7 @@ def strip_paths(obj):
 
 
 def export(run_name: str, out_dir: Path):
-    state = DemoState(run_name)
+    state = DemoState(run_name, public=True)
     if out_dir.exists():
         shutil.rmtree(out_dir)
     data = out_dir / "data"
@@ -76,6 +77,11 @@ def export(run_name: str, out_dir: Path):
             view["counterpart"] = Q.transmission_view(state.graph, other)
         tx[tx_id] = view
     dump(strip_paths(tx), data / "tx.json")
+    # downloadable public KG (graph, Neo4j CSV, alerts, README)
+    from demo.public_kg import export as export_public_kg
+    export_public_kg(run_name, out_dir / "kg")
+    shutil.make_archive(str(out_dir / "atc_readback_kg_public"), "zip", out_dir / "kg")
+    shutil.rmtree(out_dir / "kg")
 
     for name in ("style.css", "app.js", "static_api.js"):
         shutil.copy(STATIC_DIR / name, out_dir / name)

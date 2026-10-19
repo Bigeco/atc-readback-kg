@@ -23,7 +23,7 @@ def instruction_view(graph, ins_id: str) -> dict:
 def transmission_view(graph, tx_id: str) -> dict:
     p = graph.nodes[tx_id]["props"]
     return {
-        "tx_id": tx_id, "speaker": p["speaker"], "text": p["text"], "flight": p.get("flight_id"),
+        "tx_id": tx_id, "speaker": p["speaker"], "text": p.get("text"), "flight": p.get("flight_id"),
         "utc_start_epoch": p["utc_start_epoch"], "utc_end_epoch": p["utc_end_epoch"], "file": p["file"],
         "offset_start": p["offset_start"], "offset_end": p["offset_end"], "flags": p.get("flags", []),
         "instructions": [instruction_view(graph, n["id"]) for n in graph.instructions_of(tx_id)],
@@ -86,7 +86,7 @@ def kb_violations(graph) -> List[dict]:
     for nid, node in graph.nodes_by_label("Instruction").items():
         if "KB_VIOLATION" in node["props"].get("flags", []):
             view = instruction_view(graph, nid)
-            view["text"] = graph.nodes[node["props"]["tx_node"]]["props"]["text"]
+            view["text"] = graph.nodes[node["props"]["tx_node"]]["props"].get("text")
             out.append(view)
     return sorted(out, key=lambda r: r["valid_from"])
 

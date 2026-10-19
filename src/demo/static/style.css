@@ -137,6 +137,10 @@ svg { display: block; }
 .msg .meta .who { font-weight: 600; }
 .msg.ATCO .meta .who { color: var(--atco); } .msg.PILOT .meta .who { color: #0f8a5f; }
 .msg .text { font-size: 14px; line-height: 1.5; }
+.text.redacted { font-family: var(--mono); font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.redacted-note { font-family: var(--sans); font-size: 11px; color: var(--muted); }
+.btn.dl { text-decoration: none; color: var(--ink); height: 36px; }
+.btn[hidden] { display: none; }
 .msg .chips, .ev-tx .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
 .chip { font-family: var(--mono); font-size: 11px; background: var(--sunken); color: var(--ink-2); border-radius: 5px; padding: 2px 7px; }
 .chip.req { background: var(--accent-soft); color: #1d5ea8; }

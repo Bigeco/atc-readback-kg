@@ -28,9 +28,11 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 
 class DemoState:
-    def __init__(self, run_name: str):
+    def __init__(self, run_name: str, public: bool = False):
+        """public=True: transcripts and free-text fields removed (demo/public_kg.py), for the static site."""
         out = run_dir(run_name)
         self.run_name = run_name
+        self.public = public
         self.graph = TemporalEventGraph.load(out / "kg" / "graph.json")
         self.alerts = load_json(out / "alerts.json")
         self.summary = load_json(out / "summary.json")
@@ -39,6 +41,11 @@ class DemoState:
             path = out / "eval" / f"{name}.json"
             if path.exists():
                 self.eval[name] = load_json(path)
+        if public:
+            from demo.public_kg import redact_alerts, redact_eval, redact_graph
+            redact_graph(self.graph)
+            self.alerts = redact_alerts(self.alerts)
+            self.eval = redact_eval(self.eval)
 
         self.tx = {nid: n["props"] for nid, n in self.graph.nodes_by_label("Transmission").items()}
         self.flight_tx = defaultdict(list)
