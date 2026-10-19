@@ -24,3 +24,6 @@ docs/problem_definition/stt_sample/*.txt
 # FAA JO 7110.65BB is a U.S. Government work (public domain) and is committed
 data/ontology/*.pdf
 !data/ontology/FAA규정.pdf
+
+# local team-share bundles (LiveATC-derived data, not redistributed)
+share/
